@@ -225,23 +225,34 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-101-B** | Auth-Service가 Frontend로부터 Samsung AD 인증 후 사용자 정보(name, knox-id, dept, business_unit)를 수신하여 JWT 토큰을 생성해야 한다. | **M** |
-| **REQ-102-B** | JWT 토큰을 발급하고, 토큰에 user_id, knox_id, email, dept, business_unit을 포함해야 한다. | **M** |
-| **REQ-103-B** | 신규 사용자는 users 테이블에 새 레코드를 생성하고, is_new_user=true 플래그와 함께 응답해야 한다. | **M** |
-| **REQ-103-B (추가)** | 기존 사용자가 재로그인하는 경우, is_new_user=false로 설정하고 last_login을 현재 시간으로 업데이트해야 한다. | **M** |
+| **REQ-101-B** | Auth-Service가 Frontend로부터 Samsung AD 인증 후 사용자 정보(name, knox-id, dept, business_unit, email)를 수신하여 users 테이블에 저장해야 한다. | **M** |
+| **REQ-102-B** | **JWT 토큰을 knox_id만으로 단순하게 생성 및 발급**해야 한다. (JWT 페이로드: {knox_id, iat, exp}) | **M** |
+| **REQ-103-B** | 신규 사용자는 users 테이블에 새 레코드를 생성하고, JWT 토큰 + is_new_user=true 플래그와 함께 응답해야 한다. | **M** |
+| **REQ-103-B (추가)** | 기존 사용자가 재로그인하는 경우, JWT 토큰을 새로 생성하고 is_new_user=false로 설정하며 last_login을 현재 시간으로 업데이트해야 한다. | **M** |
 
 **구현 상세**:
 
-- **Samsung AD 연동**: Frontend에서 Samsung AD SSO 완료 후 사용자 정보(name, knox-id, dept, business_unit) 전달
-- **신규 사용자 등록**: users 테이블에 새 레코드 생성 (emp_no=knox_id, email, dept, status='active', created_at=현재시간)
-- **기존 사용자 업데이트**: 기존 사용자 로그인 시 last_login 타임스탬프 업데이트
+- **Samsung AD 연동**: Frontend에서 Samsung AD SSO 완료 후 사용자 정보(name, knox-id, dept, business_unit, email) 전달
+- **사용자 정보 저장**: users 테이블에 전체 정보 저장 (emp_no=knox_id, email, dept, business_unit, status='active', created_at=현재시간)
+- **JWT 토큰 생성**:
+
+  ```json
+  header: {alg: "HS256", typ: "JWT"}
+  payload: {knox_id: string, iat: timestamp, exp: timestamp+86400}
+  signature: HMAC-SHA256(secret_key)
+  ```
+
+  **→ 단순함을 위해 knox_id만 포함** (unique하므로 충분)
+- **기존 사용자 처리**: 재로그인 시 last_login 타임스탐프 업데이트
 - **접속 히스토리**: last_login 정보를 통해 사용자의 접속 빈도 및 학습 활동 추적 가능
 
 **수용 기준**:
 
-- "Frontend로부터 AD 정보 수신 후 1초 내 JWT 토큰이 발급된다."
-- "신규 사용자 생성 후 users 테이블에 레코드가 저장되고, is_new_user=true로 반환된다."
-- "재로그인 시 기존 레코드의 last_login이 업데이트되고, is_new_user=false로 반환된다."
+- "Frontend로부터 AD 정보(knox_id, name, email, dept, business_unit) 수신 후 1초 내 JWT 토큰이 발급된다."
+- "JWT 페이로드는 {knox_id, iat, exp}만 포함한다."
+- "신규 사용자 생성 후 users 테이블에 모든 사용자 정보가 저장되고, JWT 토큰 + is_new_user=true로 반환된다."
+- "재로그인 시 새로운 JWT 토큰을 생성하고, last_login이 업데이트되며, is_new_user=false로 반환된다."
+- "JWT 검증 시 knox_id를 이용해 사용자를 식별할 수 있다."
 - "last_login 조회를 통해 사용자의 접속 히스토리 분석 가능하다."
 
 ---
@@ -368,14 +379,26 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 ## Auth-Service
 
 ```http
-POST /api/v1/auth/sso-url
-  → {redirect_url: string, session_id: string}
-
 POST /api/v1/auth/callback
-  요청: {code: string, state: string}
-  → {user_id: string, token: string, email: string, dept: string, is_new_user: boolean}
+  설명: Frontend에서 Samsung AD SSO 완료 후 사용자 정보 전달
+  요청: {
+    knox_id: string,           // 고유한 회사 ID (unique)
+    name: string,              // 사용자명
+    email: string,             // 이메일
+    dept: string,              // 부서
+    business_unit: string      // 사업부
+  }
+  → {
+    access_token: string,      // JWT 토큰 (페이로드: {knox_id, iat, exp})
+    user_id: string,           // DB 사용자 ID (UUID)
+    knox_id: string,           // 반복 확인용
+    is_new_user: boolean,      // true: 신규, false: 기존
+    created_at?: timestamp     // 신규 사용자인 경우만 포함
+  }
 
 POST /api/v1/auth/logout
+  설명: 로그아웃
+  요청: {access_token: string}
   → {success: boolean}
 ```
 
