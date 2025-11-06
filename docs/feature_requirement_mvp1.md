@@ -1819,7 +1819,7 @@ def score_and_explain(
     # 1. 객관식/OX: user_answer == correct_answer → is_correct = True, score = 100
     # 2. 주관식:
     #    a) LLM 호출: 키워드 포함도, 문맥 이해도 평가 (0~100)
-    #    b) is_correct = (score >= 70) 로 판단
+    #    b) is_correct = (score >= 80) 로 판단 (80 이상만 정답, 70-79는 부분 정답)
     # 3. 해설 생성 (모든 타입):
     #    - 정답 이유, 자주 하는 실수, 관련 개념 설명
     # 4. attempt_id 자동 생성 및 test_responses & attempt_answers에 저장
@@ -2279,16 +2279,6 @@ class ItemGenAgent:
             mcp_server.get_tool("score_and_explain")  # Tool 6: 자동 채점 & 해설
         ]
 
-    def _create_agent(self):
-        """LangChain Agent 생성"""
-        from langchain.agents import create_tool_calling_agent
-
-        return create_tool_calling_agent(
-            llm=self.llm,
-            tools=self.tools,
-            prompt=self._get_system_prompt()
-        )
-
     def generate_questions(
         self,
         user_id: str,
@@ -2380,15 +2370,19 @@ class ItemGenAgent:
         return self._parse_agent_output(result)
 
     def _create_agent(self):
-        """LangChain Agent 생성 (기본 구조)"""
+        """
+        Mode 1 전용 Agent 생성 (문항 생성용)
+
+        __init__에서 self.agent 초기화 시 호출됨.
+        Mode 2 (자동 채점)는 score_and_explain() 메서드에서
+        별도의 에이전트를 생성하므로 이 메서드와 독립적으로 동작함.
+        """
         from langchain.agents import create_tool_calling_agent
 
-        # 주의: 실제 실행 시에는 generate_questions/score_and_explain에서
-        # 각 메서드에 맞는 프롬프트를 AgentExecutor에 전달합니다.
         return create_tool_calling_agent(
             llm=self.llm,
             tools=self.tools,
-            prompt=self._get_generation_system_prompt()  # 기본값: 생성용
+            prompt=self._get_generation_system_prompt()  # Mode 1: 생성용 프롬프트
         )
 
     def _get_generation_system_prompt(self) -> str:
@@ -2559,7 +2553,8 @@ class ItemGenAgent:
 
         **반환 필드 조건부 설정**:
         - keyword_matches: question_type == 'short_answer'일 때만 배열 (다른 타입: null)
-        - feedback: is_correct == False && score >= 70일 때만 값 포함 (완전 오답 시: null)
+        - feedback: 주관식에서 부분 정답 (70 <= score < 80)일 때만 값 포함
+          (완전 정답 또는 완전 오답 시: null)
         """
         # 정답 정보를 안전하게 처리
         correct_value = correct_answer if question_type != "short_answer" else None
@@ -2868,22 +2863,53 @@ def test_end_to_end_question_generation():
 
 def test_end_to_end_scoring():
     """채점 파이프라인 통합 테스트"""
-    question = {
-        "question_id": "q123",
-        "type": "multiple_choice",
-        "correct_answer": "A"
-    }
 
+    # 테스트 1: 객관식 정답
+    print("=== Test 1: Multiple Choice (Correct) ===")
     result = agent.score_and_explain(
+        session_id="sess_001",
         user_id="user123",
         question_id="q123",
         question_type="multiple_choice",
         user_answer="A",
-        correct_answer="A"
+        correct_answer="A"  # 객관식이므로 correct_answer 필수
     )
-
     assert result["is_correct"] == True
     assert result["score"] == 100
+    assert result["keyword_matches"] is None  # 객관식이므로 null
+    assert result["feedback"] is None  # 정답이므로 null
+    assert "explanation" in result
+
+    # 테스트 2: 주관식 정답
+    print("=== Test 2: Short Answer (Correct) ===")
+    result = agent.score_and_explain(
+        session_id="sess_001",
+        user_id="user123",
+        question_id="q456",
+        question_type="short_answer",
+        user_answer="The answer is comprehensive and accurate",
+        correct_keywords=["comprehensive", "accurate", "key_concept"]  # 주관식이므로 correct_keywords 필수
+    )
+    assert result["is_correct"] == True
+    assert result["score"] >= 80
+    assert isinstance(result["keyword_matches"], list)  # 주관식이므로 배열
+    assert result["feedback"] is None  # 정답이므로 null
+    assert "explanation" in result
+
+    # 테스트 3: 주관식 부분 정답 (학습 기회 제공)
+    print("=== Test 3: Short Answer (Partial) ===")
+    result = agent.score_and_explain(
+        session_id="sess_001",
+        user_id="user123",
+        question_id="q456",
+        question_type="short_answer",
+        user_answer="The answer is somewhat accurate",
+        correct_keywords=["comprehensive", "accurate", "key_concept"]
+    )
+    assert result["is_correct"] == False  # score 70-79이므로 부분 정답
+    assert 70 <= result["score"] < 80
+    assert isinstance(result["keyword_matches"], list)  # 주관식이므로 배열
+    assert result["feedback"] is not None  # 부분 정답이므로 피드백 제공
     assert "explanation" in result
 ```
 
