@@ -1775,6 +1775,7 @@ validation_results = validate_question_quality(
 ```python
 @tool
 def score_and_explain(
+    session_id: str,
     user_id: str,
     question_id: str,
     question_type: str,
@@ -1788,6 +1789,7 @@ def score_and_explain(
     응시자의 답변을 채점하고 해설을 생성합니다.
 
     Args:
+        session_id: 시험 세션 ID (test_responses & attempt_answers와 연결)
         user_id: 응시자 ID
         question_id: 문항 ID (question_bank의 ID)
         question_type: "multiple_choice" | "true_false" | "short_answer"
@@ -1800,6 +1802,7 @@ def score_and_explain(
     Returns:
         {
             "attempt_id": "uuid",  # Tool 6가 자동 생성 (attempt_answers 저장 시 사용)
+            "session_id": "uuid",  # 채점 결과를 test_responses & attempt_answers와 연결
             "question_id": "uuid",
             "user_id": "uuid",
             "is_correct": True,
@@ -1848,6 +1851,7 @@ def score_and_explain(
 # attempt_answers 테이블에 저장
 {
     "attempt_id": "...",
+    "session_id": "...",  # test_responses와 연결
     "question_id": "...",
     "user_answer": "...",
     "is_correct": True|False,
@@ -2516,6 +2520,7 @@ class ItemGenAgent:
     def score_and_explain(
         self,
         user_id: str,
+        session_id: str,
         question_id: str,
         question_type: str,
         user_answer: str,
@@ -2529,76 +2534,104 @@ class ItemGenAgent:
 
         Args:
             user_id: 응시자 ID
+            session_id: 테스트 세션 ID (답변 기록 추적용)
             question_id: 문항 ID (question_bank의 ID)
             question_type: "multiple_choice" | "true_false" | "short_answer"
             user_answer: 응시자의 답변
-            correct_answer: 정답 (객관식/OX용)
-            correct_keywords: 정답 키워드 (주관식용)
+            correct_answer: 정답 (객관식/OX용, 필수)
+            correct_keywords: 정답 키워드 (주관식용, 필수)
             difficulty: 난이도 (LLM 프롬프트 컨텍스트용)
             category: 카테고리 (LLM 프롬프트 컨텍스트용)
 
         Returns:
             {
                 "attempt_id": "uuid",  # Tool 6이 자동 생성
+                "session_id": "...",  # 입력받은 session_id
                 "question_id": "uuid",
                 "user_id": "uuid",
                 "is_correct": True|False,
                 "score": 85,  # 0~100
-                "explanation": "정답 해설: ...",
-                "feedback": "추가 피드백 (있을 경우)",
+                "explanation": "정답 해설: 이것이 정답인 이유는...",
+                "keyword_matches": ["keyword1", "keyword2"],  # 주관식인 경우만
+                "feedback": "더 나은 답변을 위한 피드백 (있을 경우)",  # 부분 정답 시
                 "graded_at": "2025-11-06T10:35:00Z"
             }
         """
+        # 정답 정보를 안전하게 처리
+        correct_value = correct_answer if question_type != "short_answer" else None
+        correct_kw = correct_keywords if question_type == "short_answer" else None
+
         scoring_prompt = f"""
         Task: 응시자의 답변을 채점하고 학습용 해설 생성
 
         Context:
+        - 세션 ID: {session_id}
         - 문항 ID: {question_id}
         - 문항 유형: {question_type}
         - 사용자 답변: {user_answer}
         - 난이도: {difficulty}
         - 카테고리: {category}
 
-        Action:
-        1. score_and_explain 도구 호출:
-           - 문항 유형에 따라 자동 채점
-           - 객관식/OX: 정답 매칭 (0 or 100)
-           - 주관식: LLM 의미 평가 (0~100)
+        Scoring Reference (Tool 6에 전달할 정보):
+        - 객관식/OX 정답: {correct_value}
+        - 주관식 정답 키워드: {correct_kw}
 
-        2. 결과:
-           - attempt_id는 Tool 6이 자동 생성
-           - 모든 필드가 포함된 채점 결과 반환
-           - test_responses & attempt_answers에 자동 저장
+        Action:
+        1. score_and_explain 도구 호출 (필수 인자):
+           - user_id: {user_id}
+           - session_id: {session_id}
+           - question_id: {question_id}
+           - question_type: {question_type}
+           - user_answer: {user_answer}
+           - correct_answer: {correct_value}
+           - correct_keywords: {correct_kw}
+           - difficulty: {difficulty}
+           - category: {category}
+
+        2. 채점 로직:
+           - 객관식/OX: 정답 매칭 (user_answer == correct_answer → 100 or 0)
+           - 주관식: LLM 의미 평가 (키워드 포함도, 문맥 이해도)
+
+        3. 결과:
+           - attempt_id: Tool 6이 자동 생성 (uuid)
+           - keyword_matches, feedback: 주관식인 경우만 반환
+           - test_responses & attempt_answers에 session_id와 함께 저장
 
         JSON 형식으로 반환하세요 (Tool 6 스키마와 일치):
         {{
-            "attempt_id": "uuid",  # Tool 6이 자동 생성
+            "attempt_id": "uuid",
+            "session_id": "{session_id}",
             "question_id": "{question_id}",
             "user_id": "{user_id}",
             "is_correct": True|False,
-            "score": 85,  # 0~100
+            "score": 85,
             "explanation": "정답 해설: ...",
-            "keyword_matches": ["keyword1", "keyword2"],  # 주관식인 경우만
-            "feedback": "더 나은 답변을 위한 피드백 (있을 경우)",  # 부분 정답 시
+            "keyword_matches": ["keyword1", "keyword2"],
+            "feedback": "더 나은 답변을 위한 피드백 (있을 경우)",
             "graded_at": "2025-11-06T10:35:00Z"
         }}
         """
 
         from langchain.agents import AgentExecutor, create_tool_calling_agent
 
-        # Mode 2: 별도의 에이전트 생성 (Mode 1 프롬프트 오버라이드)
-        # Note: self.agent는 Mode 1(생성) 프롬프트로 초기화되므로,
-        # score_and_explain에서는 Mode 2 전용 프롬프트로 새 에이전트를 생성해야 함
+        # Mode 2: 별도의 에이전트 생성 (Tool 6만 사용)
+        # 중요: Tool 6 (score_and_explain)만 사용하도록 제한
+        # Mode 1과 달리 채점은 단일 Tool 호출로 완료 (다른 도구 불필요)
+        tool_6_only = [t for t in self.tools if "score_and_explain" in getattr(t, 'name', '')]
+
+        if not tool_6_only:
+            raise ValueError("Tool 6 (score_and_explain) not found in tool list")
+
         scoring_agent = create_tool_calling_agent(
             llm=self.llm,
-            tools=self.tools,
+            tools=tool_6_only,  # ← Tool 6만 사용
             prompt=self._get_scoring_system_prompt()  # ← Mode 2 전용 프롬프트
         )
 
         executor = AgentExecutor(
-            agent=scoring_agent,  # Mode 2 에이전트 사용
-            tools=self.tools,
-            max_iterations=3,
+            agent=scoring_agent,
+            tools=tool_6_only,  # ← Tool 6만 사용
+            max_iterations=2,  # 채점은 1회 호출로 충분 (retry 1회)
             verbose=True
         )
 
