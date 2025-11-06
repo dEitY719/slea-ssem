@@ -63,7 +63,7 @@ tox -e py310 py311 py312      # Test multiple versions
 
 ## Architecture
 
-```
+```text
 Frontend ↔ Backend (FastAPI) ↔ PostgreSQL + LLM/RAG
 
 Key Components:
@@ -87,6 +87,7 @@ Key Components:
 ## Data Schema (MVP 1.0)
 
 **Key Entities**:
+
 - `users`: id, ad_id (email), nickname (UNIQUE)
 - `users_profile`: user_id (FK), level, career, interests
 - `test_sessions`: user_id, round (1-2), status

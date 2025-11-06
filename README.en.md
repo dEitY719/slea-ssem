@@ -2,7 +2,7 @@
 
 [kr-한국어](README.md) | **[en-English]**
 
-SLEA-SSEM (S.LSI Education AI Teacher). An AI-driven learning platform designed to guide S.LSI employees from beginner to expert in AI. “슬아쌤” — your personal AI mentor for starting and growing with AI.
+SLEA-SSEM (S.LSI Education AI Teacher). An AI-driven learning platform designed to guide S.LSI employees from beginner to expert in AI. “슬아쌤” — your personal AI mentor for starting and growing with AI
 ---
 
 ## Main Feature

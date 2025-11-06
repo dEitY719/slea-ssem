@@ -18,6 +18,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 ## 🎯 Scope (MVP 1.0.0)
 
 ### 포함 (In Scope)
+
 - ✅ Azure AD/SSO 기반 사용자 인증
 - ✅ 닉네임 등록 및 중복 검증
 - ✅ 자기평가 정보 수집 (수준, 경력, 직군, 업무, 관심분야)
@@ -32,6 +33,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 - ✅ 마케팅, 반도체, 센서, RTL 등 "재미" 카테고리 문항
 
 ### 미포함 (Out of Scope)
+
 - ❌ 정식 학습 일정 자동 생성 (MVP 2.0)
 - ❌ 외부 결제/과금 시스템
 - ❌ 관리자 콘솔 고도화
@@ -43,9 +45,11 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 ## 👥 Key Roles & Agents
 
 ### 사용자
+
 - **임직원 (Employee)**: 가입, 레벨 테스트 응시, 결과 확인
 
 ### 시스템 에이전트
+
 | 에이전트 | 역할 | 담당 기능 |
 |---------|------|---------|
 | **Auth-Agent** | Azure AD 인증 & JWT 토큰 관리 | SSO 로그인, 세션 발급 |
@@ -58,6 +62,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 | **History-Agent** | 응시 이력 관리 | 이력 저장/조회, 비교 분석 |
 
 ### 운영자 (선택)
+
 - (MVP 2.0) RAG 소스 등록, 부적절 콘텐츠 필터링 큐레이션 (최소화)
 
 ---
@@ -76,6 +81,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 | **REQ-104** | 최초/재방문 판별을 위해 쿠키·세션을 정확히 처리해야 한다. | **S** (Should) |
 
 **수용 기준**:
+
 - "AD 인증 성공 후 3초 내 토큰이 발급되고 세션이 유지된다."
 - "AD 인증 실패 시 '다시 시도' 버튼과 '문의' 링크가 표시된다."
 
@@ -91,6 +97,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 | **REQ-108** | 가입 확정 시, 사용자 정보(UID, 이메일, 부서, 닉네임, 생성일)를 DB에 저장해야 한다. | **M** |
 
 **수용 기준**:
+
 - "닉네임 중복 시 1초 내 대안 3개가 제안된다."
 - "금칙어를 포함한 닉네임은 등록이 거부되고 사유가 표시된다."
 - "가입 완료 후 DB 조회 시 사용자 레코드가 정확히 생성되어 있다."
@@ -118,6 +125,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 | **REQ-204** | Survey-Agent가 입력된 데이터를 검증하고 DB에 저장해야 한다. | **M** |
 
 **수용 기준**:
+
 - "모든 필수 필드를 입력한 후 '다음' 버튼이 활성화된다."
 - "유효하지 않은 값 입력 시 필드 옆에 에러 메시지가 표시된다."
 - "제출 후 3초 내 Survey-Agent가 데이터를 저장하고 다음 화면으로 진행한다."
@@ -136,6 +144,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 | **REQ-306** | 테스트 진행 중 응답은 실시간으로 임시 저장되어 새로고침 시에도 복구 가능해야 한다. | **S** |
 
 **수용 기준**:
+
 - "자기평가 제출 후 3초 내 1차 문항이 화면에 노출된다."
 - "마케팅, 반도체 등 특화 카테고리 문항이 확인된다."
 - "테스트 중 새로고침 후 이전 응답이 복구된다."
@@ -152,6 +161,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 | **REQ-310** | Explain-Agent가 각 문항에 대해 정답/오답 해설 및 참고링크를 생성해야 한다. | **M** |
 
 **수용 기준**:
+
 - "각 문항 제출 후 1초 내 '정답입니다' 또는 '오답입니다' 피드백이 표시된다."
 - "주관식 채점 후 부분점수(예: 70점)가 표시된다."
 - "해설에 참고 링크가 포함되어 있다."
@@ -168,6 +178,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 | **REQ-314** | (선택) 3차 이상 진행 가능하나, 최소 2회 및 최대 3회로 제한할 수 있다. | **S** |
 
 **수용 기준**:
+
 - "1차 점수 60점 시, 2차는 중급 난이도로 생성된다."
 - "1차 오답 카테고리가 2차에서 50% 이상 포함된다."
 
@@ -187,6 +198,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 | **REQ-408** | 사용자가 다운로드할 수 있는 공유용 배지/이미지(사내 피드 공유용)를 제공해야 한다. | **S** |
 
 **수용 기준**:
+
 - "결과 화면에 등급(1~5), 점수, 순위/모집단, 백분위가 동시에 표시된다."
 - "점수 80/100 시 등급이 'Advanced'로 정확히 산출된다."
 - "배지 이미지를 다운로드할 수 있다."
@@ -203,6 +215,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 | **REQ-412** | 재응시 시, 이전 응시 정보가 자동으로 로드되어 사용자 편의를 높여야 한다. | **S** |
 
 **수용 기준**:
+
 - "결과 저장 후 DB 조회 시 응시 이력이 정확히 저장되어 있다."
 - "대시보드에서 '재응시' 버튼이 노출되고, 클릭 시 직전 정보가 로드된다."
 
@@ -212,7 +225,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 ### Auth-Agent
 
-```
+```http
 POST /api/v1/auth/sso-url
   → {redirect_url: string, session_id: string}
 
@@ -226,7 +239,7 @@ POST /api/v1/auth/logout
 
 ### Profile-Agent
 
-```
+```http
 GET /api/v1/profile/nickname/check
   요청: {nickname: string}
   → {available: boolean, suggestions: [string], message: string}
@@ -241,7 +254,7 @@ GET /api/v1/profile/{user_id}
 
 ### Survey-Agent
 
-```
+```http
 GET /api/v1/survey/schema
   → {fields: [{name, type, options?, required, validation}]}
 
@@ -252,7 +265,7 @@ POST /api/v1/survey/submit
 
 ### Item-Gen-Agent
 
-```
+```http
 POST /api/v1/items/generate
   요청: {survey_id: string, round_idx: number, prev_answers?: []}
   → {
@@ -276,7 +289,7 @@ GET /api/v1/items/{item_id}
 
 ### Scoring-Agent
 
-```
+```http
 POST /api/v1/scoring/submit-answers
   요청: {
     round_id: string,
@@ -298,7 +311,7 @@ POST /api/v1/scoring/submit-answers
 
 ### Explain-Agent
 
-```
+```http
 POST /api/v1/explanation/generate
   요청: {
     item_id: string,
@@ -315,7 +328,7 @@ POST /api/v1/explanation/generate
 
 ### Rank-Agent
 
-```
+```http
 POST /api/v1/ranking/finalize
   요청: {
     user_id: string,
@@ -335,7 +348,7 @@ POST /api/v1/ranking/finalize
 
 ### History-Agent
 
-```
+```http
 GET /api/v1/history/latest
   요청: {user_id: string}
   → {
@@ -361,6 +374,7 @@ POST /api/v1/history/save
 ## 💾 Data Model
 
 ### users
+
 ```sql
 CREATE TABLE users (
   id UUID PRIMARY KEY,
@@ -376,6 +390,7 @@ CREATE TABLE users (
 ```
 
 ### user_profile_surveys
+
 ```sql
 CREATE TABLE user_profile_surveys (
   id UUID PRIMARY KEY,
@@ -391,6 +406,7 @@ CREATE TABLE user_profile_surveys (
 ```
 
 ### question_bank
+
 ```sql
 CREATE TABLE question_bank (
   id UUID PRIMARY KEY,
@@ -409,6 +425,7 @@ CREATE TABLE question_bank (
 ```
 
 ### attempts
+
 ```sql
 CREATE TABLE attempts (
   id UUID PRIMARY KEY,
@@ -428,6 +445,7 @@ CREATE TABLE attempts (
 ```
 
 ### attempt_rounds
+
 ```sql
 CREATE TABLE attempt_rounds (
   id UUID PRIMARY KEY,
@@ -441,6 +459,7 @@ CREATE TABLE attempt_rounds (
 ```
 
 ### attempt_answers
+
 ```sql
 CREATE TABLE attempt_answers (
   id UUID PRIMARY KEY,
@@ -456,6 +475,7 @@ CREATE TABLE attempt_answers (
 ```
 
 ### analytics
+
 ```sql
 CREATE TABLE analytics (
   id UUID PRIMARY KEY,
@@ -468,6 +488,7 @@ CREATE TABLE analytics (
 ```
 
 ### ranking_snapshots
+
 ```sql
 CREATE TABLE ranking_snapshots (
   id UUID PRIMARY KEY,
@@ -486,7 +507,7 @@ CREATE TABLE ranking_snapshots (
 
 ### 5등급 컷오프 방식
 
-```
+```plain
 점수 범위 (초기 정의, 운영 중 동적 조정):
   Beginner:               0 ~ 40점
   Intermediate:         40 ~ 60점
@@ -505,7 +526,7 @@ CREATE TABLE ranking_snapshots (
 
 ### 상대 순위 및 백분위
 
-```
+```sql
 계산 기준: 최근 90일 응시자 풀
 순위 = RANK() OVER (ORDER BY final_score DESC)
 백분위 = (순위 - 1) / (총 응시자 수) × 100
@@ -517,7 +538,7 @@ CREATE TABLE ranking_snapshots (
 
 ### 신뢰도 관리
 
-```
+```python
 IF total_candidates < 100:
   label = "분포 신뢰도 낮음 (샘플 부족)"
   percentile_confidence = "medium"
@@ -588,6 +609,7 @@ ELSE IF total_candidates >= 100:
 ## 🎯 우선순위 (MoSCoW)
 
 ### Must (필수)
+
 - ✅ REQ-101~REQ-108: AD 로그인, 닉네임 등록
 - ✅ REQ-201~REQ-203: 자기평가 입력
 - ✅ REQ-301~REQ-306: 문항 생성 및 풀이
@@ -598,6 +620,7 @@ ELSE IF total_candidates >= 100:
 - ✅ REQ-501, REQ-502: 콘텐츠 품질 & 필터링
 
 ### Should (권장)
+
 - ✅ REQ-106, REQ-107: 닉네임 제안, 금칙어 필터
 - ✅ REQ-304: 재미 카테고리
 - ✅ REQ-306, REQ-310: 자동 저장, 해설 생성
@@ -607,6 +630,7 @@ ELSE IF total_candidates >= 100:
 - ✅ REQ-410, REQ-412: 비교 분석, 자동 로드
 
 ### Could (선택)
+
 - ✅ REQ-109: 온보딩 모달
 - ✅ REQ-110: 개인정보 동의
 - ✅ REQ-309: 시간 페널티
@@ -657,6 +681,7 @@ ELSE IF total_candidates >= 100:
 ## 🚀 릴리스 슬라이스 (Release Plan)
 
 ### R1: 기본 가입 및 온보딩
+
 - AD 로그인/SSO
 - 닉네임 등록 (중복 체크)
 - 온보딩 모달
@@ -666,6 +691,7 @@ ELSE IF total_candidates >= 100:
 ---
 
 ### R2: 자기평가 → 1차 테스트
+
 - 자기평가 폼 입력
 - Item-Gen-Agent 1차 문항 생성
 - 순차적 문항 풀이
@@ -678,6 +704,7 @@ ELSE IF total_candidates >= 100:
 ---
 
 ### R3: 적응형 2차 & 최종 결과
+
 - 적응형 2차 문항 생성
 - 5등급 산출 & 순위 계산
 - 상세 결과 페이지 (등급, 점수, 순위, 백분위)
@@ -689,6 +716,7 @@ ELSE IF total_candidates >= 100:
 ---
 
 ### R4: 품질 & 성능 최적화
+
 - 콘텐츠 품질 필터 (비속어, 편향)
 - 문항 신고 채널
 - 성능 튜닝 (생성 시간 < 3s, 채점 < 1s)
