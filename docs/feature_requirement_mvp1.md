@@ -1833,7 +1833,7 @@ def score_and_explain(
 |---------|---------|------|----------------|
 | **객관식** | 규칙 기반 (정확 매칭) | user_answer == correct_answer | score = 100 → True, else 0 → False |
 | **OX (참거짓)** | 규칙 기반 (정확 매칭) | user_answer == correct_answer | score = 100 → True, else 0 → False |
-| **주관식** | **LLM 기반** (의미 평가) | 키워드 포함도, 문맥 이해도, 정확성 | score >= 70 → True, else False |
+| **주관식** | **LLM 기반** (의미 평가) | 키워드 포함도, 문맥 이해도, 정확성 | score >= 80 → True, 70~79 → False (부분), < 70 → False |
 
 **반환 데이터 저장**:
 
