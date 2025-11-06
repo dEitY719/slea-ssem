@@ -42,24 +42,29 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 ---
 
-## 👥 Key Roles & Agents
+## 👥 Key Roles & System Components
 
 ### 사용자
 
 - **임직원 (Employee)**: 가입, 레벨 테스트 응시, 결과 확인
 
-### 시스템 에이전트
+### LLM 기반 에이전트 (Intelligent Components)
 
 | 에이전트 | 역할 | 담당 시나리오 | 책임 |
 |---------|------|---------|--------|
-| **Auth-Agent** | 인증 관리 | 시나리오 0 | Samsung AD 통합, 토큰 발급, 세션 관리 |
-| **Profile-Agent** | 프로필 관리 | 시나리오 0 | 닉네임 검증, 중복 체크, 사용자 프로필 저장 |
-| **Survey-Agent** | 자기평가 | 시나리오 1-1 | 폼 데이터 검증, DB 저장 |
-| **Item-Gen-Agent** | 문항 생성 | 시나리오 1-2 | LLM 기반 동적 문항 생성 (적응형 조정) |
-| **Scoring-Agent** | 채점 | 시나리오 1-3 | 정오답 판정, 부분점수 계산, 피드백 생성 |
-| **Explain-Agent** | 해설 생성 | 시나리오 1-3 | 정오답 해설 및 참고 자료 제공 |
-| **Rank-Agent** | 순위 산출 | 시나리오 1-5 | 최종 등급, 상대 순위, 백분위 계산 |
-| **History-Agent** | 이력 관리 | 시나리오 1-6 | 응시 이력 조회, 비교 분석 |
+| **Item-Gen-Agent** | 문항 생성 | 시나리오 1-2 | LLM + Prompt를 통한 동적 문항 생성 (적응형 조정) |
+| **Scoring-Agent** | 주관식 채점 | 시나리오 1-3 | LLM + Prompt를 통한 주관식 답변 평가 및 부분점수 산출 |
+| **Explain-Agent** | 해설 생성 | 시나리오 1-3 | LLM + Prompt를 통한 정답/오답 해설 및 학습 자료 생성 |
+
+### 비즈니스 로직 서비스 (Legacy Components)
+
+| 서비스 | 역할 | 담당 시나리오 | 책임 |
+|------|------|---------|--------|
+| **Auth-Service** | 인증 관리 | 시나리오 0 | Samsung AD 통합, 토큰 발급, 세션 관리 |
+| **Profile-Service** | 프로필 관리 | 시나리오 0 | 닉네임 검증, 중복 체크, 사용자 프로필 저장 |
+| **Survey-Service** | 자기평가 관리 | 시나리오 1-1 | 폼 데이터 검증, DB 저장 |
+| **Rank-Service** | 순위 산출 | 시나리오 1-5 | 최종 등급 계산, 상대 순위 및 백분위 산출 |
+| **History-Service** | 이력 관리 | 시나리오 1-6 | 응시 이력 조회, 비교 분석 |
 
 ### 운영자 (선택)
 
@@ -218,7 +223,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-101-B** | Auth-Agent가 Samsung AD 인증 코드를 받아 액세스 토큰 및 사용자 정보를 조회해야 한다. | **M** |
+| **REQ-101-B** | Auth-Service가 Samsung AD 인증 코드를 받아 액세스 토큰 및 사용자 정보를 조회해야 한다. | **M** |
 | **REQ-102-B** | 인증 성공 시 JWT 토큰을 발급하고, 토큰에 user_id, email, dept를 포함해야 한다. | **M** |
 | **REQ-103-B** | 신규 사용자는 is_new_user=true 플래그와 함께 응답해야 한다. | **M** |
 
@@ -233,7 +238,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-104-B** | Profile-Agent가 닉네임 중복 여부를 1초 내에 확인하고 응답해야 한다. | **M** |
+| **REQ-104-B** | Profile-Service가 닉네임 중복 여부를 1초 내에 확인하고 응답해야 한다. | **M** |
 | **REQ-105-B** | 닉네임 유효성 검사(길이, 특수문자, 금칙어 필터)를 구현해야 한다. | **M** |
 | **REQ-106-B** | 중복 시 대안 3개를 자동으로 생성해서 제안해야 한다. (예: 사용자명_1, 사용자명_2, 사용자명_3) | **S** |
 | **REQ-107-B** | 금칙어 필터 목록을 유지하고, 위반 시 명확한 거부 사유를 반환해야 한다. | **S** |
@@ -250,8 +255,8 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-201-B** | Survey-Agent가 자기평가 폼 스키마(필드 정의, 검증 규칙, 선택지)를 API로 제공해야 한다. | **M** |
-| **REQ-204-B** | Survey-Agent가 제출된 자기평가 데이터를 검증하고 user_profile_surveys 테이블에 저장해야 한다. | **M** |
+| **REQ-201-B** | Survey-Service가 자기평가 폼 스키마(필드 정의, 검증 규칙, 선택지)를 API로 제공해야 한다. | **M** |
+| **REQ-204-B** | Survey-Service가 제출된 자기평가 데이터를 검증하고 user_profile_surveys 테이블에 저장해야 한다. | **M** |
 
 **수용 기준**:
 
@@ -301,7 +306,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-401-B** | Rank-Agent가 모든 응시 회차의 점수를 종합하여 최종 등급을 산출해야 한다. | **M** |
+| **REQ-401-B** | Rank-Service가 모든 응시 회차의 점수를 종합하여 최종 등급을 산출해야 한다. | **M** |
 | **REQ-402-B** | 5등급 체계를 정의해야 한다: Beginner, Intermediate, Intermediate-Advanced, Advanced, Elite | **M** |
 | **REQ-403-B** | 등급 산출 로직을 구현해야 한다: <br> - 기본: 종합 점수 + 난이도 보정 (문항별 정답률 기반 가중) <br> - 초기: 베이지안 평활로 컷오프 업데이트 | **M** |
 | **REQ-405-B** | 동일 기간(최근 90일) 응시자 풀을 기준으로 상대 순위(RANK() OVER)와 백분위(percentile)를 계산해야 한다. | **M** |
@@ -318,10 +323,10 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-409-B** | History-Agent가 모든 응시 데이터(자기평가, 문항/응답, 채점결과, 소요시간)를 attempts, attempt_rounds, attempt_answers 테이블에 저장해야 한다. | **M** |
-| **REQ-410-B** | History-Agent가 직전 응시 이력을 조회하여 개선도(점수 변화, 등급 변화, 소요 시간 비교)를 계산해서 반환해야 한다. | **S** |
+| **REQ-409-B** | History-Service가 모든 응시 데이터(자기평가, 문항/응답, 채점결과, 소요시간)를 attempts, attempt_rounds, attempt_answers 테이블에 저장해야 한다. | **M** |
+| **REQ-410-B** | History-Service가 직전 응시 이력을 조회하여 개선도(점수 변화, 등급 변화, 소요 시간 비교)를 계산해서 반환해야 한다. | **S** |
 | **REQ-411-B** | 사용자는 언제든 레벨 테스트를 반복 응시할 수 있는 API를 제공해야 한다. | **M** |
-| **REQ-412-B** | 재응시 시, History-Agent가 이전 자기평가 정보를 자동으로 로드하여 반환해야 한다. | **S** |
+| **REQ-412-B** | 재응시 시, History-Service가 이전 자기평가 정보를 자동으로 로드하여 반환해야 한다. | **S** |
 
 **수용 기준**:
 
@@ -348,7 +353,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 # 📡 API Specification (Backend)
 
-## Auth-Agent
+## Auth-Service
 
 ```http
 POST /api/v1/auth/sso-url
@@ -362,7 +367,7 @@ POST /api/v1/auth/logout
   → {success: boolean}
 ```
 
-## Profile-Agent
+## Profile-Service
 
 ```http
 GET /api/v1/profile/nickname/check
@@ -377,7 +382,7 @@ GET /api/v1/profile/{user_id}
   → {user_id, email, nickname, dept, created_at, status}
 ```
 
-## Survey-Agent
+## Survey-Service
 
 ```http
 GET /api/v1/survey/schema
@@ -451,7 +456,7 @@ POST /api/v1/explanation/generate
   }
 ```
 
-## Rank-Agent
+## Rank-Service
 
 ```http
 POST /api/v1/ranking/finalize
@@ -471,7 +476,7 @@ POST /api/v1/ranking/finalize
   }
 ```
 
-## History-Agent
+## History-Service
 
 ```http
 GET /api/v1/history/latest
@@ -802,10 +807,10 @@ ELSE IF total_candidates >= 100:
 ### R3: 적응형 2차 & 최종 결과
 
 - 난이도 조정 로직 (REQ-311-B, REQ-312-B, REQ-313-B)
-- Rank-Agent 등급/순위 산출 (REQ-401-B, REQ-402-B, REQ-403-B, REQ-405-B)
+- Rank-Service 등급/순위 산출 (REQ-401-B, REQ-402-B, REQ-403-B, REQ-405-B)
 - 최종 결과 페이지 (REQ-404-F, REQ-406-F, REQ-407-F)
 - 공유 배지 (REQ-408-F)
-- History-Agent 비교 (REQ-410-F, REQ-410-B)
+- History-Service 비교 (REQ-410-F, REQ-410-B)
 
 **완료 기준**: 사용자가 최종 등급, 순위, 배지를 확인하고 공유 가능
 
@@ -896,7 +901,7 @@ ELSE IF total_candidates >= 100:
 - [ ] REQ-310-B: Explain-Agent 해설 생성
 
 등급:
-- [ ] REQ-401-B: Rank-Agent 구현
+- [ ] REQ-401-B: Rank-Service 구현
 - [ ] REQ-402-B: 5등급 정의
 - [ ] REQ-403-B: 등급 산출 로직
 - [ ] REQ-405-B: 순위 & 백분위 계산
