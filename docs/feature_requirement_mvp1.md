@@ -1467,58 +1467,80 @@ ELSE IF total_candidates >= 100:
 
 ## 개요
 
-**Item-Gen-Agent**는 LLM을 기반으로 **동적 문항 생성, 자동 채점, 해설 생성**을 수행하는 자율 AI 에이전트입니다. LangChain의 최신 Agent 패턴과 FastMCP (Model Context Protocol) 프레임워크를 활용하여, Backend API를 도구화하고, 에이전트가 스스로 5개의 도구를 판단·활용하면서 주어진 작업을 완료합니다.
+**Item-Gen-Agent**는 LLM을 기반으로 **동적 문항 생성, 자동 채점, 해설 생성**을 수행하는 자율 AI 에이전트입니다. LangChain의 최신 Agent 패턴과 FastMCP (Model Context Protocol) 프레임워크를 활용하여, Backend API를 도구화하고, 에이전트가 상황에 따라 최적의 도구를 선택·활용하면서 주어진 작업을 완료합니다.
 
 **핵심 특징:**
 - **위치**: `./src/agent` 폴더
 - **프레임워크**: LangChain + FastMCP
 - **LLM**: 사내 Local LLM
-- **도구**: Backend API를 FastMCP @tool로 등록 (5개)
-- **의사결정**: 에이전트가 상황에 따라 도구를 선택·활용
+- **도구**: Backend API를 FastMCP @tool로 등록 (6개)
+  - 도구 1-5: 문항 생성 파이프라인
+  - 도구 6: 자동 채점 & 해설 생성 (응시자 답변 평가)
+- **의사결정**: 에이전트가 상황에 따라 도구를 선택·활용 (ReAct 패턴)
+- **확장 가능**: Tool 6의 설계로 향후 배지·랭킹 도구 추가 용이
 
 ---
 
 ## 아키텍처
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│                  Client (Frontend)                      │
-└────────────────────┬────────────────────────────────────┘
-                     │ HTTP Request
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│            FastAPI Backend Server                       │
-│  ┌──────────────────────────────────────────────┐      │
-│  │  Item-Gen-Agent (LangChain)                  │      │
-│  │  - 문항 생성, 채점, 해설 로직                 │      │
-│  │  - Tool 선택 및 실행                          │      │
-│  └──────────────────────────────────────────────┘      │
-│  ┌──────────────────────────────────────────────┐      │
-│  │  FastMCP Server (@tool 등록)                 │      │
-│  │  - Tool 1: 사용자 정보 조회                  │      │
-│  │  - Tool 2: 관심분야별 문항 템플릿 검색       │      │
-│  │  - Tool 3: 난이도별 키워드 조회              │      │
-│  │  - Tool 4: 문항 품질 검증                    │      │
-│  │  - Tool 5: 생성된 문항 저장                  │      │
-│  └──────────────────────────────────────────────┘      │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                  Client (Frontend)                       │
+└──────────────┬──────────────────────┬────────────────────┘
+               │                      │
+               │ 1. 문항 요청          │ 2. 답변 제출
+               ▼                      ▼
+┌──────────────────────────────────────────────────────────┐
+│            FastAPI Backend Server                        │
+│  ┌────────────────────────────────────────────────┐     │
+│  │  Item-Gen-Agent (LangChain)                    │     │
+│  │  - Mode 1: 문항 생성 (Tool 1-5)               │     │
+│  │  - Mode 2: 채점 & 해설 (Tool 6)               │     │
+│  │  - ReAct: 상황에 따라 도구 선택               │     │
+│  └────────────────────────────────────────────────┘     │
+│  ┌────────────────────────────────────────────────┐     │
+│  │  FastMCP Server (@tool 등록, 6개)              │     │
+│  │  ─── 문항 생성 파이프라인 (Mode 1) ────────   │     │
+│  │  - Tool 1: 사용자 정보 조회                   │     │
+│  │  - Tool 2: 관심분야별 문항 템플릿 검색        │     │
+│  │  - Tool 3: 난이도별 키워드 조회               │     │
+│  │  - Tool 4: 문항 품질 검증 (LLM 기반)          │     │
+│  │  - Tool 5: 생성된 문항 저장                   │     │
+│  │  ─── 채점 파이프라인 (Mode 2) ──────────────  │     │
+│  │  - Tool 6: 응답 채점 & 해설 생성 (LLM 기반)  │     │
+│  └────────────────────────────────────────────────┘     │
+└──────────────────────────────────────────────────────────┘
                      │ SQL
                      ▼
-┌─────────────────────────────────────────────────────────┐
-│            PostgreSQL Database                          │
-│ (users, user_profile_surveys, question_bank, etc.)     │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│            PostgreSQL Database                           │
+│  - question_bank: 생성된 문항 저장소                    │
+│  - test_responses: 응시자 답변 & 채점 결과              │
+│  - attempt_answers: 자세한 응답 기록                    │
+└──────────────────────────────────────────────────────────┘
                      │ HTTP
                      ▼
-┌─────────────────────────────────────────────────────────┐
-│           사내 Local LLM Server                          │
-│  (문항 생성, 채점, 해설 생성)                           │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│           사내 Local LLM Server                           │
+│  - 문항 생성 (Tool 4의 의미 검증 포함)                  │
+│  - 채점 & 해설 생성 (Tool 6)                           │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## FastMCP Tool 정의 (5개)
+## FastMCP Tool 정의 (6개)
+
+### 도구 분류
+
+| 카테고리 | 도구 | 목적 | LLM 사용 |
+|---------|------|------|---------|
+| **문항 생성** | Tool 1 | 사용자 정보 조회 | ❌ (DB 조회) |
+| | Tool 2 | 템플릿 검색 | ❌ (Vector DB 검색) |
+| | Tool 3 | 키워드 조회 | ❌ (DB 조회) |
+| | Tool 4 | 품질 검증 | ✅ **LLM 기반** |
+| | Tool 5 | 문항 저장 | ❌ (DB 저장) |
+| **자동 채점** | Tool 6 | 답변 채점 & 해설 | ✅ **LLM 기반** |
 
 ### Tool 1: Get User Profile
 
@@ -1766,6 +1788,468 @@ def save_generated_question(
     # FastAPI Endpoint: POST /api/v1/tools/save-question
 ```
 
+### Tool 6: Score & Generate Explanation
+
+**목적**: 응시자의 답변을 자동 채점하고 해설 생성 (LLM 기반)
+
+**핵심 역할**:
+- 객관식/OX: 정답과 대조하여 자동 채점 (규칙 기반)
+- 주관식: LLM을 사용하여 의미 기반 채점 (키워드 포함도, 문맥 이해도 등)
+- 모든 문항: 왜 이것이 정답인지 해설 자동 생성 (학습 효과 극대화)
+- 채점 결과와 해설을 test_responses & attempt_answers 테이블에 저장
+
+```python
+@tool
+def score_and_explain(
+    user_id: str,
+    question_id: str,
+    question_type: str,
+    user_answer: str,
+    correct_answer: str = None,
+    correct_keywords: list[str] = None,
+    difficulty: int = None,
+    category: str = None
+) -> dict:
+    """
+    응시자의 답변을 채점하고 해설을 생성합니다.
+
+    Args:
+        user_id: 응시자 ID
+        question_id: 문항 ID (question_bank의 ID)
+        question_type: "multiple_choice" | "true_false" | "short_answer"
+        user_answer: 응시자의 답변
+        correct_answer: 정답 (객관식/OX용)
+        correct_keywords: 정답 키워드 (주관식용)
+        difficulty: 난이도 (LLM 프롬프트 컨텍스트용)
+        category: 카테고리 (LLM 프롬프트 컨텍스트용)
+
+    Returns:
+        {
+            "question_id": "uuid",
+            "user_id": "uuid",
+            "is_correct": True,
+            "score": 100,  # 0~100 (객관식/OX) 또는 0~100 (주관식, LLM 채점)
+            "explanation": "정답 해설: 이것이 정답인 이유는...",
+            "keyword_matches": ["keyword1", "keyword2"],  # 주관식일 경우
+            "feedback": "더 나은 답변을 위한 피드백...",  # 부분 정답 시
+            "graded_at": "2025-11-06T10:35:00Z"
+        }
+    """
+    # FastAPI Endpoint: POST /api/v1/tools/score-and-explain
+
+    # 채점 로직:
+    # 1. 객관식/OX: user_answer == correct_answer → is_correct = True, score = 100
+    # 2. 주관식:
+    #    a) LLM 호출: 키워드 포함도, 문맥 이해도 평가 (0~100)
+    #    b) is_correct = (score >= 70) 로 판단
+    # 3. 해설 생성 (모든 타입):
+    #    - 정답 이유, 자주 하는 실수, 관련 개념 설명
+    # 4. test_responses & attempt_answers에 저장
+```
+
+**채점 기준**:
+
+| 문항 유형 | 채점 방식 | 기준 | is_correct 판정 |
+|---------|---------|------|----------------|
+| **객관식** | 규칙 기반 (정확 매칭) | user_answer == correct_answer | score = 100 → True, else 0 → False |
+| **OX (참거짓)** | 규칙 기반 (정확 매칭) | user_answer == correct_answer | score = 100 → True, else 0 → False |
+| **주관식** | **LLM 기반** (의미 평가) | 키워드 포함도, 문맥 이해도, 정확성 | score >= 70 → True, else False |
+
+**반환 데이터 저장**:
+
+```python
+# test_responses 테이블에 저장
+{
+    "session_id": "...",
+    "question_id": "...",
+    "user_id": "...",
+    "is_correct": True|False,
+    "score": 85,
+    "graded_at": "..."
+}
+
+# attempt_answers 테이블에 저장
+{
+    "attempt_id": "...",
+    "question_id": "...",
+    "user_answer": "...",
+    "is_correct": True|False,
+    "score": 85,
+    "explanation": "정답 해설: ...",
+    "feedback": "부분 정답 피드백 (있을 경우)",
+    "keyword_matches": ["key1", "key2"],  # 주관식 경우
+    "graded_at": "..."
+}
+```
+
+---
+
+## Tool 선택 조건 (ReAct 패턴)
+
+에이전트는 다음 **결정 규칙**에 따라 도구를 선택합니다. 강제 시퀀스가 아니라, 상황에 따른 유연한 선택을 지원합니다.
+
+### Mode 1: 문항 생성 (generate_questions)
+
+| 단계 | 도구 | 호출 조건 | 입력 | 예외 처리 |
+|-----|------|---------|------|---------|
+| 1 | Tool 1: get_user_profile | **항상** (필수) | user_id | 실패 → 재시도 3회 → 기본값 사용 |
+| 2 | Tool 2: search_question_templates | 관심분야 O | interests | 검색 결과 없음 → 스킵 (Tool 3으로 진행) |
+| 3 | Tool 3: get_difficulty_keywords | **항상** (필수) | difficulty, category | 실패 → 캐시된 키워드 반환 |
+| 4 | LLM: 문항 생성 | **항상** (필수) | 프롬프트 (Tool 1,2,3 결과 포함) | LLM 응답 오류 → 자동 교정 루프 (최대 3회) |
+| 5 | Tool 4: validate_question_quality | **각 문항마다** | stem, type, choices | 점수 < 0.7 → revise 피드백 후 재생성 (최대 2회) |
+| 6 | Tool 5: save_generated_question | 검증 통과 시만 | 생성된 문항 메타데이터 | 저장 실패 → 메모리 큐 임시 저장 → 배치 재시도 |
+
+### Mode 2: 자동 채점 (score_and_explain)
+
+| 단계 | 도구 | 호출 조건 | 입력 |
+|-----|------|---------|------|
+| 1 | Tool 6: score_and_explain | 답변 제출 시 | 사용자 답변 + 정답 정보 |
+
+---
+
+## 카테고리 & 난이도 체계 통일
+
+### 카테고리 정의
+
+전체 시스템에서 **단일 카테고리 체계** 사용:
+
+```
+기술: "LLM", "RAG", "Agent Architecture", "Prompt Engineering", "Fine-tuning"
+업무: "Product Strategy", "Team Management", "Project Planning"
+일반: "Communication", "Problem Solving"
+```
+
+### 카테고리 매핑 규칙
+
+| 도구 | 사용 파라미터 | 매핑 방식 |
+|-----|--------------|---------|
+| Tool 2 (search_templates) | `category: str` ("technical\|business\|general") | 도메인 → 상위 카테고리 자동 변환 |
+| Tool 3 (get_keywords) | `category: str` (도메인, e.g., "LLM") | 직접 도메인 사용 |
+| Tool 4 (validate_quality) | `category: str` (도메인, e.g., "RAG") | 직접 도메인 사용 |
+| Tool 6 (score_and_explain) | `category: str` (도메인) | 직접 도메인 사용 |
+
+**변환 로직**:
+```python
+def get_top_category(domain: str) -> str:
+    """도메인 → 상위 카테고리"""
+    technical_domains = ["LLM", "RAG", "Agent Architecture", "Prompt Engineering", "Fine-tuning"]
+    business_domains = ["Product Strategy", "Team Management", "Project Planning"]
+
+    if domain in technical_domains:
+        return "technical"
+    elif domain in business_domains:
+        return "business"
+    else:
+        return "general"
+```
+
+---
+
+## 배치 처리 & 데이터 계약
+
+### 배치 처리 API 명확화
+
+#### Tool 4 (validate_question_quality) - 단일 vs 배치
+
+**단일 호출**:
+```python
+# POST /api/v1/tools/validate-question
+{
+    "stem": "문항 내용",
+    "question_type": "multiple_choice",
+    "choices": ["A", "B", "C", "D"],
+    "correct_answer": "A"
+}
+
+# 응답
+{
+    "is_valid": True,
+    "score": 0.92,
+    "rule_score": 0.95,
+    "final_score": 0.92,
+    "recommendation": "pass"
+}
+```
+
+**배치 호출** (5개 문항 한 번에):
+```python
+# POST /api/v1/tools/validate-question/batch
+{
+    "questions": [
+        {
+            "stem": "Q1",
+            "question_type": "multiple_choice",
+            "choices": [...],
+            "correct_answer": "A"
+        },
+        ...
+    ]
+}
+
+# 응답
+[
+    {"is_valid": True, "score": 0.92, ...},
+    {"is_valid": True, "score": 0.88, ...},
+    ...
+]
+```
+
+### round_id 생성 규칙
+
+```python
+# generate_questions() 호출 시 round_id 자동 생성
+round_id = f"{test_session_id}_{round_number}_{datetime.utcnow().isoformat()}"
+
+# 예시: "sess_abc123_1_2025-11-06T10:30:00.000Z"
+
+# save_generated_question의 입력에 자동 포함
+save_generated_question(
+    ...,
+    round_id=round_id  # 자동 생성됨
+)
+```
+
+### 데이터 계약: save_generated_question 재정의
+
+**통일된 입출력 스키마**:
+
+```python
+@tool
+def save_generated_question(
+    item_type: str,  # "multiple_choice" | "true_false" | "short_answer"
+    stem: str,
+    choices: list[str] = None,
+    correct_key: str = None,  # 객관식/OX 정답
+    correct_keywords: list[str] = None,  # 주관식 키워드
+    difficulty: int,
+    categories: list[str],  # 도메인 카테고리 (e.g., ["LLM", "RAG"])
+    round_id: str,
+    validation_score: float = None,  # Tool 4의 final_score (메타)
+    explanation: str = None  # 선택사항 (향후 추가 가능)
+) -> dict:
+    """
+    Returns:
+    {
+        "question_id": "uuid",
+        "round_id": "...",  # 입력받은 round_id
+        "saved_at": "2025-11-06T10:30:00Z",
+        "success": True
+    }
+    """
+```
+
+### _parse_agent_output 데이터 계약 수정
+
+```python
+def _parse_agent_output(self, result: dict) -> list[dict]:
+    """
+    최종 반환값 (모든 도구 호출 완료 후):
+    [
+        {
+            "question_id": "uuid",  # Tool 5에서 받은 ID
+            "stem": "문항 내용",
+            "type": "multiple_choice|true_false|short_answer",
+            "choices": [...],  # 객관식 선택지
+            "correct_answer": "정답",  # Tool 5 입력
+            "difficulty": 5,
+            "category": "LLM",
+            "round_id": "sess_abc_1_...",
+            "validation_score": 0.92,  # Tool 4의 final_score
+            "saved_at": "2025-11-06T10:30:00Z"  # Tool 5 응답
+        },
+        ...
+    ]
+    """
+```
+
+---
+
+## 문항 구성 규칙
+
+### 문항 유형 비율
+
+```
+객관식 (Multiple Choice): 40%
+OX 참거짓 (True/False): 20%
+주관식 (Short Answer): 40%
+
+예시 (5개 문항):
+- 객관식: 2개
+- OX: 1개
+- 주관식: 2개
+```
+
+### 난이도 분포
+
+```
+라운드 1 (기초 평가):
+- 사용자 자기평가 수준을 기준으로 ±1 범위
+- 예: 중급(5) 선택 → 4, 5, 5, 6, 6
+
+라운드 2 (적응형 평가):
+- 라운드 1 점수 기반 동적 결정
+- 점수 >= 80: 난이도 +1
+- 점수 60~79: 난이도 동일
+- 점수 < 60: 난이도 -1
+```
+
+### 문항 제시 순서
+
+```
+쉬운 것 → 어려운 것 (점진 증가)
+
+예시 (난이도 4, 5, 5, 6, 6):
+Q1: 난이도 4 (기본 개념)
+Q2: 난이도 5 (개념 이해)
+Q3: 난이도 5 (개념 응용)
+Q4: 난이도 6 (심화 개념)
+Q5: 난이도 6 (시스템 설계)
+```
+
+---
+
+## 질 검증 기준표
+
+### validate_question_quality의 recommendation 결정 규칙
+
+| final_score | 상태 | 액션 | 최대 재시도 |
+|------------|------|------|-----------|
+| >= 0.85 | **PASS** | 즉시 저장 (Tool 5) | 0회 |
+| 0.70 ~ 0.84 | **REVISE** | LLM에 피드백 제공 후 재생성 | 최대 2회 |
+| < 0.70 | **REJECT** | 폐기, 새 문항 생성 요청 | - |
+
+### Revise 루프 피드백 예시
+
+```
+초차 생성: final_score = 0.75 → REVISE
+LLM 피드백:
+"문항이 명확하지만 난이도가 낮게 평가됨. 더 깊이 있는 개념을 포함해주세요."
+
+재생성: final_score = 0.88 → PASS
+```
+
+---
+
+## 난이도 결정 전략
+
+### 라운드별 난이도 결정
+
+**라운드 1 (기초 평가)**:
+```python
+user_level = get_user_self_level()  # beginner(3) | intermediate(5) | advanced(7)
+base_difficulty = user_level
+round1_difficulties = [
+    base_difficulty - 1,  # 1번 문항
+    base_difficulty,      # 2번 문항
+    base_difficulty,      # 3번 문항
+    base_difficulty + 1,  # 4번 문항
+    base_difficulty + 1   # 5번 문항
+]
+```
+
+**라운드 2 (적응형 평가)**:
+```python
+round1_score = get_round1_score()
+if round1_score >= 80:
+    adjustment = +1  # 어려워짐
+elif round1_score < 60:
+    adjustment = -1  # 쉬워짐
+else:
+    adjustment = 0   # 유지
+
+round2_difficulties = [
+    base_difficulty + adjustment - 1,
+    base_difficulty + adjustment,
+    base_difficulty + adjustment,
+    base_difficulty + adjustment + 1,
+    base_difficulty + adjustment + 1
+]
+```
+
+---
+
+## 에이전트 실행 전략
+
+### 전략: 배치 생성 + 배치 검증 (LLM 호출 최적화)
+
+**목표**: 5개 문항 생성 시 LLM 호출 최소화
+
+**단계별 실행**:
+
+```
+Step 1: 사용자/템플릿/키워드 조회 (Tool 1,2,3)
+         └─ API 호출 3~4회 (병렬 가능)
+
+Step 2: 5개 문항 일괄 생성 (LLM 1회 호출)
+         └─ 프롬프트: "다음 5개 문항을 한 번에 생성하세요" (난이도 분포 포함)
+         └─ 응답: JSON 배열 [Q1, Q2, Q3, Q4, Q5]
+
+Step 3: 5개 문항 일괄 검증 (Tool 4 배치 호출 1회)
+         └─ POST /api/v1/tools/validate-question/batch
+         └─ 응답: [result1, result2, result3, result4, result5]
+
+Step 4: 검증 통과 문항 저장 (Tool 5, 병렬 5회)
+         └─ 각 문항별 저장 (optional: 배치 저장 API 추가 가능)
+
+총 LLM 호출: 1회 (문항 생성)
+총 Tool 호출: ~10회 (Tool 1,2,3,4,5)
+총 시간: ~3초 (LLM 2초 + Tool 1초)
+```
+
+### 에이전트 상태 관리
+
+```python
+# 에이전트 프롬프트에 명시된 생성 전략:
+"""
+당신은 다음 5개의 문항을 한 번에 생성해야 합니다:
+
+문항 1: 난이도 {d1}, 주제: {topic1}, 유형: {type1}
+문항 2: 난이도 {d2}, 주제: {topic2}, 유형: {type2}
+...
+문항 5: 난이도 {d5}, 주제: {topic5}, 유형: {type5}
+
+생성 결과를 다음 JSON 형식으로 반환하세요:
+{
+    "questions": [
+        {
+            "stem": "Q1 내용",
+            "type": "multiple_choice",
+            "choices": [...],
+            "correct_answer": "A",
+            "difficulty": 4,
+            "category": "LLM"
+        },
+        ...
+    ]
+}
+"""
+```
+
+---
+
+## LLM 호출 최적화 전략
+
+### 현황 분석
+
+- **나이브 구현**: 문항 생성 (5회) + 검증 (5회) = 10+ LLM 호출
+- **최적화 후**: 생성 (1회) + 검증 (API, LLM 없음 or 배치) = 1~2회
+- **감소율**: 80~90%
+
+### 최적화 기법
+
+#### 1단계: 배치 생성
+- LLM에 "5개 문항을 한 번에 생성" 요청
+- 프롬프트: 난이도/주제/유형 명시 포함
+- 응답: JSON 배열로 구조화
+
+#### 2단계: 배치 검증
+- Tool 4의 배치 모드 사용 (`validate_question_quality(..., batch=True)`)
+- 5개 문항을 1회 API 호출로 검증
+
+#### 3단계: 스마트 재생성
+- 검증 실패 시 전체 재생성이 아닌, 실패한 문항만 개별 재생성
+- 최대 1회 추가 LLM 호출로 제한
+
 ---
 
 ## Agent 스펙
@@ -1980,6 +2464,205 @@ class ItemGenAgent:
         except Exception as e:
             logger.error(f"Unexpected error in _parse_agent_output: {e}")
             return []
+```
+
+---
+
+## 테스트 전략
+
+### 비결정적 LLM 에이전트 테스트 문제
+
+LLM 기반 에이전트는 매 실행마다 다른 응답을 생성하므로, 일반적인 단위 테스트로는 안정적인 검증이 불가능합니다. 따라서 **Mocking 기반 로직 검증** + **Evaluation 기반 품질 검증** 방식을 함께 사용합니다.
+
+### 1. Mocking 기반 단위 테스트
+
+**목적**: 에이전트의 **로직** (Tool 선택, 데이터 흐름, 에러 처리)이 예상대로 동작하는지 검증
+
+**테스트 대상**:
+- Tool 호출 순서 및 조건
+- 파라미터 전달 정합성
+- 예외 처리 및 재시도 로직
+- 파싱 및 데이터 변환 로직
+
+**예시 코드**:
+
+```python
+def test_generate_questions_tool_sequence():
+    """Tool 호출 순서 검증"""
+    mock_user_profile = {"interests": ["LLM", "RAG"], "self_level": "intermediate"}
+    mock_templates = [{"stem": "Template 1", "correct_rate": 0.8}]
+    mock_keywords = {"keywords": ["prompt", "context"]}
+
+    with patch("agent.get_user_profile", return_value=mock_user_profile) as mock_tool1:
+        with patch("agent.search_question_templates", return_value=mock_templates) as mock_tool2:
+            with patch("agent.get_difficulty_keywords", return_value=mock_keywords) as mock_tool3:
+                agent = ItemGenAgent(...)
+                agent.generate_questions("user123", 1)
+
+                # 검증: Tool 호출 순서
+                assert mock_tool1.called
+                assert mock_tool2.called
+                assert mock_tool3.called
+                assert mock_tool1.call_count == 1
+
+def test_validate_and_revise_loop():
+    """검증 실패 시 재생성 루프 검증"""
+    mock_validate_fail_then_pass = [
+        {"is_valid": False, "score": 0.65},  # 첫 시도: 실패
+        {"is_valid": True, "score": 0.88}    # 재시도: 통과
+    ]
+
+    with patch("agent.validate_question_quality", side_effect=mock_validate_fail_then_pass):
+        # 재생성이 자동으로 일어나는지 검증
+        ...
+```
+
+### 2. Evaluation 기반 품질 검증
+
+**목적**: 생성된 문항이 **요구 사항**을 만족하는지 평가
+
+**테스트 방식**: "Golden Dataset" (금표준 입력) + 평가 기준
+
+**Golden Dataset 예시**:
+
+```python
+GOLDEN_TEST_CASES = [
+    {
+        "user_id": "user_beginner",
+        "profile": {
+            "self_level": "beginner",
+            "interests": ["LLM"],
+            "years_experience": 1
+        },
+        "expected": {
+            "min_questions": 3,
+            "avg_difficulty_range": (2, 4),
+            "keyword_coverage": ["prompt", "token"]  # 포함되어야 할 키워드
+        }
+    },
+    {
+        "user_id": "user_advanced",
+        "profile": {
+            "self_level": "advanced",
+            "interests": ["Agent Architecture", "Fine-tuning"],
+            "years_experience": 5
+        },
+        "expected": {
+            "min_questions": 3,
+            "avg_difficulty_range": (6, 8),
+            "keyword_coverage": ["decision tree", "dynamic routing"]
+        }
+    }
+]
+```
+
+**평가 기준**:
+
+| 평가 항목 | 기준 | 통과율 목표 |
+|---------|------|-----------|
+| **난이도 정확성** | 생성된 문항의 평균 난이도가 기대값 ±1 범위 내 | >= 90% |
+| **키워드 포함도** | 생성된 문항에 기대 키워드 3개 중 2개 이상 포함 | >= 80% |
+| **유형 다양성** | 객관식:OX:주관식 = 40:20:40 ±10% | >= 85% |
+| **형식 준수** | 모든 문항이 스키마 검증 통과 | 100% |
+| **중복 없음** | 같은 라운드 내 유사도 > 90%인 문항 없음 | 100% |
+
+**테스트 구현**:
+
+```python
+def test_agent_with_golden_dataset():
+    """Golden dataset로 에이전트 평가"""
+    for test_case in GOLDEN_TEST_CASES:
+        questions = agent.generate_questions(
+            test_case["user_id"],
+            round_number=1,
+            count=5
+        )
+
+        # 평가 1: 난이도
+        avg_difficulty = sum(q["difficulty"] for q in questions) / len(questions)
+        assert test_case["expected"]["avg_difficulty_range"][0] <= avg_difficulty \
+               <= test_case["expected"]["avg_difficulty_range"][1]
+
+        # 평가 2: 키워드 포함도
+        all_stems = " ".join(q["stem"] for q in questions)
+        keyword_matches = sum(1 for kw in test_case["expected"]["keyword_coverage"]
+                             if kw.lower() in all_stems.lower())
+        assert keyword_matches >= 2
+
+        # 평가 3: 형식 검증
+        for q in questions:
+            assert "stem" in q and "type" in q and "correct_answer" in q
+```
+
+### 3. 통합 테스트 (End-to-End)
+
+**목적**: 전체 파이프라인이 정상 작동하는지 검증
+
+**테스트 시나리오**:
+
+```python
+def test_end_to_end_question_generation():
+    """전체 파이프라인 통합 테스트"""
+    # 1. 에이전트 초기화
+    agent = ItemGenAgent(
+        llm_endpoint="http://localhost:8888",
+        mcp_server=mcp_server
+    )
+
+    # 2. 실제 generate_questions 호출 (모의 LLM 사용 가능)
+    questions = agent.generate_questions(
+        user_id="test_user_001",
+        round_number=1,
+        count=5
+    )
+
+    # 3. 검증
+    assert len(questions) >= 3, "최소 3개 문항 생성 필요"
+    assert all("question_id" in q for q in questions), "모든 문항에 ID 필요"
+    assert all(q["difficulty"] in range(1, 11) for q in questions), "난이도 범위 검증"
+
+def test_end_to_end_scoring():
+    """채점 파이프라인 통합 테스트"""
+    question = {
+        "question_id": "q123",
+        "type": "multiple_choice",
+        "correct_answer": "A"
+    }
+
+    result = agent.score_and_explain(
+        user_id="user123",
+        question_id="q123",
+        question_type="multiple_choice",
+        user_answer="A",
+        correct_answer="A"
+    )
+
+    assert result["is_correct"] == True
+    assert result["score"] == 100
+    assert "explanation" in result
+```
+
+### 4. 지속적 평가 (CI/CD)
+
+**권장사항**:
+
+```yaml
+# .github/workflows/agent-test.yml
+name: Agent Test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Mock Tests
+        run: pytest tests/test_agent_mocking.py -v
+      - name: Run Golden Dataset Evaluation
+        run: python scripts/evaluate_golden_dataset.py --threshold=0.85
+      - name: Run Integration Tests
+        run: pytest tests/test_agent_integration.py -v
 ```
 
 ---
