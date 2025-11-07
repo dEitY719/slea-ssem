@@ -20,8 +20,10 @@ class User(Base):
         dept: Department
         business_unit: Business unit
         email: Email address
+        nickname: User's chosen nickname (UNIQUE, set during REQ-B-A2)
         last_login: Timestamp of last login
         created_at: Account creation timestamp
+        updated_at: Timestamp of last update
 
     """
 
@@ -33,9 +35,12 @@ class User(Base):
     dept: Mapped[str] = mapped_column(String(255), nullable=False)
     business_unit: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
+    nickname: Mapped[str | None] = mapped_column(String(30), unique=True, nullable=True, index=True)
     last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     def __repr__(self) -> str:
         """Return string representation of User."""
-        return f"<User(id={self.id}, knox_id='{self.knox_id}', name='{self.name}')>"
+        nickname_str = f", nickname='{self.nickname}'" if self.nickname else ""
+        return f"<User(id={self.id}, knox_id='{self.knox_id}', name='{self.name}'{nickname_str})>"

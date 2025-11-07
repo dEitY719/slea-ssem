@@ -11,6 +11,7 @@ from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from src.backend.api.auth import router as auth_router
+from src.backend.api.profile import router as profile_router
 from src.backend.database import get_db
 from src.backend.models.user import Base, User
 
@@ -78,6 +79,7 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     """
     app = FastAPI()
     app.include_router(auth_router)
+    app.include_router(profile_router)
 
     # Override database dependency to use the test session
     def override_get_db() -> Generator[Session, None, None]:
@@ -110,6 +112,7 @@ def user_fixture(db_session: Session) -> User:
         dept="Test Dept",
         business_unit="Test BU",
         email="test@samsung.com",
+        nickname="alice_test",
         last_login=datetime.utcnow(),
     )
     db_session.add(user)
