@@ -166,10 +166,22 @@ Assistant: (Automatically follows 4-phase workflow below)
 - Modified files + rationale
 - Test results (all pass)
 - Traceability: REQ → Spec → Tests → Code
-- Create git commit: ./tools/commit.sh
+- **Create progress file**: docs/progress/REQ-X-Y.md with full Phase 1-4 documentation
+  * Include: Requirements, Implementation locations, Test results, Git commit
+  * Add REQ traceability table (implementation ↔ test coverage)
+- **Update progress tracking**: docs/DEV-PROGRESS.md
+  * Find REQ row in developer section
+  * Change Phase: 0 → 4
+  * Change Status: ⏳ Backlog → ✅ Done
+  * Update Notes: Add commit SHA (e.g., "Commit: f5412e9")
+- Create git commit:
+  * Format: "chore: Update progress tracking for REQ-X-Y completion"
+  * Include: progress file creation + DEV-PROGRESS.md update
+  * Tag with 🤖 Claude Code marker
 ```
 
 **Key Principle**: Phase 1-2 pause for review = prevent rework. Spec must be approved before coding.
+**Progress Tracking**: Always complete Phase 4 progress files to maintain audit trail & team visibility.
 
 ---
 
