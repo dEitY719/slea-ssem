@@ -48,12 +48,14 @@ This section provides guidance for OpenAI Codex CLI (Agents platform) when worki
 ### Known Capabilities & Limitations
 
 **Capabilities**:
+
 - Direct bash command execution
 - Real-time code validation and testing
 - Fast token processing
 - Strong at complex implementation and debugging
 
 **Limitations**:
+
 - Token limits (4K-32K depending on model)
 - For large files (>5KB), may need excerpts
 - Cost per request is higher than alternatives
@@ -154,16 +156,19 @@ Assistant: (Automatically follows 4-phase workflow below)
 ### Workflow Selection
 
 **Use Claude for**:
+
 - Complex REQ specifications (strong reasoning)
 - Full end-to-end workflows (continuous context)
 - Code review and optimization
 
 **Use OpenAI Codex/ChatGPT for**:
+
 - Phase 3 Implementation (strong code generation + real-time validation)
 - Phase 4 Commit documentation (excellent writing)
 - Debugging and troubleshooting (interactive bash)
 
 **Use Gemini for**:
+
 - Cost optimization (lower token cost)
 - Phase 2 Test design (pattern recognition)
 - Phase 1 Specification (good reasoning, lower cost)
@@ -209,6 +214,7 @@ This maintains audit trail and tracks AI contribution patterns.
 ## Further Reference
 
 For detailed REQ-Based Workflow guidance, see:
+
 - `docs/REQ-WORKFLOW.md` - Universal workflow template
 - `docs/SETUP-REQ-WORKFLOW.md` - Setup guide for new projects
 - `CLAUDE.md` - Claude-specific configuration
