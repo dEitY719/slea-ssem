@@ -99,7 +99,7 @@ Response:
 | File | Changes |
 |------|---------|
 | `src/backend/api/questions.py` | Added ScoringRequest/Response models and POST /questions/score endpoint |
-| `src/backend/services/scoring_service.py` | Extended with score_answer(), _score_multiple_choice(), _score_true_false(), _score_short_answer(), _apply_time_penalty() |
+| `src/backend/services/scoring_service.py` | Extended with score_answer(),_score_multiple_choice(), _score_true_false(),_score_short_answer(), _apply_time_penalty() |
 
 ---
 
@@ -108,6 +108,7 @@ Response:
 ### **ORM Integration**
 
 Uses existing models:
+
 - **TestSession**: Provides time_limit_ms, started_at, paused_at for penalty calculation
 - **Question**: Provides item_type, answer_schema for question-specific scoring
 - **AttemptAnswer**: Stores scored is_correct, score with user_answer
@@ -147,6 +148,7 @@ _apply_time_penalty(base_score: float, test_session: TestSession) -> tuple[bool,
 ### **API Endpoints**
 
 **POST /questions/score** (200 OK)
+
 - Request: ScoringRequest(session_id, question_id)
 - Response: ScoringResponse(scored, question_id, user_answer, is_correct, score, feedback, time_penalty_applied, final_score, scored_at)
 - Error handling: 404 for invalid session/question/answer, 422 for validation errors
@@ -156,6 +158,7 @@ _apply_time_penalty(base_score: float, test_session: TestSession) -> tuple[bool,
 ## 🧪 Test Coverage (36 tests, 100% pass rate)
 
 ### **MC Scoring** (6 tests)
+
 - ✅ Correct answer scores 1.0
 - ✅ Incorrect answer scores 0.0
 - ✅ Missing selected_key raises ValueError
@@ -164,6 +167,7 @@ _apply_time_penalty(base_score: float, test_session: TestSession) -> tuple[bool,
 - ✅ Whitespace normalization
 
 ### **TF Scoring** (5 tests)
+
 - ✅ Correct true/false answers score 1.0
 - ✅ Incorrect answers score 0.0
 - ✅ Invalid format raises ValueError
@@ -171,6 +175,7 @@ _apply_time_penalty(base_score: float, test_session: TestSession) -> tuple[bool,
 - ✅ Boolean conversion from strings
 
 ### **Short Answer Scoring** (7 tests)
+
 - ✅ All keywords present scores 100.0
 - ✅ Partial keywords score proportionally (50.0 for 1 of 2)
 - ✅ No keywords present scores 0.0
@@ -180,6 +185,7 @@ _apply_time_penalty(base_score: float, test_session: TestSession) -> tuple[bool,
 - ✅ Substring keyword matching (e.g., "semi" matches "semiconductor")
 
 ### **Time Penalty** (5 tests)
+
 - ✅ No penalty within time limit
 - ✅ Penalty calculation: (elapsed - 20min) / 20min * score
 - ✅ Score never goes below 0.0
@@ -187,12 +193,14 @@ _apply_time_penalty(base_score: float, test_session: TestSession) -> tuple[bool,
 - ✅ No penalty if session still in_progress (not paused)
 
 ### **Full Scoring Flow** (4 tests)
+
 - ✅ Scoring updates AttemptAnswer in DB
 - ✅ Short answer with time penalty reflects both components
 - ✅ Idempotent scoring (same question twice = same result)
 - ✅ Invalid session raises ValueError
 
 ### **API Endpoints** (8 tests - pending)
+
 - MC/TF/Short answer endpoint tests (3)
 - Invalid session/question error handling (2)
 - Time penalty response flag (1)
@@ -230,6 +238,7 @@ _apply_time_penalty(base_score: float, test_session: TestSession) -> tuple[bool,
 ## 🔄 Integration Points
 
 ### **Dependencies**
+
 - `TestSession`, `Question`, `AttemptAnswer` models
 - `AutosaveService` (saves answers before scoring)
 - FastAPI/SQLAlchemy ORM

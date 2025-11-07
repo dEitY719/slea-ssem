@@ -124,7 +124,9 @@ class ScoringService:
         }
 
     def _score_multiple_choice(
-        self, user_answer: Any, answer_schema: dict[str, Any]  # noqa: ANN401
+        self,
+        user_answer: Any,  # noqa: ANN401
+        answer_schema: dict[str, Any],  # noqa: ANN401
     ) -> tuple[bool, float]:
         """
         Score multiple choice question (exact match).
@@ -157,7 +159,9 @@ class ScoringService:
         return is_correct, score
 
     def _score_true_false(
-        self, user_answer: Any, answer_schema: dict[str, Any]  # noqa: ANN401
+        self,
+        user_answer: Any,  # noqa: ANN401
+        answer_schema: dict[str, Any],  # noqa: ANN401
     ) -> tuple[bool, float]:
         """
         Score true/false question (exact match).
@@ -211,7 +215,9 @@ class ScoringService:
         return is_correct, score
 
     def _score_short_answer(
-        self, user_answer: Any, answer_schema: dict[str, Any]  # noqa: ANN401
+        self,
+        user_answer: Any,  # noqa: ANN401
+        answer_schema: dict[str, Any],  # noqa: ANN401
     ) -> tuple[bool, float]:
         """
         Score short answer (keyword matching).
