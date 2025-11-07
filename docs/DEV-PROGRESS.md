@@ -4,15 +4,47 @@ Overall progress tracking for MVP 1.0 development across all developers.
 
 ---
 
-## 📊 Development Status
+## 📊 Development Status (MVP 1.0)
 
-| REQ ID | Domain | Feature | Developer | Phase | Status | Last Updated | Notes |
-|--------|--------|---------|-----------|-------|--------|--------------|-------|
-| REQ-B-A2-Edit-1 | Backend | 닉네임 변경 | TBD | 0 | ⏳ Backlog | - | - |
-| REQ-B-A1-Profile | Backend | 프로필 조회 | TBD | 0 | ⏳ Backlog | - | - |
-| REQ-F-1-Login | Frontend | 로그인 | TBD | 0 | ⏳ Backlog | - | - |
-| REQ-A-1-ItemGen | Agent | 문항 생성 | TBD | 0 | ⏳ Backlog | - | - |
-| REQ-A-2-Scoring | Agent | 자동 채점 | TBD | 0 | ⏳ Backlog | - | - |
+### Frontend (lavine)
+
+| REQ ID | Feature | Phase | Status | Notes |
+|--------|---------|-------|--------|-------|
+| REQ-F-A1 | 로그인 화면 (Samsung AD) | 0 | ⏳ Backlog | 3개 sub-tasks |
+| REQ-F-A2 | 닉네임 등록 화면 | 0 | ⏳ Backlog | 5개 sub-tasks |
+| REQ-F-A2-Edit | 프로필 수정 화면 | 0 | ⏳ Backlog | 6개 sub-tasks |
+| REQ-F-A3 | 온보딩 모달 | 0 | ⏳ Backlog | 2개 sub-tasks |
+| REQ-F-B1 | 자기평가 입력 화면 | 0 | ⏳ Backlog | 3개 sub-tasks |
+| REQ-F-B2 | 문항 풀이 화면 | 0 | ⏳ Backlog | 7개 sub-tasks |
+| REQ-F-B3 | 해설 화면 | 0 | ⏳ Backlog | 2개 sub-tasks |
+| REQ-F-B4 | 최종 결과 페이지 | 0 | ⏳ Backlog | 3개 sub-tasks |
+| REQ-F-B5 | 재응시 및 비교 화면 | 0 | ⏳ Backlog | 3개 sub-tasks |
+| REQ-F-B6 | 재미 모드 (카테고리 선택형 퀴즈) | 0 | ⏳ Backlog | 3개 sub-tasks |
+
+### Backend (bwyoon)
+
+| REQ ID | Feature | Phase | Status | Notes |
+|--------|---------|-------|--------|-------|
+| REQ-B-A1 | Samsung AD 인증 & 세션 관리 | 0 | ⏳ Backlog | 4개 sub-tasks |
+| REQ-B-A2 | 닉네임 등록 | 0 | ⏳ Backlog | 5개 sub-tasks |
+| REQ-B-A2-Edit | 프로필 수정 | 0 | ⏳ Backlog | 4개 sub-tasks |
+| REQ-B-B1 | 자기평가 데이터 수집 & 저장 | 0 | ⏳ Backlog | 2개 sub-tasks |
+| REQ-B-B4 | 최종 등급 & 순위 산출 | 0 | ⏳ Backlog | 5개 sub-tasks |
+| REQ-B-B4-Plus | 등급 기반 배지 부여 | 0 | ⏳ Backlog | 3개 sub-tasks |
+| REQ-B-B5 | 응시 이력 저장 & 조회 | 0 | ⏳ Backlog | 5개 sub-tasks |
+| REQ-B-B6 | 문항 품질 - 콘텐츠 필터 | 0 | ⏳ Backlog | 1개 sub-task (MVP 1.0) |
+| REQ-B-B6-Plus | 재미 모드 (Backend) | 0 | ⏳ Backlog | 5개 sub-tasks |
+
+### Agent (TBD - person 필요)
+
+| REQ ID | Feature | Phase | Status | Notes |
+|--------|---------|-------|--------|-------|
+| REQ-B-B2-Plus | 실시간 저장 & 재개 | 0 | ⏳ Backlog | 5개 sub-tasks |
+| REQ-B-B2-Gen | 1차 문항 생성 | 0 | ⏳ Backlog | 3개 sub-tasks |
+| REQ-B-B2-Adapt | 2차 적응형 난이도 조정 | 0 | ⏳ Backlog | 4개 sub-tasks |
+| REQ-B-B3-Score | 채점 (정오답 판정) | 0 | ⏳ Backlog | 3개 sub-tasks |
+| REQ-B-B3-Explain | 해설 생성 | 0 | ⏳ Backlog | 1개 sub-task |
+| REQ-B-B7 | 학습 일정 예고 프리뷰 | 0 | ⏳ Backlog | 3개 sub-tasks (MVP 1.0) |
 
 ---
 
