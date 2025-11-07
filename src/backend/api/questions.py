@@ -1,7 +1,7 @@
 """
 Questions API endpoints for generating test questions.
 
-REQ: REQ-B-B2-Gen-1, REQ-B-B2-Gen-2, REQ-B-B2-Gen-3, REQ-B-B2-Adapt, REQ-B-B2-Plus
+REQ: REQ-B-B2-Gen-1, REQ-B-B2-Gen-2, REQ-B-B2-Gen-3, REQ-B-B2-Adapt, REQ-B-B2-Plus, REQ-B-B3-Score
 """
 
 import logging
@@ -167,6 +167,52 @@ class ResumeSessionResponse(BaseModel):
     next_question_index: int = Field(..., description="Next question index")
     previous_answers: list[dict[str, Any]] = Field(..., description="Previous answers with metadata")
     time_status: dict[str, Any] = Field(..., description="Time limit status")
+
+
+class ScoringRequest(BaseModel):
+    """
+    Request model for scoring an answer.
+
+    REQ: REQ-B-B3-Score-1
+
+    Attributes:
+        session_id: TestSession ID
+        question_id: Question ID to score
+
+    """
+
+    session_id: str = Field(..., description="TestSession ID")
+    question_id: str = Field(..., description="Question ID")
+
+
+class ScoringResponse(BaseModel):
+    """
+    Response model for scoring an answer.
+
+    REQ: REQ-B-B3-Score-1, 2, 3
+
+    Attributes:
+        scored: Whether scoring was successful
+        question_id: Question ID
+        user_answer: User's submitted answer
+        is_correct: Whether answer is correct
+        score: Base score (0-100)
+        feedback: Human-readable feedback
+        time_penalty_applied: Whether time penalty was applied
+        final_score: Final score after penalty
+        scored_at: Timestamp when scored
+
+    """
+
+    scored: bool = Field(..., description="Scoring success")
+    question_id: str = Field(..., description="Question ID")
+    user_answer: dict[str, Any] | str = Field(..., description="User's answer")
+    is_correct: bool = Field(..., description="Answer correctness")
+    score: float = Field(..., description="Base score (0-100)")
+    feedback: str = Field(..., description="Feedback message")
+    time_penalty_applied: bool = Field(..., description="Penalty applied flag")
+    final_score: float = Field(..., description="Final score after penalty")
+    scored_at: str = Field(..., description="Scoring timestamp (ISO format)")
 
 
 @router.post(
@@ -496,6 +542,47 @@ def update_session_status(
     except Exception as e:
         logger.exception("Error updating session status")
         raise HTTPException(status_code=500, detail="Failed to update session status") from e
+
+
+@router.post(
+    "/score",
+    response_model=ScoringResponse,
+    status_code=200,
+    summary="Score An Answer",
+    description="Score a submitted answer with time penalty",
+)
+def score_answer(
+    request: ScoringRequest,
+    db: Session = Depends(get_db),  # noqa: B008
+) -> ScoringResponse:
+    """
+    Score a submitted answer.
+
+    REQ: REQ-B-B3-Score-1, 2, 3
+
+    Args:
+        request: ScoringRequest with session_id and question_id
+        db: Database session
+
+    Returns:
+        ScoringResponse with is_correct, score, and feedback
+
+    Raises:
+        HTTPException: If session, question, or answer not found
+
+    """
+    try:
+        scoring_service = ScoringService(db)
+        result = scoring_service.score_answer(request.session_id, request.question_id)
+        return ScoringResponse(**result)
+    except ValueError as e:
+        error_msg = str(e)
+        if "not found" in error_msg:
+            raise HTTPException(status_code=404, detail=error_msg) from e
+        raise HTTPException(status_code=422, detail=error_msg) from e
+    except Exception as e:
+        logger.exception("Error scoring answer")
+        raise HTTPException(status_code=500, detail="Failed to score answer") from e
 
 
 @router.get(

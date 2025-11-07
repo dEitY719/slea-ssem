@@ -4,11 +4,15 @@ Scoring service for calculating test results and identifying weak areas.
 REQ: REQ-B-B3-Score, REQ-B-B2-Adapt
 """
 
+from datetime import datetime
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 from src.backend.models.attempt_answer import AttemptAnswer
 from src.backend.models.question import Question
 from src.backend.models.test_result import TestResult
+from src.backend.models.test_session import TestSession
 
 
 class ScoringService:
@@ -18,6 +22,7 @@ class ScoringService:
     REQ: REQ-B-B3-Score, REQ-B-B2-Adapt
 
     Methods:
+        score_answer: Score individual answer in real-time
         calculate_round_score: Calculate score for completed round
         get_wrong_categories: Identify wrong answer categories
 
@@ -32,6 +37,271 @@ class ScoringService:
 
         """
         self.session = session
+
+    def score_answer(
+        self,
+        session_id: str,
+        question_id: str,
+    ) -> dict[str, Any]:
+        """
+        Score a submitted answer with time penalty.
+
+        REQ: REQ-B-B3-Score-1, 2, 3
+
+        Performance requirement: Complete within 1 second.
+
+        Args:
+            session_id: TestSession ID
+            question_id: Question ID
+
+        Returns:
+            Dictionary with:
+                - scored (bool): Whether scoring completed successfully
+                - question_id (str): Question ID
+                - user_answer (dict/str): User's submitted answer
+                - is_correct (bool): Whether answer is correct
+                - score (float): Score earned (0-100 for MC/TF; 0-100 for short answer)
+                - feedback (str): Human-readable feedback
+                - time_penalty_applied (bool): Whether time penalty was applied
+                - final_score (float): Score after time penalty
+                - scored_at (str): ISO timestamp of scoring
+
+        Raises:
+            ValueError: If session, question, or answer not found
+
+        """
+        # Validate session exists
+        test_session = self.session.query(TestSession).filter_by(id=session_id).first()
+        if not test_session:
+            raise ValueError(f"Test session {session_id} not found")
+
+        # Validate question exists and belongs to session
+        question = self.session.query(Question).filter_by(id=question_id, session_id=session_id).first()
+        if not question:
+            raise ValueError(f"Question {question_id} not found in session {session_id}")
+
+        # Get the attempt answer (should already exist from autosave)
+        attempt_answer = (
+            self.session.query(AttemptAnswer).filter_by(session_id=session_id, question_id=question_id).first()
+        )
+        if not attempt_answer:
+            raise ValueError(f"Answer for question {question_id} not found (not yet saved)")
+
+        # Score based on item type
+        if question.item_type == "multiple_choice":
+            is_correct, base_score = self._score_multiple_choice(attempt_answer.user_answer, question.answer_schema)
+        elif question.item_type == "true_false":
+            is_correct, base_score = self._score_true_false(attempt_answer.user_answer, question.answer_schema)
+        elif question.item_type == "short_answer":
+            is_correct, base_score = self._score_short_answer(attempt_answer.user_answer, question.answer_schema)
+        else:
+            raise ValueError(f"Unknown item type: {question.item_type}")
+
+        # Apply time penalty
+        time_penalty_applied, final_score = self._apply_time_penalty(base_score, test_session)
+
+        # Update attempt answer in DB
+        attempt_answer.is_correct = is_correct
+        attempt_answer.score = final_score
+        self.session.commit()
+        self.session.refresh(attempt_answer)
+
+        # Generate feedback
+        feedback = "정답입니다!" if is_correct else "오답입니다."
+
+        scored_at = datetime.utcnow()
+
+        return {
+            "scored": True,
+            "question_id": question_id,
+            "user_answer": attempt_answer.user_answer,
+            "is_correct": is_correct,
+            "score": base_score,
+            "feedback": feedback,
+            "time_penalty_applied": time_penalty_applied,
+            "final_score": final_score,
+            "scored_at": scored_at.isoformat(),
+        }
+
+    def _score_multiple_choice(
+        self, user_answer: Any, answer_schema: dict[str, Any]  # noqa: ANN401
+    ) -> tuple[bool, float]:
+        """
+        Score multiple choice question (exact match).
+
+        REQ: REQ-B-B3-Score-2
+
+        Args:
+            user_answer: User's answer dict with "selected_key"
+            answer_schema: Answer schema with "correct_key"
+
+        Returns:
+            Tuple of (is_correct: bool, score: float)
+
+        Raises:
+            ValueError: If user_answer missing required field
+
+        """
+        if not isinstance(user_answer, dict):
+            raise ValueError("user_answer must be a dictionary for multiple choice")
+
+        if "selected_key" not in user_answer:
+            raise ValueError("user_answer missing 'selected_key' field")
+
+        selected_key = str(user_answer["selected_key"]).strip()
+        correct_key = str(answer_schema.get("correct_key", "")).strip()
+
+        is_correct = selected_key == correct_key
+        score = 1.0 if is_correct else 0.0
+
+        return is_correct, score
+
+    def _score_true_false(
+        self, user_answer: Any, answer_schema: dict[str, Any]  # noqa: ANN401
+    ) -> tuple[bool, float]:
+        """
+        Score true/false question (exact match).
+
+        REQ: REQ-B-B3-Score-2
+
+        Args:
+            user_answer: User's answer dict with "answer"
+            answer_schema: Answer schema with "correct_answer"
+
+        Returns:
+            Tuple of (is_correct: bool, score: float)
+
+        Raises:
+            ValueError: If user_answer has invalid format
+
+        """
+        if not isinstance(user_answer, dict):
+            raise ValueError("user_answer must be a dictionary for true/false")
+
+        if "answer" not in user_answer:
+            raise ValueError("user_answer missing 'answer' field")
+
+        user_ans = user_answer["answer"]
+
+        # Normalize user answer to boolean
+        if isinstance(user_ans, bool):
+            user_bool = user_ans
+        elif isinstance(user_ans, str):
+            user_lower = user_ans.lower().strip()
+            if user_lower in ("true", "yes", "1"):
+                user_bool = True
+            elif user_lower in ("false", "no", "0"):
+                user_bool = False
+            else:
+                raise ValueError(f"Invalid true/false answer: {user_ans}")
+        else:
+            raise ValueError(f"Invalid true/false answer type: {type(user_ans)}")
+
+        # Get correct answer
+        correct_ans = answer_schema.get("correct_answer")
+        if isinstance(correct_ans, str):
+            correct_lower = correct_ans.lower().strip()
+            correct_bool = correct_lower in ("true", "yes", "1")
+        else:
+            correct_bool = bool(correct_ans)
+
+        is_correct = user_bool == correct_bool
+        score = 1.0 if is_correct else 0.0
+
+        return is_correct, score
+
+    def _score_short_answer(
+        self, user_answer: Any, answer_schema: dict[str, Any]  # noqa: ANN401
+    ) -> tuple[bool, float]:
+        """
+        Score short answer (keyword matching).
+
+        REQ: REQ-B-B3-Score-2
+
+        Uses keyword presence checking for MVP (not LLM-based).
+        Calculates partial credit: (matched_keywords / total_keywords) * 100
+
+        Args:
+            user_answer: User's answer (string or dict)
+            answer_schema: Answer schema with "keywords" list
+
+        Returns:
+            Tuple of (is_correct: bool, score: 0-100)
+
+        """
+        # Extract user answer text
+        if isinstance(user_answer, dict):
+            answer_text = str(user_answer.get("text", "")).strip()
+        else:
+            answer_text = str(user_answer).strip()
+
+        # Get keywords
+        keywords = answer_schema.get("keywords", [])
+        if not keywords:
+            # If no keywords specified, treat empty answer as 0 score, non-empty as 100
+            return len(answer_text) > 0, 100.0 if len(answer_text) > 0 else 0.0
+
+        # Count matched keywords (case-insensitive, substring matching)
+        answer_lower = answer_text.lower()
+        matched_count = 0
+        for keyword in keywords:
+            keyword_lower = str(keyword).lower().strip()
+            if keyword_lower and keyword_lower in answer_lower:
+                matched_count += 1
+
+        # Calculate score
+        total_keywords = len(keywords)
+        score = (matched_count / total_keywords * 100.0) if total_keywords > 0 else 0.0
+        is_correct = matched_count == total_keywords
+
+        return is_correct, score
+
+    def _apply_time_penalty(self, base_score: float, test_session: TestSession) -> tuple[bool, float]:
+        """
+        Apply time penalty if session exceeded 20-minute limit.
+
+        REQ: REQ-B-B3-Score-3
+
+        Penalty formula:
+        - If elapsed_ms <= 1200000ms (20 min): no penalty
+        - If elapsed_ms > 1200000ms: penalty = (elapsed - 1200000) / 1200000 * score
+        - Final score = max(0, score - penalty)
+
+        Args:
+            base_score: Score before penalty (0-100)
+            test_session: TestSession with time tracking
+
+        Returns:
+            Tuple of (penalty_applied: bool, final_score: float)
+
+        """
+        # No penalty if session not started
+        if not test_session.started_at:
+            return False, base_score
+
+        # No penalty if session not paused (still in_progress)
+        if test_session.status != "paused":
+            return False, base_score
+
+        # Calculate elapsed time
+        paused_at = test_session.paused_at or datetime.utcnow()
+        elapsed = paused_at - test_session.started_at
+        elapsed_ms = int(elapsed.total_seconds() * 1000)
+
+        time_limit_ms = test_session.time_limit_ms
+
+        # No penalty if within time limit
+        if elapsed_ms <= time_limit_ms:
+            return False, base_score
+
+        # Calculate penalty
+        excess_ms = elapsed_ms - time_limit_ms
+        penalty_ratio = excess_ms / time_limit_ms
+        penalty_points = penalty_ratio * base_score
+
+        final_score = max(0.0, base_score - penalty_points)
+
+        return True, final_score
 
     def calculate_round_score(self, session_id: str, round_num: int) -> dict:
         """
