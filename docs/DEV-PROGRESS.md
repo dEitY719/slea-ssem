@@ -33,7 +33,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-B-B2-Adapt | 2차 적응형 난이도 조정 | 4 | ✅ Done | 41 tests (100%), Commit: 9608f57 |
 | REQ-B-B2-Plus | 실시간 저장 & 재개 | 4 | ✅ Done | 33 tests (100%), Commit: c95dfcb |
 | REQ-B-B3-Score | 채점 (정오답 판정) | 4 | ✅ Done | 36 tests (100%), Commit: (pending) |
-| REQ-B-B3-Explain | 해설 생성 | 4 | ✅ Done | 15 tests (100%), Commit: (pending) |
+| REQ-B-B3-Explain | 해설 생성 | 4 | ✅ Done | 15 tests (100%), Commit: f653be5 |
 | REQ-B-B4 | 최종 등급 & 순위 산출 | 0 | ⏳ Backlog | 5개 sub-tasks |
 | REQ-B-B4-Plus | 등급 기반 배지 부여 | 0 | ⏳ Backlog | 3개 sub-tasks |
 | REQ-B-B5 | 응시 이력 저장 & 조회 | 0 | ⏳ Backlog | 5개 sub-tasks |
