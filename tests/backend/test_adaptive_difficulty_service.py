@@ -111,7 +111,9 @@ class TestDifficultyAdjustment:
 class TestWeakCategoryExtraction:
     """REQ-B-B2-Adapt-3: Extract weak categories from Round 1 results."""
 
-    def test_get_weak_categories_single(self, db_session: Session, test_session_round1_fixture: "Session") -> None:  # noqa: ANN001
+    def test_get_weak_categories_single(
+        self, db_session: Session, test_session_round1_fixture: "Session"
+    ) -> None:  # noqa: ANN001
         """Get weak categories when user has weak areas."""
         # Create test result with weak categories
         result = TestResult(

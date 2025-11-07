@@ -68,7 +68,11 @@ class TestGradeCalculation:
         assert result.score >= 75
 
     def test_multi_round_aggregate_score(
-        self, db_session: Session, user_fixture, user_profile_survey_fixture, create_test_session_with_result  # noqa: ANN001
+        self,
+        db_session: Session,
+        user_fixture,
+        user_profile_survey_fixture,
+        create_test_session_with_result,  # noqa: ANN001
     ):
         """
         REQ-B-B4-1, REQ-B-B4-3: Multiple rounds aggregate → weighted final grade.

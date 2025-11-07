@@ -45,7 +45,7 @@ class TestScoringEndpoint:
         db_session.commit()
 
         response = client.post(
-            "/questions/score",
+            "/questions/answer/score",
             json={"session_id": test_session_in_progress.id, "question_id": question.id},
         )
 
@@ -82,7 +82,7 @@ class TestScoringEndpoint:
         db_session.commit()
 
         response = client.post(
-            "/questions/score",
+            "/questions/answer/score",
             json={"session_id": test_session_in_progress.id, "question_id": question.id},
         )
 
@@ -118,7 +118,7 @@ class TestScoringEndpoint:
         db_session.commit()
 
         response = client.post(
-            "/questions/score",
+            "/questions/answer/score",
             json={"session_id": test_session_in_progress.id, "question_id": question.id},
         )
 
@@ -130,7 +130,7 @@ class TestScoringEndpoint:
     def test_score_endpoint_invalid_session(self, client: TestClient, db_session: Session) -> None:
         """POST /questions/score with invalid session returns 404."""
         response = client.post(
-            "/questions/score",
+            "/questions/answer/score",
             json={"session_id": "invalid_session", "question_id": "q1"},
         )
 
@@ -141,7 +141,7 @@ class TestScoringEndpoint:
     ) -> None:
         """POST /questions/score with invalid question returns 404."""
         response = client.post(
-            "/questions/score",
+            "/questions/answer/score",
             json={"session_id": test_session_in_progress.id, "question_id": "invalid_question"},
         )
 
@@ -182,7 +182,7 @@ class TestScoringEndpoint:
         db_session.commit()
 
         response = client.post(
-            "/questions/score",
+            "/questions/answer/score",
             json={"session_id": test_session_in_progress.id, "question_id": question.id},
         )
 
@@ -219,7 +219,7 @@ class TestScoringEndpoint:
         db_session.commit()
 
         response = client.post(
-            "/questions/score",
+            "/questions/answer/score",
             json={"session_id": test_session_in_progress.id, "question_id": question.id},
         )
 
@@ -256,7 +256,7 @@ class TestScoringEndpoint:
         db_session.commit()
 
         response = client.post(
-            "/questions/score",
+            "/questions/answer/score",
             json={"session_id": test_session_in_progress.id, "question_id": question.id},
         )
 
@@ -286,7 +286,7 @@ class TestScoringEndpoint:
         # No answer saved for this question
 
         response = client.post(
-            "/questions/score",
+            "/questions/answer/score",
             json={"session_id": test_session_in_progress.id, "question_id": question.id},
         )
 
@@ -320,7 +320,7 @@ class TestScoringEndpoint:
         db_session.commit()
 
         response = client.post(
-            "/questions/score",
+            "/questions/answer/score",
             json={"session_id": test_session_in_progress.id, "question_id": question.id},
         )
 
@@ -355,7 +355,7 @@ class TestScoringEndpoint:
         db_session.commit()
 
         response = client.post(
-            "/questions/score",
+            "/questions/answer/score",
             json={"session_id": test_session_in_progress.id, "question_id": question.id},
         )
 

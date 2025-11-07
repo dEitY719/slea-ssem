@@ -596,7 +596,7 @@ def update_session_status(
 
 
 @router.post(
-    "/score",
+    "/answer/score",
     response_model=ScoringResponse,
     status_code=200,
     summary="Score An Answer",
