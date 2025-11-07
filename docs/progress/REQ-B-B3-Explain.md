@@ -139,6 +139,7 @@ class AnswerExplanation(Base):
 ```
 
 Uses existing models:
+
 - **Question**: Provides stem, category, item_type for context
 - **AttemptAnswer**: Optional link for user-specific tracking
 
@@ -253,7 +254,7 @@ _create_fallback_explanation(question_id, error_message) -> dict
 
 | Metric | Value |
 |--------|-------|
-| **Lines of Code** | ExplainService: 451 | Model: 73 | Tests: 624 |
+| **Lines of Code** | ExplainService: 451, Model: 73, Tests: 624 |
 | **Test Count** | 15 tests |
 | **Pass Rate** | 100% (15/15) |
 | **Cyclomatic Complexity** | Low (methods 1-3 decision points) |
@@ -300,6 +301,7 @@ alembic upgrade head
 ### **Dependencies**
 
 No new dependencies required. Uses existing:
+
 - FastAPI for API
 - SQLAlchemy for ORM
 - pytest for testing
@@ -326,6 +328,7 @@ Current implementation uses mock explanation generator. For production:
 ## 📝 Git Commit Information
 
 **Commit Message**:
+
 ```
 feat: Implement REQ-B-B3-Explain (Explain-Agent) explanation generation with caching
 
