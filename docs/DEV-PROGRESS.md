@@ -63,9 +63,11 @@ Overall progress tracking for MVP 1.0 development across all developers.
 ## 📝 Individual Progress Files
 
 For detailed progress on each REQ, see:
+
 - `docs/progress/REQ-X-Y.md` (created when development starts)
 
 Example structure:
+
 ```
 docs/progress/
 ├── REQ-B-A2-Edit-1.md    # Developer: bwyoon
@@ -98,6 +100,7 @@ After each phase completion:
 **Team**: Backend (bwyoon) / Frontend (lavine) / Agent (TBD)
 
 **Key Milestones**:
+
 - [ ] Phase 1-2: All REQ specs + tests approved (Week 1-2)
 - [ ] Phase 3: All implementations complete + CI passing (Week 3-4)
 - [ ] Phase 4: All PRs merged, integration tested (Week 5)

@@ -6,5 +6,6 @@
     "MD025": false,       // disable single H1 rule - docs have multiple sections
     "MD033": false,       // disable inline HTML rule - necessary for table multiline content
     "MD036": false,       // disable emphasis as heading - intentional styling for subsections
+    "MD040": false,       // disable fenced code language rule - many code blocks for documentation/examples
     "MD041": false        // disable first line heading rule
 }

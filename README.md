@@ -75,11 +75,13 @@ claude
 모든 기능은 `docs/feature_requirement_mvp1.md`에 정의된 REQ ID를 기준으로 개발됩니다.
 
 **Request Format:**
+
 ```
 REQ-[Domain]-[Feature] 기능 구현해
 ```
 
 **Example:**
+
 ```
 REQ-B-A2-Edit-1 기능 구현해         # 닉네임 변경 기능
 REQ-F-1-Login 기능 구현해           # 로그인 기능
@@ -107,6 +109,7 @@ docs/
 Two-round adaptive testing with RAG-based dynamic question generation, LLM auto-scoring, and ranking system.
 
 **Key Components:**
+
 - 🎯 **Adaptive Testing**: 라운드별 난이도 조정
 - 🤖 **AI Question Generation**: LLM 기반 동적 문항 생성
 - 📊 **Auto-Scoring**: MC (정확 매칭) + Short Answer (LLM 채점)
@@ -151,6 +154,7 @@ Two-round adaptive testing with RAG-based dynamic question generation, LLM auto-
 We welcome contributions from all developers!
 
 **How to Contribute:**
+
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/your-feature`
 3. Implement REQ with: `claude` → `REQ-X-Y 기능 구현해`

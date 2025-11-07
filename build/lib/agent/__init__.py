@@ -1,3 +1,4 @@
+# src/__init__.py
 """
 Your Package Name.
 

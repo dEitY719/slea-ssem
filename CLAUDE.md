@@ -122,12 +122,14 @@ Key Components:
 **When to use**: Each user request follows format: `"REQ-X-Y 기능 구현해"` (implement REQ X-Y)
 
 ### Command Format
+
 ```
 User: "REQ-B-A2-Edit-1 기능 구현해"
 Assistant: (Automatically follows 4-phase workflow below)
 ```
 
 ### Phase 1️⃣: SPECIFICATION (Parse & Pause for Review)
+
 ```
 - Extract REQ ID, 요구사항, 우선순위, Acceptance Criteria from feature_requirement_mvp1.md
 - Summarize: intent, constraints, performance goals
@@ -137,6 +139,7 @@ Assistant: (Automatically follows 4-phase workflow below)
 ```
 
 ### Phase 2️⃣: TEST DESIGN (TDD Before Code)
+
 ```
 - Create: tests/<domain>/test_<feature>.py
 - Design 4-5 test cases:
@@ -149,6 +152,7 @@ Assistant: (Automatically follows 4-phase workflow below)
 ```
 
 ### Phase 3️⃣: IMPLEMENTATION (Code to Spec)
+
 ```
 - Write minimal code satisfying spec + tests
 - Follow SOLID + conventions from above
@@ -157,6 +161,7 @@ Assistant: (Automatically follows 4-phase workflow below)
 ```
 
 ### Phase 4️⃣: SUMMARY (Report & Commit)
+
 ```
 - Modified files + rationale
 - Test results (all pass)
