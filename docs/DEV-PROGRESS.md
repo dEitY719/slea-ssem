@@ -36,8 +36,8 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-B-B3-Explain | 해설 생성 | 4 | ✅ Done | 15 tests (100%), Commit: f653be5 |
 | REQ-B-B4 | 최종 등급 & 순위 산출 | 4 | ✅ Done | 21 tests (100%), Commit: 1de9a2d |
 | REQ-B-B4-Plus | 등급 기반 배지 부여 | 4 | ✅ Done | 6 badge tests included, Commit: 1de9a2d, Progress: docs/progress/REQ-B-B4-Plus.md |
-| REQ-B-B5 | 응시 이력 저장 & 조회 | 0 | ⏳ Backlog | 5개 sub-tasks |
-| REQ-B-B6 | 문항 품질 - 콘텐츠 필터 | 0 | ⏳ Backlog | 1개 sub-task (MVP 1.0) |
+| REQ-B-B5 | 응시 이력 저장 & 조회 | 4 | ✅ Done | 16 tests (100%), Commit: d400aa8, Progress: docs/progress/REQ-B-B5.md |
+| REQ-B-B6-2 | 콘텐츠 필터링 (비속어/편향/저작권) | 4 | ✅ Done | 26 tests (100%), Commit: (pending), Progress: docs/progress/REQ-B-B6-2.md |
 | REQ-B-B6-Plus | 재미 모드 (Backend) | 0 | ⏳ Backlog | 5개 sub-tasks |
 
 ### Agent (TBD - person 필요)

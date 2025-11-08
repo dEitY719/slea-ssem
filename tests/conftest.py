@@ -516,3 +516,54 @@ def create_attempt_round(db_session: Session) -> callable:
         return round_record
 
     return _create
+
+
+# ============================================================================
+# CONTENT VALIDATOR TEST FIXTURES (REQ-B-B6-2)
+# ============================================================================
+
+
+@pytest.fixture(scope="function")
+def question_factory(db_session: Session, test_session_round1_fixture: TestSession) -> callable:
+    """
+    Fixture factory to create Question record for content validator testing.
+
+    Returns:
+        Callable that creates Question with given parameters
+    """
+    from uuid import uuid4
+
+    def _create(
+        stem: str = "What is AI?",
+        choices: list[str] | None = None,
+        item_type: str = "multiple_choice",
+        difficulty: int = 5,
+        category: str = "LLM",
+        round: int = 1,
+        answer_schema: dict | None = None,
+    ) -> Question:
+        if choices is None:
+            choices = ["Option A", "Option B", "Option C"]
+        if answer_schema is None:
+            answer_schema = {
+                "correct_key": "A",
+                "explanation": "This is the correct answer.",
+            }
+
+        question = Question(
+            id=str(uuid4()),
+            session_id=test_session_round1_fixture.id,
+            item_type=item_type,
+            stem=stem,
+            choices=choices,
+            answer_schema=answer_schema,
+            difficulty=difficulty,
+            category=category,
+            round=round,
+        )
+        db_session.add(question)
+        db_session.commit()
+        db_session.refresh(question)
+        return question
+
+    return _create
