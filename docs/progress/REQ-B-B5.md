@@ -36,26 +36,31 @@ Implementation of test attempt history management and retry functionality. Users
 ### Requirements Analysis
 
 **REQ-B-B5-1**: Save attempt data (attempts, attempt_rounds, attempt_answers tables)
+
 - Convert TestSession (active) → Attempt (historical)
 - Calculate final grade using RankingService
 - Create AttemptRound for each round with score and time_spent_seconds
 - Preserve all answer details in AttemptAnswer
 
 **REQ-B-B5-2**: Calculate improvement metrics
+
 - Compare previous and current attempts
 - Metrics: score_change, grade_improved, time_change_seconds
 - Returns ImprovementResult dataclass
 
 **REQ-B-B5-3**: Retry API
+
 - GET /history/previous-survey → Get previous survey for pre-filling form
 - GET /history/attempts → List user's attempts with pagination
 - GET /history/latest → Get most recent attempt
 
 **REQ-B-B5-4**: Load previous survey
+
 - Query UserProfileSurvey by (user_id, submitted_at DESC)
 - Performance: O(1) with proper indexing
 
 **REQ-B-B5-5**: New survey record per retry
+
 - Each retry creates NEW UserProfileSurvey record (never update)
 - New Attempt links to NEW survey version
 - Old surveys preserved (audit trail)
@@ -63,6 +68,7 @@ Implementation of test attempt history management and retry functionality. Users
 ### Architecture Design
 
 **New Models**:
+
 1. **Attempt** (src/backend/models/attempt.py)
    - id: UUID (PK)
    - user_id: INTEGER (FK users.id)
@@ -82,6 +88,7 @@ Implementation of test attempt history management and retry functionality. Users
    - Index: (attempt_id, round_idx)
 
 **Service**:
+
 - **HistoryService** (src/backend/services/history_service.py)
   - save_attempt(user_id, survey_id, test_session_id) → Attempt
   - get_latest_attempt(user_id) → Attempt | None
@@ -102,29 +109,35 @@ Implementation of test attempt history management and retry functionality. Users
 #### Test Classes
 
 **TestSaveAttempt** (4 tests)
+
 - ✅ `test_save_single_round_attempt` — Single round saving
 - ✅ `test_save_multi_round_attempt` — Multi-round with grade calculation
 - ✅ `test_attempt_time_spent_calculated` — Time spent per round
 - ✅ `test_save_attempt_invalid_user` — Error handling
 
 **TestImprovementCalculation** (3 tests)
+
 - ✅ `test_calculate_improvement_score_increased` — Score improvement metrics
 - ✅ `test_calculate_improvement_first_attempt` — No previous data
 - ✅ `test_improvement_with_grade_no_change` — Same grade, different score
 
 **TestRetryAPI** (2 tests)
+
 - ✅ `test_get_latest_attempt` — Retrieve latest attempt
 - ✅ `test_list_user_attempts` — Paginated attempt list
 
 **TestPreviousSurvey** (2 tests)
+
 - ✅ `test_get_previous_survey` — Load previous survey
 - ✅ `test_get_previous_survey_no_history` — New user
 
 **TestNewSurveyPerRetry** (2 tests)
+
 - ✅ `test_multiple_surveys_for_user` — Multiple survey records
 - ✅ `test_attempt_linked_to_specific_survey` — Survey versioning
 
 **TestAcceptanceCriteria** (3 tests)
+
 - ✅ `test_ac1_attempt_saved_to_db` — AC1 verification
 - ✅ `test_ac2_query_performance` — AC2 performance check
 - ✅ `test_ac3_and_ac4_survey_versioning` — AC3 & AC4 verification
@@ -148,6 +161,7 @@ def create_attempt_round(db_session) → AttemptRound
 ### Models Implementation
 
 #### **1. Attempt Model** ✅
+
 **File**: `src/backend/models/attempt.py`
 
 ```python
@@ -180,6 +194,7 @@ class Attempt(Base):
 **Status**: ✅ Complete
 
 #### **2. AttemptRound Model** ✅
+
 **File**: `src/backend/models/attempt_round.py`
 
 ```python
@@ -203,6 +218,7 @@ class AttemptRound(Base):
 ### Service Implementation
 
 #### **HistoryService** ✅
+
 **File**: `src/backend/services/history_service.py`
 
 **Core Methods**:
@@ -324,25 +340,30 @@ TestAcceptanceCriteria
 ### Implementation Highlights
 
 #### **1. Separation of Concerns**
+
 - **TestSession** (active test state) vs **Attempt** (historical record)
 - Clean separation allows MVP 1.0 to work alongside existing REQ-B-B2, B-B3, B-B4
 
 #### **2. Survey Versioning**
+
 - Each retry creates **NEW UserProfileSurvey record** (never update)
 - Attempt links to specific survey version
 - Enables audit trail and per-attempt customization
 
 #### **3. Improvement Calculation**
+
 - **ImprovementResult dataclass** with all metrics
 - Supports: score_change, grade_improved, time_change_seconds
 - Handles first-attempt case (metrics_available = False)
 
 #### **4. Performance Optimization**
+
 - Indexes on (user_id, finished_at DESC) for fast retrieval
 - O(1) query for latest attempt
 - Supports efficient pagination
 
 #### **5. Integration with RankingService**
+
 - Reuses existing grade calculation logic
 - Ensures consistency between grade-based badges and attempt records
 
@@ -351,16 +372,19 @@ TestAcceptanceCriteria
 ## Key Design Decisions
 
 ### Decision 1: Keep TestSession + Attempt Separate
+
 - **Rationale**: Avoid breaking existing REQ-B-B2, B-B3, B-B4 code
 - **Benefit**: Clean MVP 1.0 with option to consolidate in MVP 2.0
 - **Trade-off**: Some data duplication between sessions and attempts
 
 ### Decision 2: Survey Versioning Pattern
+
 - **Rationale**: REQ-B-B5-5 explicitly requires new records on retry
 - **Benefit**: Audit trail, supports per-attempt configuration
 - **Pattern**: Already used in ProfileService (creates new records)
 
 ### Decision 3: ImprovementResult Dataclass
+
 - **Rationale**: Structured return type for improvement metrics
 - **Benefit**: Type-safe, self-documenting API
 - **Future**: Can extend with more metrics (correctness rate by category, etc.)
@@ -442,6 +466,7 @@ tests/
 Implementation of complete test attempt history management with retry functionality:
 
 **REQ-B-B5**: 응시 이력 저장 및 조회
+
 - REQ-B-B5-1: Save attempt data (attempts, attempt_rounds tables)
 - REQ-B-B5-2: Calculate improvement metrics (score, grade, time change)
 - REQ-B-B5-3: Retry API endpoints (list, latest, previous survey)
@@ -449,6 +474,7 @@ Implementation of complete test attempt history management with retry functional
 - REQ-B-B5-5: Create new survey record per retry (audit trail)
 
 **Implementation**:
+
 - New models: Attempt, AttemptRound (separate from active TestSession)
 - New service: HistoryService with 6 core methods
 - Reuses RankingService for grade calculation
@@ -456,6 +482,7 @@ Implementation of complete test attempt history management with retry functional
 - ImprovementResult dataclass for metrics
 
 **Test Coverage** (16 tests, 100% pass):
+
 - Save attempt: 4 tests (single/multi-round, time tracking, validation)
 - Improvement: 3 tests (score increase/decrease, first attempt)
 - Retry API: 2 tests (list, latest)
@@ -464,12 +491,14 @@ Implementation of complete test attempt history management with retry functional
 - Acceptance criteria: 3 tests (AC1-4 verification)
 
 **Code Quality**:
+
 - Type hints: Full typing for all methods
 - Docstrings: All public APIs documented with REQ traceability
 - Line length: ≤120 chars per project standard
 - Tests: 16/16 passing, comprehensive coverage
 
 **Design Notes**:
+
 - Separate Attempt (history) from TestSession (active test) to avoid breaking existing code
 - Survey versioning: Each retry creates NEW UserProfileSurvey record (never update)
 - Performance: Indexes on (user_id, finished_at DESC) for O(1) queries
