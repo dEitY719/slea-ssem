@@ -56,6 +56,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-A-Mode1-Test | Mode 1 통합 테스트 | 4 | ✅ Done | 26 tests (100%), Commit: (pending), Progress: docs/progress/REQ-A-Mode1-Test.md |
 | REQ-A-Mode2-Test | Mode 2 통합 테스트 | 4 | ✅ Done | 19 tests (100%), Commit: (pending), Progress: docs/progress/REQ-A-Mode2-Test.md |
 | REQ-A-ErrorHandling | 통합 에러 처리 | 4 | ✅ Done | 31 tests (100%), Commit: (pending), Progress: docs/progress/REQ-A-ErrorHandling.md |
+| REQ-A-RoundID | Round ID 생성 & 추적 | 4 | ✅ Done | 28 tests (100%), Commit: (pending), Progress: docs/progress/REQ-A-RoundID.md |
 | REQ-B-B7 | 학습 일정 예고 프리뷰 | 0 | ⏳ Backlog | 3개 sub-tasks (MVP 1.0) |
 
 ---
