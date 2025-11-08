@@ -15,7 +15,9 @@ from src.backend.api.profile import router as profile_router
 from src.backend.api.questions import router as questions_router
 from src.backend.api.survey import router as survey_router
 from src.backend.database import get_db
+from src.backend.models.attempt import Attempt
 from src.backend.models.attempt_answer import AttemptAnswer
+from src.backend.models.attempt_round import AttemptRound
 from src.backend.models.question import Question
 from src.backend.models.test_result import TestResult
 from src.backend.models.test_session import TestSession
@@ -440,3 +442,77 @@ def create_test_session_with_result(db_session: Session) -> callable:
         return session, result
 
     return _create_session
+
+
+@pytest.fixture(scope="function")
+def create_attempt(db_session: Session) -> callable:
+    """
+    Fixture factory to create Attempt record for history testing.
+
+    Returns:
+        Callable that creates Attempt with given parameters
+    """
+    from datetime import datetime, timedelta
+    from uuid import uuid4
+
+    def _create(
+        user_id: int,
+        survey_id: str,
+        test_type: str = "level_test",
+        status: str = "completed",
+        final_grade: str = "Intermediate",
+        final_score: float = 65.0,
+        days_ago: int = 0,
+    ) -> Attempt:
+        started_at = datetime.utcnow() - timedelta(days=days_ago)
+        finished_at = started_at + timedelta(minutes=30)
+
+        attempt = Attempt(
+            user_id=user_id,
+            survey_id=survey_id,
+            test_type=test_type,
+            started_at=started_at,
+            finished_at=finished_at if status == "completed" else None,
+            final_grade=final_grade if status == "completed" else None,
+            final_score=final_score if status == "completed" else None,
+            percentile=45 if status == "completed" else None,
+            rank=250 if status == "completed" else None,
+            total_candidates=500 if status == "completed" else None,
+            status=status,
+        )
+        db_session.add(attempt)
+        db_session.commit()
+        db_session.refresh(attempt)
+        return attempt
+
+    return _create
+
+
+@pytest.fixture(scope="function")
+def create_attempt_round(db_session: Session) -> callable:
+    """
+    Fixture factory to create AttemptRound record.
+
+    Returns:
+        Callable that creates AttemptRound with given parameters
+    """
+    from uuid import uuid4
+
+    def _create(
+        attempt_id: str,
+        round_idx: int = 1,
+        score: float = 75.0,
+        time_spent_seconds: int = 1800,
+    ) -> AttemptRound:
+        round_record = AttemptRound(
+            attempt_id=attempt_id,
+            round_idx=round_idx,
+            score=score,
+            time_spent_seconds=time_spent_seconds,
+        )
+        db_session.add(round_record)
+        db_session.commit()
+        db_session.refresh(round_record)
+        return round_record
+
+    return _create
