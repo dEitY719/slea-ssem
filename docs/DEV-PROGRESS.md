@@ -49,7 +49,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-A-Mode1-Tool2 | Search Question Templates | 4 | ✅ Done | 13 tests (100%), Commit: (pending), Progress: docs/progress/REQ-A-Mode1-Tool2.md |
 | REQ-A-Mode1-Tool3 | Get Difficulty Keywords | 4 | ✅ Done | 11 tests (100%), Commit: (pending), Progress: docs/progress/REQ-A-Mode1-Tool3.md |
 | REQ-A-Mode1-Tool4 | Validate Question Quality | 4 | ✅ Done | 23 tests (100%), Commit: (pending), Progress: docs/progress/REQ-A-Mode1-Tool4.md |
-| REQ-A-Mode1-Tool5 | Save Generated Question | 0 | ⏳ Backlog | 5개 sub-tasks |
+| REQ-A-Mode1-Tool5 | Save Generated Question | 4 | ✅ Done | 15 tests (100%), Commit: (pending), Progress: docs/progress/REQ-A-Mode1-Tool5.md |
 | REQ-A-Mode2-Tool6 | Score & Generate Explanation | 0 | ⏳ Backlog | 5개 sub-tasks |
 | REQ-B-B7 | 학습 일정 예고 프리뷰 | 0 | ⏳ Backlog | 3개 sub-tasks (MVP 1.0) |
 
