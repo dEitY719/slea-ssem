@@ -14,6 +14,7 @@ from src.backend.models.user import Base
 
 
 class TestResult(Base):
+    __test__ = False
     """
     Test result model for storing round scores and category analysis.
 

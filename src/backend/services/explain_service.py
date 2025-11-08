@@ -4,7 +4,7 @@ Explanation generation service for generating question explanations with referen
 REQ: REQ-B-B3-Explain
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -437,7 +437,7 @@ class ExplainService:
                 },
             ],
             "is_correct": None,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "is_fallback": True,
             "error_message": error_message,
         }

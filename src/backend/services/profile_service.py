@@ -4,7 +4,7 @@ Profile service for nickname management and profile editing.
 REQ: REQ-B-A2-1, REQ-B-A2-2, REQ-B-A2-3, REQ-B-A2-5, REQ-B-A2-Edit-1, REQ-B-A2-Edit-2, REQ-B-A2-Edit-3
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -142,7 +142,7 @@ class ProfileService:
             raise Exception(f"User with id {user_id} not found.")
 
         user.nickname = nickname
-        user.updated_at = datetime.utcnow()
+        user.updated_at = datetime.now(UTC)
         self.session.commit()
 
         return {
@@ -226,7 +226,7 @@ class ProfileService:
             raise Exception(f"User with id {user_id} not found.")
 
         user.nickname = nickname
-        user.updated_at = datetime.utcnow()
+        user.updated_at = datetime.now(UTC)
         self.session.commit()
 
         return {
@@ -282,7 +282,7 @@ class ProfileService:
             job_role=survey_data.get("job_role"),
             duty=survey_data.get("duty"),
             interests=survey_data.get("interests"),
-            submitted_at=datetime.utcnow(),
+            submitted_at=datetime.now(UTC),
         )
 
         self.session.add(survey)

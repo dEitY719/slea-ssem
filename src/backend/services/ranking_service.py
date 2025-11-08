@@ -6,7 +6,7 @@ REQ: REQ-B-B4-Plus-1, REQ-B-B4-Plus-2, REQ-B-B4-Plus-3
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
@@ -223,7 +223,7 @@ class RankingService:
 
         """
         # Define 90-day window
-        cutoff_date: datetime = datetime.utcnow() - timedelta(days=90)
+        cutoff_date: datetime = datetime.now(UTC) - timedelta(days=90)
 
         # Get all users in 90-day cohort with their scores
         # Subquery: get composite scores for all users in cohort
@@ -309,7 +309,7 @@ class RankingService:
                 user_id=user_id,
                 badge_name=badge_name,
                 badge_type="grade",
-                awarded_at=datetime.utcnow(),
+                awarded_at=datetime.now(UTC),
             )
             self.session.add(grade_badge)
             assigned_badges.append(grade_badge)
@@ -332,7 +332,7 @@ class RankingService:
                     user_id=user_id,
                     badge_name="Agent Specialist 배지",
                     badge_type="specialist",
-                    awarded_at=datetime.utcnow(),
+                    awarded_at=datetime.now(UTC),
                 )
                 self.session.add(specialist_badge)
                 assigned_badges.append(specialist_badge)

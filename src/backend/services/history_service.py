@@ -5,7 +5,7 @@ REQ: REQ-B-B5-1, REQ-B-B5-2, REQ-B-B5-3, REQ-B-B5-4, REQ-B-B5-5
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
@@ -108,7 +108,7 @@ class HistoryService:
             survey_id=survey_id,
             test_type=test_type,
             started_at=test_session.created_at,
-            finished_at=datetime.utcnow(),
+            finished_at=datetime.now(UTC),
             final_grade=grade_result.grade if grade_result else None,
             final_score=grade_result.score if grade_result else None,
             percentile=int(grade_result.percentile) if grade_result else None,
@@ -155,9 +155,13 @@ class HistoryService:
         if not test_session.created_at:
             return 0
 
+        created_at = test_session.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=UTC)
+
         # Calculate total session duration
-        finished_at: datetime = datetime.utcnow()
-        duration_seconds: int = int((finished_at - test_session.created_at).total_seconds())
+        finished_at: datetime = datetime.now(UTC)
+        duration_seconds: int = int((finished_at - created_at).total_seconds())
 
         # For MVP, distribute evenly across rounds (would be improved with round timing)
         return duration_seconds // 2 if round_num == 1 else duration_seconds - (duration_seconds // 2)
