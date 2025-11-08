@@ -14,7 +14,6 @@ from src.backend.models.user import Base
 
 
 class TestResult(Base):
-    __test__ = False
     """
     Test result model for storing round scores and category analysis.
 
@@ -38,6 +37,8 @@ class TestResult(Base):
         created_at: Result recording timestamp
 
     """
+
+    __test__ = False
 
     __tablename__ = "test_results"
 

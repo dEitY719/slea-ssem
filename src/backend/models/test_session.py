@@ -14,7 +14,6 @@ from src.backend.models.user import Base
 
 
 class TestSession(Base):
-    __test__ = False
     """
     Test session model for managing user test attempts.
 
@@ -39,6 +38,8 @@ class TestSession(Base):
         updated_at: Last update timestamp
 
     """
+
+    __test__ = False
 
     __tablename__ = "test_sessions"
 
