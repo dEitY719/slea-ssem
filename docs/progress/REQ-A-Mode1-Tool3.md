@@ -19,6 +19,7 @@ Tool 3는 질문 생성 파이프라인의 세 번째 단계에서 사용되는 
 특정 난이도(1-10)와 카테고리에 대한 주요 키워드, 개념, 예시 문항을 조회하여 LLM 프롬프트 작성 시 컨텍스트를 제공합니다. 캐시된 데이터를 우선 사용하여 성능을 최적화합니다.
 
 **역할**:
+
 - Mode 1 파이프라인에서 Tool 2(검색 템플릿) 실패 또는 완료 후 실행
 - 난이도별 키워드 및 개념을 제공하여 LLM 프롬프트 향상
 - 데이터베이스 쿼리 실패 시 캐시된 기본값 사용 (graceful degradation)
@@ -322,6 +323,7 @@ _keywords_cache = {}
 **Given**: 유효한 difficulty (1-10), category ("technical"/"business"/"general") 제공
 **When**: get_difficulty_keywords() 호출
 **Then**:
+
 - 결과는 dict 타입
 - 필수 필드 포함: difficulty, category, keywords, concepts, example_questions
 - keywords: 5개 이상 20개 이하
@@ -333,6 +335,7 @@ _keywords_cache = {}
 **Given**: difficulty_keywords 테이블이 없거나 DB 연결 실패
 **When**: get_difficulty_keywords() 호출
 **Then**:
+
 - 예외 발생 안 함
 - DEFAULT_KEYWORDS 또는 캐시된 데이터 반환
 - 파이프라인은 계속 진행
@@ -342,6 +345,7 @@ _keywords_cache = {}
 **Given**: 잘못된 입력값 (범위 초과, 타입 오류, 미지원 카테고리)
 **When**: get_difficulty_keywords(invalid_input) 호출
 **Then**:
+
 - ValueError 또는 TypeError 발생
 - 에러 메시지에 검증 실패 이유 포함
 - 로그에 WARNING 레벨로 기록
@@ -351,6 +355,7 @@ _keywords_cache = {}
 **Given**: 동일한 (difficulty, category) 연속 호출
 **When**: get_difficulty_keywords() 첫 호출 후 재호출
 **Then**:
+
 - 첫 호출: DB 쿼리 (> 50ms)
 - 두 번째 호출: 캐시 반환 (< 10ms)
 - 응답 데이터는 동일
@@ -360,6 +365,7 @@ _keywords_cache = {}
 **Given**: DB에서 조회한 데이터에 NULL 필드 포함
 **When**: get_difficulty_keywords() 호출
 **Then**:
+
 - NULL 필드는 기본값으로 대체
 - 모든 필드가 존재하는 완전한 응답 반환
 
@@ -372,6 +378,7 @@ _keywords_cache = {}
 **현재 상태**: Tool 3은 FastAPI 엔드포인트 없음 (아직 구현 대기)
 
 **예상 엔드포인트** (REQ-B-* 백엔드에서 구현될 예정):
+
 ```
 POST /api/v1/tools/difficulty-keywords
 Content-Type: application/json

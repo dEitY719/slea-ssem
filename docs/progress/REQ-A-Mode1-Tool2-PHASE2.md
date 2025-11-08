@@ -39,6 +39,7 @@
 **목적**: 모든 필드가 있는 정상적인 템플릿 검색
 
 **입력**:
+
 ```python
 interests = ["LLM", "RAG", "Agent Architecture"]
 difficulty = 7
@@ -46,6 +47,7 @@ category = "technical"
 ```
 
 **Mock DB 반환**:
+
 ```python
 [
     QuestionTemplate(
@@ -64,6 +66,7 @@ category = "technical"
 ```
 
 **기대 결과**:
+
 ```python
 [
     {
@@ -81,6 +84,7 @@ category = "technical"
 ```
 
 **검증**:
+
 - 결과는 list[dict]
 - 각 항목의 모든 필드 존재
 - 결과가 correct_rate로 내림차순 정렬
@@ -95,6 +99,7 @@ category = "technical"
 **목적**: 여러 템플릿이 조건을 만족할 때 상위 10개만 반환
 
 **입력**:
+
 ```python
 interests = ["LLM"]
 difficulty = 5
@@ -104,6 +109,7 @@ category = "technical"
 **Mock DB 반환**: 25개 문항 템플릿 (DB가 정렬하여 상위 10개만 반환)
 
 **기대 결과**:
+
 ```python
 len(result) == 10  # 정확히 10개
 # 모두 correct_rate로 내림차순 정렬됨
@@ -112,6 +118,7 @@ for i in range(len(result)-1):
 ```
 
 **검증**:
+
 - 정확히 10개 반환 (초과 불가)
 - correct_rate 내림차순 정렬
 - 각 템플릿의 난이도가 5±1.5 범위
@@ -125,6 +132,7 @@ for i in range(len(result)-1):
 **목적**: 여러 관심분야 중 하나라도 일치하는 템플릿 검색
 
 **입력**:
+
 ```python
 interests = ["FastAPI", "DevOps", "Kubernetes"]
 difficulty = 6
@@ -132,6 +140,7 @@ category = "technical"
 ```
 
 **Mock DB 반환**:
+
 ```python
 [
     # domain="FastAPI" 템플릿
@@ -141,11 +150,13 @@ category = "technical"
 ```
 
 **기대 결과**:
+
 - FastAPI 관련 템플릿 포함
 - Kubernetes 관련 템플릿 포함
 - Docker만 있는 템플릿은 없음 (interests에 없음)
 
 **검증**:
+
 - 모든 결과의 domain이 interests 중 하나
 - 여러 domain 조합 가능
 
@@ -158,6 +169,7 @@ category = "technical"
 **목적**: 난이도 필터링 (difficulty ± 1.5) 검증
 
 **입력**:
+
 ```python
 interests = ["LLM"]
 difficulty = 7
@@ -167,6 +179,7 @@ category = "technical"
 **Mock DB 반환**: 난이도 스펙트럼 (3, 5, 5.5, 7, 7.5, 8.5, 9, 10)
 
 **기대 결과**:
+
 ```python
 # 모든 결과의 난이도가 5.5 ~ 8.5 범위
 for result in results:
@@ -174,6 +187,7 @@ for result in results:
 ```
 
 **검증**:
+
 - difficulty - 1.5 ≤ avg_difficulty_score ≤ difficulty + 1.5
 - 범위 밖의 템플릿은 DB 쿼리에서 필터됨
 
@@ -188,6 +202,7 @@ for result in results:
 **목적**: 일치하는 템플릿 없을 때 빈 리스트 반환
 
 **입력**:
+
 ```python
 interests = ["VeryRareKeyword123"]
 difficulty = 7
@@ -197,12 +212,14 @@ category = "technical"
 **Mock DB 반환**: `[]` (빈 리스트)
 
 **기대 결과**:
+
 ```python
 result == []
 # 예외 발생 없음
 ```
 
 **검증**:
+
 - 예외 발생 안 함 (ValueError, TypeError, Exception 없음)
 - 빈 리스트 반환
 - 파이프라인은 Tool 3으로 진행
@@ -218,6 +235,7 @@ result == []
 **목적**: interests가 list가 아닌 경우 처리
 
 **입력**:
+
 ```python
 interests = "LLM"  # string instead of list
 difficulty = 7
@@ -227,6 +245,7 @@ category = "technical"
 **기대 결과**: `TypeError` 발생
 
 **검증**:
+
 ```python
 with pytest.raises(TypeError):
     search_question_templates(interests, difficulty, category)
@@ -241,6 +260,7 @@ with pytest.raises(TypeError):
 **목적**: difficulty가 범위를 벗어난 경우
 
 **입력**:
+
 ```python
 interests = ["LLM"]
 difficulty = 11  # 범위 초과 (1-10)
@@ -250,6 +270,7 @@ category = "technical"
 **기대 결과**: `ValueError` 발생
 
 **검증**:
+
 ```python
 with pytest.raises(ValueError):
     search_question_templates(interests, 11, category)
@@ -264,6 +285,7 @@ with pytest.raises(ValueError):
 **목적**: category가 미지원 값인 경우
 
 **입력**:
+
 ```python
 interests = ["LLM"]
 difficulty = 7
@@ -273,6 +295,7 @@ category = "unknown_category"
 **기대 결과**: `ValueError` 발생
 
 **검증**:
+
 ```python
 with pytest.raises(ValueError):
     search_question_templates(interests, 7, "unknown_category")
@@ -289,6 +312,7 @@ with pytest.raises(ValueError):
 **목적**: DB 연결 실패 시 빈 리스트 반환
 
 **입력**:
+
 ```python
 interests = ["LLM"]
 difficulty = 7
@@ -298,11 +322,13 @@ category = "technical"
 **Mock DB 동작**: `.query()` 호출 시 `OperationalError` 발생
 
 **기대 결과**:
+
 ```python
 result == []  # 빈 리스트 반환, 예외 발생 없음
 ```
 
 **검증**:
+
 - 예외 발생 안 함
 - 빈 리스트 반환
 - 로그에 WARNING/ERROR 레벨 메시지 기록
@@ -316,6 +342,7 @@ result == []  # 빈 리스트 반환, 예외 발생 없음
 **목적**: DB 쿼리 타임아웃 시 빈 리스트 반환
 
 **입력**:
+
 ```python
 interests = ["LLM"]
 difficulty = 7
@@ -325,11 +352,13 @@ category = "technical"
 **Mock DB 동작**: `.first()` 호출 시 `TimeoutError` 발생
 
 **기대 결과**:
+
 ```python
 result == []  # 빈 리스트 반환, 예외 발생 없음
 ```
 
 **검증**:
+
 - 예외 발생 안 함
 - 빈 리스트 반환
 - 로그 기록
@@ -345,6 +374,7 @@ result == []  # 빈 리스트 반환, 예외 발생 없음
 **목적**: interests 리스트가 빈 경우
 
 **입력**:
+
 ```python
 interests = []  # 빈 리스트
 difficulty = 7
@@ -354,6 +384,7 @@ category = "technical"
 **기대 결과**: `ValueError` 발생 (1-10개 요소 필수)
 
 **검증**:
+
 ```python
 with pytest.raises(ValueError):
     search_question_templates([], difficulty, category)
@@ -368,6 +399,7 @@ with pytest.raises(ValueError):
 **목적**: 한글, 중국어 등 유니코드 문자 처리
 
 **입력**:
+
 ```python
 interests = ["머신러닝", "자연언어처리", "深度学习"]
 difficulty = 7
@@ -375,6 +407,7 @@ category = "technical"
 ```
 
 **Mock DB 반환**:
+
 ```python
 [
     QuestionTemplate(
@@ -387,12 +420,14 @@ category = "technical"
 ```
 
 **기대 결과**:
+
 ```python
 len(result) >= 1
 assert result[0]["stem"] == "머신러닝의 주요 개념은?"
 ```
 
 **검증**:
+
 - 유니코드 문자가 손실되지 않음
 - 정상적으로 검색 및 반환
 
@@ -405,6 +440,7 @@ assert result[0]["stem"] == "머신러닝의 주요 개념은?"
 **목적**: 결과가 correct_rate로 정렬됨
 
 **입력**:
+
 ```python
 interests = ["LLM"]
 difficulty = 7
@@ -412,6 +448,7 @@ category = "technical"
 ```
 
 **Mock DB 반환**:
+
 ```python
 [
     QuestionTemplate(id="1", correct_rate=0.50, usage_count=10),
@@ -421,6 +458,7 @@ category = "technical"
 ```
 
 **기대 결과**:
+
 ```python
 result == [
     {"id": "2", "correct_rate": 0.90, ...},  # 상위
@@ -430,6 +468,7 @@ result == [
 ```
 
 **검증**:
+
 ```python
 for i in range(len(result)-1):
     assert result[i]["correct_rate"] >= result[i+1]["correct_rate"]
@@ -448,6 +487,7 @@ for i in range(len(result)-1):
    - 패턴: `patch("src.agent.tools.search_templates_tool.get_db")`
 
 2. **`db.query(QuestionTemplate)` 체인**
+
    ```python
    mock_query = MagicMock()
    mock_db.query.return_value = mock_query

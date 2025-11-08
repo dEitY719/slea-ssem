@@ -19,6 +19,7 @@ Tool 2는 질문 생성 파이프라인의 두 번째 단계에서 사용되는 
 사용자의 관심분야, 난이도, 카테고리에 맞는 기존 문항 템플릿을 데이터베이스에서 검색하여 반환합니다. 이 템플릿들은 LLM 프롬프트의 few-shot 예시로 활용되어 생성 문항의 품질을 향상시킵니다.
 
 **역할**:
+
 - Mode 1 파이프라인에서 Tool 1(사용자 프로필 조회) 이후 실행
 - Tool 3(난이도 키워드 조회)로 진행하기 전에 문항 템플릿 제공
 - 검색 결과 없을 경우 gracefully skip
@@ -239,6 +240,7 @@ tool2_input = {
 **Given**: 유효한 interests[], difficulty, category 제공
 **When**: search_question_templates() 호출
 **Then**:
+
 - 결과는 리스트 타입
 - 각 결과 객체는 필수 필드 모두 포함 (id, stem, type, choices, correct_answer, correct_rate, usage_count, avg_difficulty_score)
 - 최대 10개 항목
@@ -249,6 +251,7 @@ tool2_input = {
 **Given**: 데이터베이스에 일치하는 템플릿 없음
 **When**: search_question_templates() 호출
 **Then**:
+
 - 예외 발생 안 함
 - 빈 리스트 `[]` 반환
 - 파이프라인은 계속 진행 (Tool 3으로)
@@ -258,6 +261,7 @@ tool2_input = {
 **Given**: 잘못된 입력값 (오타, 범위 초과, 타입 오류 등)
 **When**: search_question_templates(invalid_input) 호출
 **Then**:
+
 - ValueError 또는 TypeError 발생
 - 에러 메시지에 검증 실패 이유 포함
 - 로그에 WARNING 레벨로 기록
@@ -267,6 +271,7 @@ tool2_input = {
 **Given**: difficulty=7 요청
 **When**: search_question_templates() 호출
 **Then**:
+
 - 반환되는 템플릿의 avg_difficulty_score는 5.5~8.5 범위
 - (input.difficulty ± 1.5)
 
@@ -275,6 +280,7 @@ tool2_input = {
 **Given**: DB 연결 실패 또는 타임아웃
 **When**: search_question_templates() 호출 중 DB 에러 발생
 **Then**:
+
 - 예외 발생 안 함
 - 빈 리스트 반환
 - 에러 메시지 로깅 (WARNING 또는 ERROR 레벨)
@@ -288,6 +294,7 @@ tool2_input = {
 **현재 상태**: Tool 2는 FastAPI 엔드포인트 없음 (아직 구현 대기)
 
 **예상 엔드포인트** (REQ-B-* 백엔드에서 구현될 예정):
+
 ```
 POST /api/v1/tools/search-templates
 Content-Type: application/json

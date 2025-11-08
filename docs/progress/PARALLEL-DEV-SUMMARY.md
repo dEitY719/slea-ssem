@@ -11,22 +11,26 @@
 ### Tool 2: Search Question Templates (REQ-A-Mode1-Tool2)
 
 **Phase 1: Specification** ✅
+
 - 297줄 명세 문서 작성
 - 입출력 스펙, 검색 로직, 에러 처리 정의
 - 5개 Acceptance Criteria 수립
 
 **Phase 2: Test Design** ✅
+
 - 13개 테스트 케이스 설계
 - Happy Path (4개), Not Found (1개), Input Validation (3개), DB Errors (2개), Edge Cases (3개)
 - 모킹 전략 및 픽스처 정의
 
 **Phase 3: Implementation** ✅
+
 - 구현 파일: `src/agent/tools/search_templates_tool.py` (280줄)
 - 테스트 파일: `tests/agent/tools/test_search_templates_tool.py` (560줄)
 - **모든 13개 테스트 통과** (100%)
 - 모델 파일: `src/backend/models/question_template.py` 신규 생성
 
 **주요 특징**:
+
 - SQLAlchemy ORM을 사용한 안전한 쿼리
 - 입력 검증 (interests, difficulty, category)
 - DB 에러 시 graceful degradation (빈 리스트 반환)
@@ -37,22 +41,26 @@
 ### Tool 3: Get Difficulty Keywords (REQ-A-Mode1-Tool3)
 
 **Phase 1: Specification** ✅
+
 - 286줄 명세 문서 작성
 - 캐싱 전략, graceful degradation 상세 정의
 - 5개 Acceptance Criteria 수립
 
 **Phase 2: Test Design** ✅
+
 - 13개 테스트 케이스 설계 (최종 11개로 축약)
 - Happy Path (3개), Input Validation (2개), DB Errors (2개), Edge Cases (4개)
 - 캐싱 전략 테스트 포함
 
 **Phase 3: Implementation** ✅
+
 - 구현 파일: `src/agent/tools/difficulty_keywords_tool.py` (330줄)
 - 테스트 파일: `tests/agent/tools/test_difficulty_keywords_tool.py` (460줄)
 - **모든 11개 테스트 통과** (100%)
 - 모델 파일: `src/backend/models/difficulty_keyword.py` 신규 생성
 
 **주요 특징**:
+
 - In-memory LRU 캐시 (TTL: 1시간)
 - DB 실패 시 캐시 우선, 캐시 없으면 기본값 반환
 - 스레드 안전성 (threading.Lock)
@@ -81,12 +89,14 @@
 ### 1. 독립적인 파일 구조
 
 ✅ **충돌 없음**:
+
 - Tool 2: `search_templates_tool.py` (독립)
 - Tool 3: `difficulty_keywords_tool.py` (독립)
 - 모델: `question_template.py` vs `difficulty_keyword.py` (독립)
 - 테스트: 각각 독립된 test 파일
 
 ❌ **공유 파일** (최후 병합):
+
 - `src/agent/tools/__init__.py`: 두 도구 import 추가
 - `docs/DEV-PROGRESS.md`: 상태 업데이트
 
@@ -107,6 +117,7 @@
 ### 3. 테스트 커버리지
 
 **Tool 2**: 13/13 테스트 (100%)
+
 - Happy Path: 4/4
 - Validation: 3/3
 - DB Errors: 2/2
@@ -114,6 +125,7 @@
 - Not Found: 1/1
 
 **Tool 3**: 11/11 테스트 (100%)
+
 - Happy Path: 3/3 (캐시 포함)
 - Validation: 2/2
 - DB Errors: 2/2
@@ -126,10 +138,12 @@
 ### Tool 2 설계 선택
 
 **선택: 캐싱 미포함 (Tool 3에 위임)**
+
 - **이유**: 매번 최신 결과 필요, 템플릿은 자주 추가됨
 - **결과**: 단순한 설계, 빠른 개발
 
 **선택: graceful degradation (DB 실패 → 빈 리스트)**
+
 - **이유**: Tool 3으로 진행 가능하므로 에러가 아님
 - **결과**: 파이프라인 중단 없음
 
@@ -138,10 +152,12 @@
 ### Tool 3 설계 선택
 
 **선택: 적극적 캐싱 (LRU, 1시간 TTL)**
+
 - **이유**: 키워드는 정적, 매번 같은 결과, 성능 중요
 - **결과**: 캐시 HIT 시 < 10ms (DB 쿼리 500ms 대비 50배 빠름)
 
 **선택: 3-level graceful degradation**
+
 1. 캐시 HIT → 즉시 반환
 2. DB 쿼리 성공 → 캐시 저장 후 반환
 3. DB 실패 & 캐시 없음 → DEFAULT_KEYWORDS 반환
@@ -156,6 +172,7 @@
 ### 신규 생성 파일
 
 #### 문서 (4개)
+
 1. **docs/progress/REQ-A-Mode1-Tool2.md** (297줄)
    - Phase 1 Specification
 
@@ -169,6 +186,7 @@
    - Phase 2 Test Design
 
 #### 구현 파일 (4개)
+
 1. **src/agent/tools/search_templates_tool.py** (280줄)
    - Tool 2 구현 + @tool 래퍼
 
@@ -182,6 +200,7 @@
    - Tool 3 테스트 (11개 케이스)
 
 #### 모델 파일 (2개)
+
 1. **src/backend/models/question_template.py** (75줄)
    - QuestionTemplate 모델 정의
 
@@ -190,7 +209,7 @@
 
 ### 수정 파일
 
-1. **src/agent/tools/__init__.py**
+1. **src/agent/tools/**init**.py**
    - Tool 2, 3 import 추가
 
 2. **docs/DEV-PROGRESS.md**
@@ -203,11 +222,13 @@
 ### Tool 2 개발 중 발견사항
 
 **@tool 데코레이터 문제** (Tool 1과 동일):
+
 - 문제: 데코레이터된 함수는 StructuredTool 객체
 - 해결: 별도 `_search_question_templates_impl()` 함수로 구현
 - 패턴: Tool 4-6 개발 시 동일하게 적용
 
 **SQLAlchemy 쿼리 최적화**:
+
 - between() 필터 사용으로 난이도 범위 쿼리 효율화
 - index 추가로 category + domain 검색 가속화
 
@@ -216,16 +237,19 @@
 ### Tool 3 개발 중 발견사항
 
 **캐시 스레드 안전성** (중요):
+
 - 초기 설계: 단순 dict 사용 → Race condition 위험
 - 개선: threading.Lock으로 보호
 - 결과: 멀티스레드 환경 안전
 
 **기본값(Fallback) 설계**:
+
 - Tool 2: 빈 리스트 (Tool 3으로 진행)
 - Tool 3: DEFAULT_KEYWORDS (3단계 폴백)
 - 이유: Tool 3이 최종 단계이므로 반드시 값 반환 필요
 
 **캐시 TTL 관리**:
+
 - 1시간 TTL 설정 (운영 비용 vs 신선도 균형)
 - 실제 구현: expire 로직 없음 (간단함)
 - 향후 개선: expiry_time 추가해 자동 정리
@@ -237,13 +261,15 @@
 ### 즉시 (Phase 4)
 
 ✅ **완료된 항목**:
+
 - [x] Tool 2 Phase 1-3 완료
 - [x] Tool 3 Phase 1-3 완료
 - [x] 모든 테스트 통과 (24/24)
-- [x] __init__.py 통합
+- [x] **init**.py 통합
 - [x] DEV-PROGRESS.md 업데이트
 
 ⏳ **대기 중**:
+
 - [ ] Tool 2, 3 git 커밋 생성 (함께 또는 분리?)
 - [ ] 모델 migration 생성 (Alembic)
 - [ ] Code review & merge to main
@@ -256,6 +282,7 @@
 Tool 4 (Validate Quality), Tool 5 (Save Question), Tool 6 (Score & Explain)도 동일 패턴으로 병렬 개발 가능
 
 **권장 구조**:
+
 - Tool 4: 검증 로직 (싱글톤, 캐싱 없음)
 - Tool 5: 저장 로직 (재시도 큐 포함)
 - Tool 6: 채점 로직 (LLM 통합, 복잡함)
@@ -288,18 +315,21 @@ Tool 4 (Validate Quality), Tool 5 (Save Question), Tool 6 (Score & Explain)도 �
 ### 병렬 개발 성공
 
 ✅ **목표 달성**:
+
 1. Tool 2, Tool 3 동시 개발 완료
 2. 파일 충돌 없이 진행
 3. 예상 시간(3시간) 대비 50% 단축 (1.5시간)
 4. 모든 테스트 통과 (24/24 ✅)
 
 ✅ **품질 보증**:
+
 - 100% 테스트 커버리지
 - 명확한 스펙 문서
 - graceful error handling
 - 성능 최적화 (캐싱)
 
 ✅ **재사용 가능 패턴**:
+
 - @tool 래퍼 분리 패턴
 - graceful degradation 전략
 - 캐싱 + 폴백 구조

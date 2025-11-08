@@ -39,12 +39,14 @@
 **목적**: DB 쿼리 성공 후 캐시에 저장
 
 **입력**:
+
 ```python
 difficulty = 7
 category = "technical"
 ```
 
 **Mock DB 반환**:
+
 ```python
 DifficultyKeyword(
     id="kw_001",
@@ -73,6 +75,7 @@ DifficultyKeyword(
 ```
 
 **기대 결과**:
+
 ```python
 {
     "difficulty": 7,
@@ -100,6 +103,7 @@ DifficultyKeyword(
 ```
 
 **검증**:
+
 - 결과는 dict 타입
 - 모든 필드 포함: difficulty, category, keywords, concepts, example_questions
 - keywords: 5개 이상 20개 이하
@@ -116,16 +120,19 @@ DifficultyKeyword(
 **목적**: 캐시에서 데이터 조회 (DB 호출 없음)
 
 **입력**:
+
 ```python
 difficulty = 5
 category = "business"
 ```
 
 **설정**:
+
 1. 첫 호출: DB에서 조회 후 캐시 저장 (별도의 테스트에서 수행됨)
 2. 두 번째 호출: 캐시에서 직접 반환
 
 **기대 결과**:
+
 ```python
 # 첫 호출
 result1 = get_difficulty_keywords(5, "business")
@@ -141,6 +148,7 @@ assert result1 == result2
 ```
 
 **검증**:
+
 - DB query 호출되지 않음 (캐시 HIT)
 - 응답 시간 < 10ms (캐시 HIT)
 - 응답 데이터 동일
@@ -154,12 +162,14 @@ assert result1 == result2
 **목적**: DB에서 조회한 데이터의 NULL 필드를 기본값으로 채우기
 
 **입력**:
+
 ```python
 difficulty = 10
 category = "general"
 ```
 
 **Mock DB 반환**:
+
 ```python
 DifficultyKeyword(
     id="kw_002",
@@ -172,6 +182,7 @@ DifficultyKeyword(
 ```
 
 **기대 결과**:
+
 ```python
 {
     "difficulty": 10,
@@ -183,6 +194,7 @@ DifficultyKeyword(
 ```
 
 **검증**:
+
 - 모든 NULL 필드가 기본값으로 대체됨
 - keywords, concepts, example_questions 모두 존재
 - 응답은 완전함
@@ -198,6 +210,7 @@ DifficultyKeyword(
 **목적**: difficulty가 범위를 벗어난 경우
 
 **입력**:
+
 ```python
 difficulty = 11  # 범위 초과 (1-10)
 category = "technical"
@@ -206,6 +219,7 @@ category = "technical"
 **기대 결과**: `ValueError` 발생
 
 **검증**:
+
 ```python
 with pytest.raises(ValueError):
     get_difficulty_keywords(11, "technical")
@@ -220,6 +234,7 @@ with pytest.raises(ValueError):
 **목적**: category가 미지원 값인 경우
 
 **입력**:
+
 ```python
 difficulty = 7
 category = "unknown_category"
@@ -228,6 +243,7 @@ category = "unknown_category"
 **기대 결과**: `ValueError` 발생
 
 **검증**:
+
 ```python
 with pytest.raises(ValueError):
     get_difficulty_keywords(7, "unknown_category")
@@ -244,6 +260,7 @@ with pytest.raises(ValueError):
 **목적**: DB 연결 실패 시 기본값 반환
 
 **입력**:
+
 ```python
 difficulty = 7
 category = "technical"
@@ -252,6 +269,7 @@ category = "technical"
 **Mock DB 동작**: `.query()` 호출 시 `OperationalError` 발생
 
 **기대 결과**:
+
 ```python
 result = {
     "difficulty": 7,
@@ -264,6 +282,7 @@ result = {
 ```
 
 **검증**:
+
 - 예외 발생 안 함
 - 기본값 또는 캐시 반환
 - 로그에 WARNING/ERROR 기록
@@ -277,6 +296,7 @@ result = {
 **목적**: DB 쿼리 타임아웃 시 기본값 반환
 
 **입력**:
+
 ```python
 difficulty = 5
 category = "business"
@@ -285,12 +305,14 @@ category = "business"
 **Mock DB 동작**: `.first()` 호출 시 `TimeoutError` 발생
 
 **기대 결과**:
+
 ```python
 result = {기본값}  # DEFAULT_KEYWORDS
 # 예외 발생 없음
 ```
 
 **검증**:
+
 - 예외 발생 안 함
 - 기본값 반환
 - 로그 기록
@@ -310,6 +332,7 @@ result = {기본값}  # DEFAULT_KEYWORDS
 **기대 결과**: 모든 난이도에서 정상 응답
 
 **검증**:
+
 ```python
 for diff in range(1, 11):
     result = get_difficulty_keywords(diff, "technical")
@@ -330,6 +353,7 @@ for diff in range(1, 11):
 **기대 결과**: 모든 카테고리에서 정상 응답
 
 **검증**:
+
 ```python
 for cat in ["technical", "business", "general"]:
     result = get_difficulty_keywords(7, cat)
@@ -346,12 +370,14 @@ for cat in ["technical", "business", "general"]:
 **목적**: 한글, 중국어 등 유니코드 처리
 
 **입력**:
+
 ```python
 difficulty = 7
 category = "technical"
 ```
 
 **Mock DB 반환**: concepts에 한글 포함
+
 ```python
 {
     "name": "트랜스포머 아키텍처",
@@ -363,6 +389,7 @@ category = "technical"
 **기대 결과**: 유니코드 손실 없음
 
 **검증**:
+
 ```python
 result = get_difficulty_keywords(7, "technical")
 assert "트랜스포머" in str(result)  # 유니코드 보존
@@ -377,6 +404,7 @@ assert "트랜스포머" in str(result)  # 유니코드 보존
 **목적**: 응답의 모든 필드가 정의된 범위 내 데이터 포함
 
 **입력**:
+
 ```python
 difficulty = 7
 category = "technical"
@@ -385,6 +413,7 @@ category = "technical"
 **기대 결과**: 응답의 각 필드가 요구사항 충족
 
 **검증**:
+
 ```python
 result = get_difficulty_keywords(7, "technical")
 # keywords: 5-20개
@@ -413,12 +442,14 @@ assert len(result["example_questions"]) <= 5
 **목적**: 캐시 TTL 만료 후 DB 재조회
 
 **입력**:
+
 ```python
 difficulty = 3
 category = "general"
 ```
 
 **설정**:
+
 1. 첫 호출: DB에서 조회, 캐시 저장 (TTL: 3600초)
 2. TTL 만료 시뮬레이션: 시간 경과
 3. 재호출: DB 재조회
@@ -426,6 +457,7 @@ category = "general"
 **기대 결과**: TTL 만료 후 DB 다시 조회
 
 **검증**:
+
 ```python
 # 첫 호출
 result1 = get_difficulty_keywords(3, "general")
@@ -448,17 +480,20 @@ result2 = get_difficulty_keywords(3, "general")
 **목적**: DB 실패 시 캐시 우선 사용
 
 **입력**:
+
 ```python
 difficulty = 6
 category = "business"
 ```
 
 **시나리오**:
+
 1. 첫 호출: DB 정상 조회 후 캐시 저장
 2. 두 번째 호출: DB 실패 발생
 3. 기대: 캐시에서 조회 반환
 
 **기대 결과**:
+
 ```python
 # 첫 호출
 result1 = get_difficulty_keywords(6, "business")  # DB에서 조회
@@ -473,6 +508,7 @@ assert result1 == result2  # 동일한 데이터
 ```
 
 **검증**:
+
 - 캐시 존재: 캐시에서 반환
 - 캐시 미존재: 기본값 반환
 - 예외 발생 없음
@@ -490,6 +526,7 @@ assert result1 == result2  # 동일한 데이터
    - 패턴: `patch("src.agent.tools.difficulty_keywords_tool.get_db")`
 
 2. **`db.query(DifficultyKeyword)` 체인**
+
    ```python
    mock_query = MagicMock()
    mock_db.query.return_value = mock_query

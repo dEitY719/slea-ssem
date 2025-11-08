@@ -11,6 +11,7 @@
 ### 3.1 구현 완료
 
 #### 파일 구조
+
 ```
 src/agent/tools/
 ├── __init__.py                      (새 파일)
@@ -42,6 +43,7 @@ tests/agent/tools/
 ```
 
 **구현 특징**:
+
 - ✓ 입력 검증: UUID 형식 검증
 - ✓ DB 쿼리: user_id 필터 + submitted_at DESC 정렬
 - ✓ 에러 처리: 4가지 시나리오 모두 처리
@@ -102,17 +104,20 @@ Core Logic Coverage:
 ### 3.3 코드 품질
 
 #### 타입 힌트
+
 - ✓ 모든 함수에 타입 힌트 적용
 - ✓ 반환 타입: dict[str, Any]
 - ✓ 파라미터 타입: str, Session 등
 
 #### 문서화
+
 - ✓ 모든 함수에 docstring 작성
 - ✓ REQ ID 명시: REQ-A-Mode1-Tool1
 - ✓ 에러 처리 문서화
 - ✓ 사용 예시
 
 #### 코드 스타일
+
 - ✓ ruff format 통과
 - ✓ 120자 라인 길이 제한
 - ✓ PEP 8 준수
@@ -158,6 +163,7 @@ Core Logic Coverage:
 ### 3.5 Acceptance Criteria 검증
 
 #### AC1: 유효한 사용자 프로필 조회 ✅
+
 ```
 테스트: test_get_user_profile_found_full_data
 결과: PASSED
@@ -172,6 +178,7 @@ Core Logic Coverage:
 ```
 
 #### AC2: 존재하지 않는 사용자 ✅
+
 ```
 테스트:
 - test_get_user_profile_not_found
@@ -184,6 +191,7 @@ Core Logic Coverage:
 ```
 
 #### AC3: 유효하지 않은 입력 ✅
+
 ```
 테스트:
 - test_get_user_profile_invalid_uuid_format
@@ -197,6 +205,7 @@ Core Logic Coverage:
 ```
 
 #### AC4: 최신 프로필만 반환 ✅
+
 ```
 테스트: test_get_user_profile_multiple_records_returns_latest
 결과: PASSED
@@ -212,23 +221,27 @@ Core Logic Coverage:
 #### Phase 3 진행 중 해결한 이슈
 
 1️⃣ **@tool 데코레이터 문제**
-   - 문제: 데코레이터된 함수는 직접 테스트 불가능
-   - 해결: _get_user_profile_impl() 별도 함수로 분리
-   - 결과: 깔끔한 테스트 가능 구조
+
+- 문제: 데코레이터된 함수는 직접 테스트 불가능
+- 해결: _get_user_profile_impl() 별도 함수로 분리
+- 결과: 깔끔한 테스트 가능 구조
 
 2️⃣ **get_db() Generator 패칭**
-   - 문제: get_db()는 generator이므로 next() 필요
-   - 해결: return_value=iter([mock_db]) 사용
-   - 결과: Mock이 generator처럼 동작
+
+- 문제: get_db()는 generator이므로 next() 필요
+- 해결: return_value=iter([mock_db]) 사용
+- 결과: Mock이 generator처럼 동작
 
 3️⃣ **Mock 속성 누락**
-   - 문제: previous_score 속성이 mock에 없음
-   - 해결: fixture에서 모든 속성 추가
-   - 결과: 완전한 mock 객체
+
+- 문제: previous_score 속성이 mock에 없음
+- 해결: fixture에서 모든 속성 추가
+- 결과: 완전한 mock 객체
 
 #### 코드 구조 최적화
 
 ✅ **함수 분리**
+
 - _validate_user_id(): 검증 로직
 - _get_user_profile_from_db(): DB 쿼리
 - _build_profile_response(): 응답 구성
@@ -279,4 +292,3 @@ Core Logic Coverage:
 
 **Status**: ✅ Phase 3 완료
 **Next**: Phase 4 (문서화 & 커밋)
-
