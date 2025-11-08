@@ -12,6 +12,9 @@ description = "An AI-driven learning platform designed to guide S.LSI employees 
 authors = [{ name = "deitey719", email = "deity719@github.com" }]
 dependencies = [
     "fastapi>=0.121.0",
+    "langchain>=1.0.5",
+    "langchain-core>=1.0.4",
+    "langchain-google-genai>=3.0.1",
     "pydantic",
     "pyjwt>=2.10.1",
     "python-dotenv>=1.2.1",
@@ -146,6 +149,7 @@ ignore = [
 
 [dependency-groups]
 dev = [
+    "pytest-asyncio>=1.2.0",
     "pytest-httpx>=0.35.0",
 ]
 # 포맷터 관련 설정 (라인 길이는 전역 설정을 따름)
