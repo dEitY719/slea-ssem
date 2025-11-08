@@ -1,9 +1,9 @@
 """
-ReAct Prompt Template for Item-Gen-Agent
+ReAct Prompt Template for Item-Gen-Agent.
 
 REQ: REQ-A-ItemGen
 
-Reference: LangChain official ReAct Agent implementation
+Reference: LangChain official ReAct Agent implementation.
 https://python.langchain.com/docs/concepts/agents
 """
 

@@ -1,5 +1,5 @@
 """
-Item-Gen-Agent: LangChain ReAct 기반 자율 AI 에이전트
+Item-Gen-Agent: LangChain ReAct 기반 자율 AI 에이전트.
 
 REQ: REQ-A-ItemGen, REQ-A-Mode1-*, REQ-A-Mode2-*
 """

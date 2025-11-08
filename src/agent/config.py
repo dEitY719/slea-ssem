@@ -1,5 +1,5 @@
 """
-Agent Configuration
+Agent Configuration.
 
 REQ: REQ-A-ItemGen
 """
@@ -9,15 +9,15 @@ from os import getenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 
-def create_llm():
+def create_llm() -> ChatGoogleGenerativeAI:
     """
-    Google Gemini LLM 생성 (MVP 1.0)
+    Create Google Gemini LLM for MVP 1.0.
 
     Returns:
-        ChatGoogle: LangChain ChatGoogle 인스턴스
+        ChatGoogleGenerativeAI: LangChain ChatGoogleGenerativeAI instance.
 
-    환경 변수:
-        GEMINI_API_KEY: Google Gemini API Key
+    Environment Variables:
+        GEMINI_API_KEY: Google Gemini API Key.
 
     """
     api_key = getenv("GEMINI_API_KEY")

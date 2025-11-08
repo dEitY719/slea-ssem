@@ -1,4 +1,4 @@
-"""Agent Prompts"""
+"""Agent Prompts."""
 
 from src.agent.prompts.react_prompt import get_react_prompt
 

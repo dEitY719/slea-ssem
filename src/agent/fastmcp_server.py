@@ -1,10 +1,10 @@
 """
-FastMCP Tool Server for Item-Gen-Agent
+FastMCP Tool Server for Item-Gen-Agent.
 
 REQ: REQ-A-FastMCP
-각 Tool은 별도 REQ로 구현 (REQ-A-Mode1-Tool1~5, REQ-A-Mode2-Tool6)
+각 Tool은 별도 REQ로 구현 (REQ-A-Mode1-Tool1~5, REQ-A-Mode2-Tool6).
 
-Reference: LangChain @tool decorator
+Reference: LangChain @tool decorator.
 https://python.langchain.com/docs/concepts/tools
 """
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 @tool
 def get_user_profile(user_id: str) -> dict:
     """
-    Tool 1: Get User Profile
+    Tool 1: Get User Profile.
 
     REQ: REQ-A-Mode1-Tool1
 
@@ -61,7 +61,7 @@ def get_user_profile(user_id: str) -> dict:
 @tool
 def search_question_templates(interests: list[str], difficulty: int, category: str) -> list[dict]:
     """
-    Tool 2: Search Question Templates
+    Tool 2: Search Question Templates.
 
     REQ: REQ-A-Mode1-Tool2
 
@@ -105,7 +105,7 @@ def search_question_templates(interests: list[str], difficulty: int, category: s
 @tool
 def get_difficulty_keywords(difficulty: int, category: str) -> dict:
     """
-    Tool 3: Get Difficulty Keywords
+    Tool 3: Get Difficulty Keywords.
 
     REQ: REQ-A-Mode1-Tool3
 
@@ -147,7 +147,7 @@ def validate_question_quality(
     batch: bool = False,
 ) -> dict | list[dict]:
     """
-    Tool 4: Validate Question Quality (LLM-based)
+    Tool 4: Validate Question Quality (LLM-based).
 
     REQ: REQ-A-Mode1-Tool4
 
@@ -210,7 +210,7 @@ def save_generated_question(
     explanation: str | None = None,
 ) -> dict:
     """
-    Tool 5: Save Generated Question
+    Tool 5: Save Generated Question.
 
     REQ: REQ-A-Mode1-Tool5
 
@@ -268,7 +268,7 @@ def score_and_explain(
     category: str | None = None,
 ) -> dict:
     """
-    Tool 6: Score & Generate Explanation (LLM-based)
+    Tool 6: Score & Generate Explanation (LLM-based).
 
     REQ: REQ-A-Mode2-Tool6
 

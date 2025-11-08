@@ -1,5 +1,5 @@
 """
-Item-Gen-Agent: LangChain ReAct 기반 자율 AI 에이전트
+Item-Gen-Agent: LangChain ReAct 기반 자율 AI 에이전트.
 
 REQ: REQ-A-ItemGen
 
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 class GenerateQuestionsRequest(BaseModel):
-    """문항 생성 요청"""
+    """문항 생성 요청."""
 
     user_id: str = Field(..., description="사용자 ID (UUID)")
     difficulty: int = Field(..., ge=1, le=10, description="난이도 1~10")
@@ -47,7 +47,7 @@ class GenerateQuestionsRequest(BaseModel):
 
 
 class GeneratedQuestion(BaseModel):
-    """생성된 문항"""
+    """생성된 문항."""
 
     question_id: str = Field(..., description="문항 ID (UUID)")
     stem: str = Field(..., description="문항 내용")
@@ -61,7 +61,7 @@ class GeneratedQuestion(BaseModel):
 
 
 class GenerateQuestionsResponse(BaseModel):
-    """문항 생성 응답"""
+    """문항 생성 응답."""
 
     success: bool = Field(..., description="성공 여부")
     questions: list[GeneratedQuestion] = Field(default_factory=list, description="생성된 문항 리스트")
@@ -72,7 +72,7 @@ class GenerateQuestionsResponse(BaseModel):
 
 
 class ScoreAnswerRequest(BaseModel):
-    """자동 채점 요청"""
+    """자동 채점 요청."""
 
     session_id: str = Field(..., description="시험 세션 ID")
     user_id: str = Field(..., description="응시자 ID")
@@ -86,7 +86,7 @@ class ScoreAnswerRequest(BaseModel):
 
 
 class ScoreAnswerResponse(BaseModel):
-    """자동 채점 응답"""
+    """자동 채점 응답."""
 
     attempt_id: str = Field(..., description="채점 ID (UUID)")
     question_id: str = Field(..., description="문항 ID")
@@ -105,7 +105,7 @@ class ScoreAnswerResponse(BaseModel):
 
 class ItemGenAgent:
     """
-    LangChain ReAct 기반 Item-Gen-Agent
+    LangChain ReAct 기반 Item-Gen-Agent.
 
     설명:
         - LangChain의 최신 create_react_agent() API 사용
@@ -144,9 +144,9 @@ class ItemGenAgent:
         - AgentExecutor: 도구 호출 및 에러 처리 관리
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
-        ItemGenAgent 초기화
+        Initialize ItemGenAgent.
 
         단계:
             1. LLM 생성 (Google Gemini)
@@ -192,7 +192,7 @@ class ItemGenAgent:
 
     async def generate_questions(self, request: GenerateQuestionsRequest) -> GenerateQuestionsResponse:
         """
-        Mode 1: 문항 생성 (Tool 1-5 자동 선택)
+        Mode 1: Generate questions (Tool 1-5 auto-select).
 
         REQ: REQ-A-Mode1-Pipeline
 
@@ -269,7 +269,7 @@ Return exactly {request.num_questions} questions with validation scores.
 
     async def score_and_explain(self, request: ScoreAnswerRequest) -> ScoreAnswerResponse:
         """
-        Mode 2: 자동 채점 (Tool 6)
+        Mode 2: Auto-grade answers (Tool 6).
 
         REQ: REQ-A-Mode2-Pipeline
 
@@ -341,7 +341,7 @@ Return: is_correct, score, explanation, feedback
 
     def _parse_agent_output_generate(self, result: dict, num_questions: int) -> GenerateQuestionsResponse:
         """
-        문항 생성 에이전트 출력 파싱
+        Parse agent output for question generation.
 
         Args:
             result: CompiledStateGraph (LangGraph)의 출력
@@ -374,7 +374,7 @@ Return: is_correct, score, explanation, feedback
 
     def _parse_agent_output_score(self, result: dict, question_id: str) -> ScoreAnswerResponse:
         """
-        자동 채점 에이전트 출력 파싱
+        Parse agent output for auto-grading.
 
         Args:
             result: AgentExecutor의 출력
@@ -407,7 +407,7 @@ Return: is_correct, score, explanation, feedback
 
 async def create_agent() -> ItemGenAgent:
     """
-    ItemGenAgent 생성 팩토리 함수
+    Create ItemGenAgent factory function.
 
     Returns:
         ItemGenAgent: 초기화된 에이전트
