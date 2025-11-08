@@ -1,4 +1,5 @@
-"""User Profile Tool - Get User's Self-Assessment Information.
+"""
+User Profile Tool - Get User's Self-Assessment Information.
 
 REQ: REQ-A-Mode1-Tool1
 Tool 1 for Mode 1 pipeline: Retrieve user self-assessment profile.
@@ -28,7 +29,8 @@ DEFAULT_PROFILE = {
 
 
 def _validate_user_id(user_id: str) -> None:
-    """Validate user_id format.
+    """
+    Validate user_id format.
 
     Args:
         user_id: User ID to validate
@@ -36,6 +38,7 @@ def _validate_user_id(user_id: str) -> None:
     Raises:
         ValueError: If user_id is invalid (empty or wrong format)
         TypeError: If user_id is not a string
+
     """
     if not isinstance(user_id, str):
         raise TypeError(f"user_id must be string, got {type(user_id)}")
@@ -49,7 +52,8 @@ def _validate_user_id(user_id: str) -> None:
 
 
 def _get_user_profile_from_db(db: Session, user_id: str) -> UserProfileSurvey | None:
-    """Query database for user's latest profile.
+    """
+    Query database for user's latest profile.
 
     Args:
         db: SQLAlchemy session
@@ -60,11 +64,14 @@ def _get_user_profile_from_db(db: Session, user_id: str) -> UserProfileSurvey | 
 
     Raises:
         Exception: If database query fails
+
     """
     try:
         profile = (
             db.query(UserProfileSurvey)
-            .filter(UserProfileSurvey.user_id == int(user_id) if user_id.isdigit() else UserProfileSurvey.user_id == user_id)
+            .filter(
+                UserProfileSurvey.user_id == int(user_id) if user_id.isdigit() else UserProfileSurvey.user_id == user_id
+            )
             .order_by(UserProfileSurvey.submitted_at.desc())
             .first()
         )
@@ -74,10 +81,9 @@ def _get_user_profile_from_db(db: Session, user_id: str) -> UserProfileSurvey | 
         return None
 
 
-def _build_profile_response(
-    user_id: str, profile: UserProfileSurvey | None
-) -> dict[str, Any]:
-    """Build response dict from database profile.
+def _build_profile_response(user_id: str, profile: UserProfileSurvey | None) -> dict[str, Any]:
+    """
+    Build response dict from database profile.
 
     Args:
         user_id: User ID (for response)
@@ -85,6 +91,7 @@ def _build_profile_response(
 
     Returns:
         dict with profile information
+
     """
     if profile is None:
         # Return default profile with user_id
@@ -110,7 +117,8 @@ def _build_profile_response(
 
 
 def _get_user_profile_impl(user_id: str) -> dict[str, Any]:
-    """Implementation of get_user_profile (without @tool decorator).
+    """
+    Implement get_user_profile (without @tool decorator).
 
     This is the actual function that can be tested.
     The @tool decorator wraps this function.
@@ -124,6 +132,7 @@ def _get_user_profile_impl(user_id: str) -> dict[str, Any]:
     Raises:
         ValueError: If user_id is invalid format
         TypeError: If user_id is not a string
+
     """
     logger.info(f"Tool 1: Retrieving profile for user {user_id}")
 
@@ -155,7 +164,8 @@ def _get_user_profile_impl(user_id: str) -> dict[str, Any]:
 
 @tool
 def get_user_profile(user_id: str) -> dict[str, Any]:
-    """Get user's self-assessment profile information.
+    """
+    Get user's self-assessment profile information.
 
     REQ: REQ-A-Mode1-Tool1
 
@@ -175,5 +185,6 @@ def get_user_profile(user_id: str) -> dict[str, Any]:
     Raises:
         ValueError: If user_id is invalid format
         TypeError: If user_id is not a string
+
     """
     return _get_user_profile_impl(user_id)
