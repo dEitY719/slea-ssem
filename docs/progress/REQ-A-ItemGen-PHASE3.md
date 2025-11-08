@@ -81,6 +81,7 @@ def get_react_prompt() -> PromptTemplate:
 #### 4. ItemGenAgent Main Class (`src/agent/llm_agent.py`)
 
 **Initialization**:
+
 ```python
 def __init__(self):
     self.llm = create_llm()              # Google Gemini
@@ -94,6 +95,7 @@ def __init__(self):
 ```
 
 **Mode 1: Question Generation**
+
 ```python
 async def generate_questions(request: GenerateQuestionsRequest) -> GenerateQuestionsResponse:
     """Generate high-quality questions via ReAct loop."""
@@ -103,6 +105,7 @@ async def generate_questions(request: GenerateQuestionsRequest) -> GenerateQuest
 ```
 
 **Mode 2: Auto-Grading**
+
 ```python
 async def score_and_explain(request: ScoreAnswerRequest) -> ScoreAnswerResponse:
     """Score answer and generate explanation via Tool 6."""
@@ -116,10 +119,12 @@ async def score_and_explain(request: ScoreAnswerRequest) -> ScoreAnswerResponse:
 #### 5. Pydantic Data Schemas
 
 **Input Schemas**:
+
 - `GenerateQuestionsRequest`: user_id, difficulty (1-10), interests, num_questions (1-10), test_session_id
 - `ScoreAnswerRequest`: session_id, user_id, question_id, question_type, user_answer, correct_answer, correct_keywords, difficulty, category
 
 **Output Schemas**:
+
 - `GenerateQuestionsResponse`: success, questions[], total_generated, failed_count, agent_steps, error_message
 - `GeneratedQuestion`: question_id, stem, item_type, choices, correct_answer, difficulty, category, validation_score, saved_at
 - `ScoreAnswerResponse`: attempt_id, question_id, is_correct, score (0-100), explanation, feedback, keyword_matches, graded_at
@@ -153,6 +158,7 @@ async def score_and_explain(request: ScoreAnswerRequest) -> ScoreAnswerResponse:
 All 24 tests passing with stub implementations:
 
 ### Test Breakdown
+
 - ✅ Mode 1 (Question Generation): 9 tests
 - ✅ Mode 2 (Auto-Grading): 10 tests
 - ✅ Agent Initialization: 2 tests
@@ -168,6 +174,7 @@ All 24 tests passing with stub implementations:
 ### ReAct Loop Execution
 
 **Mode 1 Flow**:
+
 ```
 User Request
   ↓
@@ -190,6 +197,7 @@ Return: GenerateQuestionsResponse
 ```
 
 **Mode 2 Flow**:
+
 ```
 User Request (Question + Answer)
   ↓
@@ -205,11 +213,13 @@ Return: ScoreAnswerResponse (score, is_correct, explanation, feedback)
 ### Error Handling
 
 **In generate_questions()**:
+
 - Try/Except wraps agent.ainvoke()
 - Returns error_message on failure
 - Graceful degradation with partial results
 
 **In score_and_explain()**:
+
 - Try/Except wraps agent.ainvoke()
 - Returns default score (0) on failure
 - Maintains response structure
@@ -223,6 +233,7 @@ Return: ScoreAnswerResponse (score, is_correct, explanation, feedback)
 ### `_parse_agent_output_generate(result, num_questions)`
 
 **Current Implementation**:
+
 ```python
 def _parse_agent_output_generate(self, result: dict, num_questions: int) -> GenerateQuestionsResponse:
     """Parse LangGraph message output into GenerateQuestionsResponse."""
@@ -239,6 +250,7 @@ def _parse_agent_output_generate(self, result: dict, num_questions: int) -> Gene
 ```
 
 **Future Enhancement**: Parse agent messages to extract:
+
 - Generated questions from Tool 5 outputs
 - Validation scores from Tool 4
 - Question metadata (stem, choices, correct_answer, etc.)
@@ -246,6 +258,7 @@ def _parse_agent_output_generate(self, result: dict, num_questions: int) -> Gene
 ### `_parse_agent_output_score(result, question_id)`
 
 **Current Implementation**:
+
 ```python
 def _parse_agent_output_score(self, result: dict, question_id: str) -> ScoreAnswerResponse:
     """Parse LangGraph message output into ScoreAnswerResponse."""
@@ -260,6 +273,7 @@ def _parse_agent_output_score(self, result: dict, question_id: str) -> ScoreAnsw
 ```
 
 **Future Enhancement**: Parse Tool 6 output to extract:
+
 - Score (0-100)
 - is_correct (score >= 80)
 - explanation and feedback
@@ -270,12 +284,14 @@ def _parse_agent_output_score(self, result: dict, question_id: str) -> ScoreAnsw
 ## Code Quality
 
 ### Type Hints
+
 - ✅ Async functions properly typed
 - ✅ Pydantic schemas for input/output validation
 - ✅ Return type annotations on methods
 - ✅ LangChain type stubs supported
 
 ### Documentation
+
 - ✅ Module docstrings with REQ references
 - ✅ Function docstrings with Args/Returns
 - ✅ Error handling documentation
@@ -283,12 +299,14 @@ def _parse_agent_output_score(self, result: dict, question_id: str) -> ScoreAnsw
 - ✅ Example usage in docstrings
 
 ### Error Handling
+
 - ✅ Try/Except blocks with logging
 - ✅ Graceful degradation
 - ✅ Informative error messages
 - ✅ Structured response format
 
 ### Logging
+
 - ✅ INFO level: Progress tracking
 - ✅ ERROR level: Failure reporting
 - ✅ Detailed log messages with context
@@ -299,6 +317,7 @@ def _parse_agent_output_score(self, result: dict, question_id: str) -> ScoreAnsw
 ## Files Modified/Created
 
 ### New Files Created
+
 1. **`src/agent/__init__.py`** - Module initialization
 2. **`src/agent/config.py`** - LLM and agent configuration
 3. **`src/agent/prompts/react_prompt.py`** - ReAct prompt templates
@@ -309,6 +328,7 @@ def _parse_agent_output_score(self, result: dict, question_id: str) -> ScoreAnsw
 8. **`tests/agent/test_llm_agent.py`** - Comprehensive test suite (24 tests, 890 lines)
 
 ### Files Modified
+
 - **`src/agent/config.py`**: Fixed `ChatGoogle` → `ChatGoogleGenerativeAI`
 - **`src/agent/llm_agent.py`**: Updated to use LangGraph's `create_react_agent()`
 
@@ -336,6 +356,7 @@ def _parse_agent_output_score(self, result: dict, question_id: str) -> ScoreAnsw
 To complete the full pipeline, implement the 6 tools (separate REQ modules):
 
 ### Mode 1 Tools
+
 - **REQ-A-Mode1-Tool1**: Get user profile from database
 - **REQ-A-Mode1-Tool2**: Search question templates (few-shot examples)
 - **REQ-A-Mode1-Tool3**: Get difficulty-specific keywords
@@ -343,9 +364,11 @@ To complete the full pipeline, implement the 6 tools (separate REQ modules):
 - **REQ-A-Mode1-Tool5**: Save questions to database
 
 ### Mode 2 Tools
+
 - **REQ-A-Mode2-Tool6**: LLM-based scoring and explanation generation
 
 ### Tool Dependencies
+
 - Database access (SQLAlchemy models)
 - Template storage and retrieval
 - Keyword database

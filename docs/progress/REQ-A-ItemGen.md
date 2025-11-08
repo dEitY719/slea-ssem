@@ -26,6 +26,7 @@
 ### 1.2 Scope
 
 **In Scope**:
+
 - LangChain `create_react_agent()` 사용 (최신 API)
 - FastMCP `@tool` 데코레이터로 6개 도구 등록
 - ReAct 패턴: Thought → Action → Observation → Reflection
@@ -37,6 +38,7 @@
 - 상세한 로깅 (Thought/Action/Observation 추적)
 
 **Out of Scope**:
+
 - 개별 Tool 구현 (Tool 1-6은 별도 REQ)
 - 데이터베이스 레이어 (FastAPI 백엔드)
 - 프롬프트 튜닝 최적화 (MVP 2.0)
@@ -344,6 +346,7 @@ Step 5: API 응답으로 반환
 **최신 API 버전**: LangChain 0.3.x+
 
 **주요 특징**:
+
 1. ✅ `create_react_agent()` - 최신 ReAct 에이전트 생성 (권장)
 2. ✅ `AgentExecutor` - 에이전트 실행 및 도구 호출
 3. ✅ `@tool` 데코레이터 - FastMCP 도구 정의 (최신)
@@ -351,6 +354,7 @@ Step 5: API 응답으로 반환
 5. ✅ 구조화된 출력 (JSON) - 파싱 안정성 향상
 
 **이전 API 버전 (deprecated)**:
+
 - ❌ `initialize_agent()` (구식, 제거 예정)
 - ❌ `Tool` 클래스 (대신 `@tool` 사용)
 - ❌ 직접 에이전트 클래스 상속
@@ -360,6 +364,7 @@ Step 5: API 응답으로 반환
 ## 📝 PHASE 2: TEST DESIGN (TBD)
 
 **테스트 전략**:
+
 - 단위 테스트: 각 Tool 동작 확인
 - 통합 테스트: Mode 1 & Mode 2 E2E
 - Mock LLM으로 응답 테스트
@@ -370,6 +375,7 @@ Step 5: API 응답으로 반환
 ## 💻 PHASE 3: IMPLEMENTATION (TBD)
 
 **구현 순서**:
+
 1. 에이전트 기본 구조 + Config
 2. ReAct 프롬프트 정의
 3. FastMCP 도구 등록 (Stub)
@@ -382,6 +388,7 @@ Step 5: API 응답으로 반환
 ## 📄 PHASE 4: DOCUMENTATION (TBD)
 
 **문서화**:
+
 - 코드 주석 (공식 문서 참고)
 - 사용 예시
 - 문제 해결 가이드
@@ -390,12 +397,14 @@ Step 5: API 응답으로 반환
 
 ## 🔗 Reference & Best Practices
 
-### **LangChain 공식 문서**:
+### **LangChain 공식 문서**
+
 - [Agents | LangChain](https://python.langchain.com/docs/concepts/agents)
 - [create_react_agent | LangChain API](https://python.langchain.com/api_reference/langchain/agents/langchain.agents.agent.create_react_agent.html)
 - [Tools | LangChain](https://python.langchain.com/docs/concepts/tools)
 
-### **Best Practices**:
+### **Best Practices**
+
 1. ✅ `create_react_agent()` 사용 (최신)
 2. ✅ `@tool` 데코레이터 (권장)
 3. ✅ 구조화된 스키마 (Pydantic)
@@ -404,7 +413,8 @@ Step 5: API 응답으로 반환
 6. ✅ 에러 처리 명시적으로 (안정성)
 7. ✅ 도구 설명 상세 (LLM 이해도)
 
-### **팀 동료 참고 체크리스트**:
+### **팀 동료 참고 체크리스트**
+
 - [ ] LangChain 버전 0.3.x+ 사용 확인
 - [ ] `create_react_agent()` 사용 (initialize_agent X)
 - [ ] `@tool` 데코레이터 사용

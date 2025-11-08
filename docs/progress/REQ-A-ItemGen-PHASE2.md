@@ -13,6 +13,7 @@ Comprehensive test suite designed and implemented for ItemGenAgent with 24 passi
 ### Phase 1: Mode 1 - Question Generation (Tool 1-5 Pipeline)
 
 #### Happy Path Tests (3 tests)
+
 - `test_generate_questions_single_question`: Generate 1 question successfully
 - `test_generate_questions_multiple_questions`: Generate 5 questions with full tool pipeline
 - `test_generate_questions_with_test_session_id`: Track questions with session ID
@@ -20,6 +21,7 @@ Comprehensive test suite designed and implemented for ItemGenAgent with 24 passi
 **Status**: ✅ All passing
 
 #### Input Validation Tests (4 tests)
+
 - `test_generate_questions_invalid_difficulty_low`: Reject difficulty < 1
 - `test_generate_questions_invalid_difficulty_high`: Reject difficulty > 10
 - `test_generate_questions_invalid_num_questions_zero`: Reject num_questions < 1
@@ -28,6 +30,7 @@ Comprehensive test suite designed and implemented for ItemGenAgent with 24 passi
 **Status**: ✅ All passing (Pydantic validation enforced)
 
 #### Error Handling Tests (2 tests)
+
 - `test_generate_questions_executor_raises_exception`: Handle LLM API failures gracefully
 - `test_generate_questions_llm_parsing_error`: Handle malformed LLM output
 
@@ -36,6 +39,7 @@ Comprehensive test suite designed and implemented for ItemGenAgent with 24 passi
 ### Phase 2: Mode 2 - Auto-Grading (Tool 6 Pipeline)
 
 #### Happy Path Tests (6 tests)
+
 - `test_score_multiple_choice_correct`: Score correct multiple choice (100 points)
 - `test_score_multiple_choice_incorrect`: Score incorrect multiple choice (0 points)
 - `test_score_true_false`: Score true/false answer
@@ -46,29 +50,34 @@ Comprehensive test suite designed and implemented for ItemGenAgent with 24 passi
 **Status**: ✅ All passing
 
 #### Input Validation Tests (2 tests)
+
 - `test_score_answer_missing_session_id`: Reject missing session_id
 - `test_score_answer_missing_user_answer`: Reject missing user_answer
 
 **Status**: ✅ All passing (Pydantic validation enforced)
 
 #### Error Handling Tests (2 tests)
+
 - `test_score_answer_executor_raises_exception`: Handle API failures
 - `test_score_answer_timeout`: Handle scoring timeout
 
 **Status**: ✅ All passing
 
 ### Phase 3: Agent Initialization Tests (2 tests)
+
 - `test_agent_initialization_success`: Verify agent setup with all components
 - `test_agent_initialization_no_gemini_api_key`: Reject initialization without API key
 
 **Status**: ✅ All passing
 
 ### Phase 4: Factory Function Test (1 test)
+
 - `test_create_agent_returns_instance`: Verify factory creates ItemGenAgent instance
 
 **Status**: ✅ All passing
 
 ### Integration Tests (2 tests)
+
 - `test_full_question_generation_flow`: End-to-end Mode 1 pipeline (7 tool calls)
 - `test_full_scoring_flow`: End-to-end Mode 2 pipeline (1 tool call)
 
@@ -91,17 +100,20 @@ Comprehensive test suite designed and implemented for ItemGenAgent with 24 passi
 ## Key Test Features
 
 ### Mocking Strategy
+
 - **LLM**: Mocked `ChatGoogleGenerativeAI` via `create_llm()`
 - **Agent**: Mocked `CompiledStateGraph` from `create_react_agent()`
 - **Tools**: Mocked 6 FastMCP tools for isolation
 - **Output Format**: LangGraph message format (not old `intermediate_steps`)
 
 ### LangChain/LangGraph Integration
+
 - ✅ Uses LangGraph's `create_react_agent()` (replaces deprecated LangChain API)
 - ✅ Tests mocked `agent.ainvoke()` with message-based format
 - ✅ Validates LangGraph output structure: `{"messages": [...]}`
 
 ### Test Design Patterns
+
 - **Fixtures**: Pytest fixtures for agent, LLM, and tools
 - **Async Support**: All tests use `@pytest.mark.asyncio`
 - **Pydantic Validation**: Tests verify schema validation errors
@@ -112,6 +124,7 @@ Comprehensive test suite designed and implemented for ItemGenAgent with 24 passi
 ## Files Created/Modified
 
 ### New Test Files
+
 - **`tests/agent/test_llm_agent.py`** (890 lines)
   - 24 comprehensive test cases with detailed docstrings
   - REQ: REQ-A-ItemGen reference in each test
@@ -125,6 +138,7 @@ Comprehensive test suite designed and implemented for ItemGenAgent with 24 passi
   - Mock fixtures for testing
 
 ### Modified Implementation Files
+
 - **`src/agent/config.py`** (Updated)
   - Fixed: `ChatGoogle` → `ChatGoogleGenerativeAI`
   - Correct LangChain Google integration
@@ -173,6 +187,7 @@ tests/agent/test_llm_agent.py::TestGenerateQuestionsHappyPath::test_generate_que
 The test suite is ready for Phase 3, where stub methods will be filled in:
 
 ### Implementation Tasks
+
 1. **`_parse_agent_output_generate()`**
    - Parse LangGraph messages for question data
    - Extract validation scores and metadata
@@ -188,6 +203,7 @@ The test suite is ready for Phase 3, where stub methods will be filled in:
    - Tool 6: Auto-scoring pipeline
 
 ### Testing Strategy for Phase 3
+
 - Run existing 24 tests during implementation
 - All tests should continue passing
 - Add integration tests with real LLM if needed
@@ -208,10 +224,10 @@ The test suite is ready for Phase 3, where stub methods will be filled in:
 
 ## References
 
-- **LangChain Agent Documentation**: https://python.langchain.com/docs/concepts/agents
-- **LangGraph ReAct Pattern**: https://langgraph.com/docs/concepts/agent_loop
-- **Pytest Async Testing**: https://docs.pytest.org/en/stable/how_to_use.html
-- **Pydantic Validation**: https://docs.pydantic.dev/latest/
+- **LangChain Agent Documentation**: <https://python.langchain.com/docs/concepts/agents>
+- **LangGraph ReAct Pattern**: <https://langgraph.com/docs/concepts/agent_loop>
+- **Pytest Async Testing**: <https://docs.pytest.org/en/stable/how_to_use.html>
+- **Pydantic Validation**: <https://docs.pydantic.dev/latest/>
 
 ---
 
