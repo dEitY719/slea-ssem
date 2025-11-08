@@ -1613,11 +1613,78 @@ ELSE IF total_candidates >= 100:
                      │ HTTP
                      ▼
 ┌──────────────────────────────────────────────────────────┐
-│           사내 Local LLM Server                           │
+│           LLM Server (Google Gemini)                     │
 │  - 문항 생성 (Tool 4의 의미 검증 포함)                  │
 │  - 채점 & 해설 생성 (Tool 6)                           │
 └──────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## LLM 설정
+
+### LLM 선택
+
+**MVP 1.0**: Google Gemini API 사용
+
+| 항목 | 값 | 비고 |
+|------|-----|------|
+| **LLM Provider** | Google Gemini API | 클라우드 기반 LLM |
+| **API Key** | `GEMINI_API_KEY` (`.env`에 저장) | 환경 변수로 관리 |
+| **LLM Model** | `gemini-1.5-pro` (또는 최신 모델) | Tool 4, Tool 6에서 사용 |
+| **호출 방식** | LangChain `ChatGoogle` | `langchain_google_genai` 라이브러리 |
+
+### 설정 방법
+
+**1. `.env` 파일에 API Key 저장**:
+
+```bash
+# .env
+GEMINI_API_KEY=AIzaSyCE2Hyk-xLl3Mq1BMGtOSZEOCo0HjtAK6s
+```
+
+**2. LangChain에서 LLM 초기화**:
+
+```python
+from langchain_google_genai import ChatGoogle
+from os import getenv
+
+llm = ChatGoogle(
+    api_key=getenv("GEMINI_API_KEY"),
+    model="gemini-1.5-pro",
+    temperature=0.7,  # 창의성 vs 정확성 균형
+    max_tokens=2048   # 응답 최대 길이
+)
+```
+
+**3. Tool 4 (문항 검증) & Tool 6 (채점)에서 사용**:
+
+```python
+# Tool 4: 문항 품질 검증 (LLM 기반)
+def validate_question_quality(stem, question_type, ...):
+    prompt = f"문항을 평가하세요: {stem}"
+    response = llm.invoke(prompt)
+    # LLM 점수 (0~1) 반환
+
+# Tool 6: 자동 채점 & 해설
+def score_and_explain(question_id, user_answer, correct_answer, ...):
+    prompt = f"주관식 답변을 평가하세요: {user_answer}"
+    response = llm.invoke(prompt)
+    # 점수 & 해설 반환
+```
+
+### MVP 1.0 vs MVP 2.0 LLM 전환 계획
+
+| 버전 | LLM | 사용처 | 비고 |
+|------|-----|-------|------|
+| **MVP 1.0** | Google Gemini (클라우드) | Tool 4, Tool 6 | 빠른 개발, API 비용 |
+| **MVP 2.0** | 사내 Local LLM (선택사항) | Tool 4, Tool 6 | 비용 절감, 지연시간 감소 |
+
+**전환 시 변경 사항**:
+
+- LangChain `ChatGoogle` → `ChatOllama` 또는 `ChatOpenAI` (로컬 서버)
+- API Key → 로컬 LLM 엔드포인트 URL
+- 프롬프트 튜닝 (로컬 모델 특성에 맞춰)
 
 ---
 
