@@ -13,6 +13,7 @@ CLI 명령어의 계층 구조를 정의하는 설정 파일입니다.
 COMMAND_LAYOUT = {
     "auth": {
         "description": "인증 및 세션 관리",
+        "target": "src.cli.actions.auth.auth_help",
         "sub_commands": {
             "login": {
                 "description": "Samsung AD 로그인 (JWT 토큰 발급)",
@@ -22,6 +23,7 @@ COMMAND_LAYOUT = {
     },
     "survey": {
         "description": "자기평가 Survey 관리",
+        "target": "src.cli.actions.survey.survey_help",
         "sub_commands": {
             "schema": {
                 "description": "Survey 폼 스키마 조회",
@@ -35,9 +37,11 @@ COMMAND_LAYOUT = {
     },
     "profile": {
         "description": "사용자 프로필 및 닉네임 관리",
+        "target": "src.cli.actions.profile.profile_help",
         "sub_commands": {
             "nickname": {
                 "description": "닉네임 관련 명령어",
+                "target": "src.cli.actions.profile.profile_help",
                 "sub_commands": {
                     "check": {
                         "description": "닉네임 중복 확인",
@@ -61,9 +65,11 @@ COMMAND_LAYOUT = {
     },
     "questions": {
         "description": "테스트 문항 생성, 채점, 저장",
+        "target": "src.cli.actions.questions.questions_help",
         "sub_commands": {
             "session": {
                 "description": "테스트 세션 관리",
+                "target": "src.cli.actions.questions.questions_help",
                 "sub_commands": {
                     "resume": {
                         "description": "테스트 세션 재개",
@@ -91,6 +97,7 @@ COMMAND_LAYOUT = {
             },
             "answer": {
                 "description": "답변 처리",
+                "target": "src.cli.actions.questions.questions_help",
                 "sub_commands": {
                     "autosave": {
                         "description": "답변 자동 저장",
@@ -108,6 +115,7 @@ COMMAND_LAYOUT = {
             },
             "explanation": {
                 "description": "해설 생성",
+                "target": "src.cli.actions.questions.questions_help",
                 "sub_commands": {
                     "generate": {
                         "description": "해설 생성",
