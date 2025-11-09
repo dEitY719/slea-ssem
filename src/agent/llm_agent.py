@@ -18,6 +18,7 @@ REQ: REQ-A-ItemGen
     - 타입 힌트 & 에러 처리 명시
 """
 
+import json
 import logging
 from datetime import UTC, datetime
 
@@ -341,7 +342,7 @@ Return: is_correct, score, explanation, feedback
 
     def _parse_agent_output_generate(self, result: dict, num_questions: int) -> GenerateQuestionsResponse:
         """
-        Parse agent output for question generation.
+        Parse agent output for question generation (REQ-A-LangChain).
 
         Args:
             result: CompiledStateGraph (LangGraph)의 출력
@@ -350,54 +351,247 @@ Return: is_correct, score, explanation, feedback
         Returns:
             GenerateQuestionsResponse
 
+        로직:
+            1. result["messages"]에서 모든 메시지 추출
+            2. type="tool"인 메시지 필터링
+            3. tool.name이 "save_generated_question"인 메시지에서 question 데이터 파싱
+            4. 각 question을 GeneratedQuestion으로 변환
+            5. 성공/실패 개수 집계
+
         참고:
-            - LangGraph output format: {"messages": [...]}
-            - Last message contains agent's final response
-            - Parse messages for tool outputs and final answer
+            - LangGraph CompiledStateGraph 출력은 {"messages": [...]} 형식
+            - 각 메시지는 {"type": "tool", "name": "...", "content": "..."} 또는
+              {"role": "user/ai", "content": "..."}
+            - Tool 출력은 대부분 JSON 문자열 형태
 
         """
-        # 임시 구현
-        # 실제로는 result["messages"]에서 최종 응답 추출 및 파싱
         logger.info("문항 생성 결과 파싱 중...")
 
-        # Extract messages from LangGraph output
-        messages = result.get("messages", [])
-        agent_steps = len([m for m in messages if m.get("type") in ["tool", "ai", "human"]])
+        try:
+            # 1. 메시지 추출
+            messages = result.get("messages", [])
+            if not messages:
+                logger.warning("메시지 리스트가 비어있음")
+                return GenerateQuestionsResponse(
+                    success=True,
+                    questions=[],
+                    total_generated=0,
+                    failed_count=num_questions,
+                    agent_steps=0,
+                )
 
-        return GenerateQuestionsResponse(
-            success=True,
-            questions=[],  # 파싱된 문항 리스트
-            total_generated=0,
-            failed_count=0,
-            agent_steps=agent_steps,
-        )
+            # 2. Tool 메시지 개수 (agent_steps)
+            tool_messages = [m for m in messages if m.get("type") == "tool"]
+            agent_steps = len(tool_messages)
+            logger.info(f"Tool 메시지 {agent_steps}개 발견")
+
+            # 3. save_generated_question 도구 결과 파싱
+            questions: list[GeneratedQuestion] = []
+            failed_count = 0
+            error_messages: list[str] = []
+
+            for message in messages:
+                if message.get("type") != "tool":
+                    continue
+
+                tool_name = message.get("name", "")
+                if tool_name != "save_generated_question":
+                    continue
+
+                content = message.get("content", "")
+                if not content:
+                    failed_count += 1
+                    continue
+
+                # JSON 파싱
+                try:
+                    tool_output = json.loads(content)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"JSON 파싱 실패: {content[:100]}")
+                    failed_count += 1
+                    error_messages.append(f"JSON decode error: {str(e)}")
+                    continue
+
+                # success 플래그 확인 (없으면 성공으로 간주, error 있으면 실패로 간주)
+                has_error = "error" in tool_output
+                is_success = tool_output.get("success", not has_error)
+
+                if not is_success or has_error:
+                    failed_count += 1
+                    if "error" in tool_output:
+                        error_messages.append(tool_output["error"])
+                    continue
+
+                # GeneratedQuestion 객체 생성
+                try:
+                    question = GeneratedQuestion(
+                        question_id=tool_output.get("question_id", f"q_{datetime.now(UTC).timestamp()}"),
+                        stem=tool_output.get("stem", ""),
+                        item_type=tool_output.get("item_type", "unknown"),
+                        choices=tool_output.get("choices"),
+                        correct_answer=tool_output.get("correct_answer", ""),
+                        difficulty=tool_output.get("difficulty", 5),
+                        category=tool_output.get("category", "general"),
+                        validation_score=tool_output.get("validation_score", 0.0),
+                        saved_at=tool_output.get("saved_at", datetime.now(UTC).isoformat()),
+                    )
+                    questions.append(question)
+                    logger.info(f"✓ 문항 파싱 성공: {question.question_id}")
+
+                except Exception as e:
+                    logger.error(f"GeneratedQuestion 생성 실패: {e}")
+                    failed_count += 1
+                    error_messages.append(str(e))
+                    continue
+
+            # 4. 응답 생성
+            total_generated = len(questions) + failed_count
+            error_msg = " | ".join(error_messages) if error_messages else None
+
+            response = GenerateQuestionsResponse(
+                success=len(questions) > 0,
+                questions=questions,
+                total_generated=total_generated,
+                failed_count=failed_count,
+                agent_steps=agent_steps,
+                error_message=error_msg,
+            )
+
+            logger.info(
+                f"✅ 파싱 완료: 성공={len(questions)}, 실패={failed_count}, "
+                f"agent_steps={agent_steps}"
+            )
+            return response
+
+        except Exception as e:
+            logger.error(f"❌ 파싱 중 예상치 못한 오류: {e}")
+            return GenerateQuestionsResponse(
+                success=False,
+                questions=[],
+                total_generated=0,
+                failed_count=num_questions,
+                agent_steps=0,
+                error_message=f"Parsing error: {str(e)}",
+            )
 
     def _parse_agent_output_score(self, result: dict, question_id: str) -> ScoreAnswerResponse:
         """
-        Parse agent output for auto-grading.
+        Parse agent output for auto-grading (REQ-A-LangChain).
 
         Args:
-            result: AgentExecutor의 출력
+            result: CompiledStateGraph (LangGraph)의 출력
             question_id: 문항 ID
 
         Returns:
             ScoreAnswerResponse
 
+        로직:
+            1. result["messages"]에서 type="tool", name="score_and_explain" 메시지 찾기
+            2. 메시지 content를 JSON으로 파싱
+            3. is_correct, score, explanation, feedback, keyword_matches 추출
+            4. ScoreAnswerResponse로 변환
+
         참고:
-            - result["output"]: 채점 결과 & 해설
+            - Tool 6 (score_and_explain) 출력 구조:
+              {
+                "attempt_id": "str",
+                "is_correct": bool,
+                "score": float (0-100),
+                "explanation": str,
+                "keyword_matches": list[str] (optional),
+                "feedback": str (optional),
+                "graded_at": str (ISO format)
+              }
 
         """
-        # 임시 구현
-        logger.info("채점 결과 파싱 중...")
+        logger.info(f"채점 결과 파싱 중... question_id={question_id}")
 
-        return ScoreAnswerResponse(
-            attempt_id="temp_id",
-            question_id=question_id,
-            is_correct=False,
-            score=0,
-            explanation="설명",
-            graded_at=datetime.now(UTC).isoformat(),
-        )
+        try:
+            # 1. 메시지 추출
+            messages = result.get("messages", [])
+            if not messages:
+                logger.warning("메시지 리스트가 비어있음")
+                return ScoreAnswerResponse(
+                    attempt_id="error",
+                    question_id=question_id,
+                    is_correct=False,
+                    score=0,
+                    explanation="No messages found",
+                    graded_at=datetime.now(UTC).isoformat(),
+                )
+
+            # 2. score_and_explain 도구 메시지 찾기
+            score_message = None
+            for message in messages:
+                if message.get("type") == "tool" and message.get("name") == "score_and_explain":
+                    score_message = message
+                    break
+
+            if not score_message:
+                logger.warning("score_and_explain 메시지를 찾을 수 없음")
+                return ScoreAnswerResponse(
+                    attempt_id="error",
+                    question_id=question_id,
+                    is_correct=False,
+                    score=0,
+                    explanation="Tool not executed",
+                    graded_at=datetime.now(UTC).isoformat(),
+                )
+
+            # 3. JSON 파싱
+            content = score_message.get("content", "")
+            if not content:
+                logger.warning("Tool 메시지 content가 비어있음")
+                return ScoreAnswerResponse(
+                    attempt_id="error",
+                    question_id=question_id,
+                    is_correct=False,
+                    score=0,
+                    explanation="Empty tool output",
+                    graded_at=datetime.now(UTC).isoformat(),
+                )
+
+            try:
+                tool_output = json.loads(content)
+            except json.JSONDecodeError as e:
+                logger.warning(f"JSON 파싱 실패: {content[:100]}")
+                return ScoreAnswerResponse(
+                    attempt_id="error",
+                    question_id=question_id,
+                    is_correct=False,
+                    score=0,
+                    explanation=f"JSON decode error: {str(e)}",
+                    graded_at=datetime.now(UTC).isoformat(),
+                )
+
+            # 4. ScoreAnswerResponse 생성
+            response = ScoreAnswerResponse(
+                attempt_id=tool_output.get("attempt_id", f"att_{datetime.now(UTC).timestamp()}"),
+                question_id=question_id,
+                is_correct=tool_output.get("is_correct", False),
+                score=int(tool_output.get("score", 0)),
+                explanation=tool_output.get("explanation", ""),
+                feedback=tool_output.get("feedback"),
+                keyword_matches=tool_output.get("keyword_matches", []),
+                graded_at=tool_output.get("graded_at", datetime.now(UTC).isoformat()),
+            )
+
+            logger.info(
+                f"✅ 채점 파싱 완료: "
+                f"is_correct={response.is_correct}, score={response.score}"
+            )
+            return response
+
+        except Exception as e:
+            logger.error(f"❌ 채점 파싱 중 오류: {e}")
+            return ScoreAnswerResponse(
+                attempt_id="error",
+                question_id=question_id,
+                is_correct=False,
+                score=0,
+                explanation=f"Parsing error: {str(e)}",
+                graded_at=datetime.now(UTC).isoformat(),
+            )
 
 
 # ============================================================================

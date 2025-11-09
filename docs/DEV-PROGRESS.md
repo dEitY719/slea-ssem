@@ -59,6 +59,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-A-RoundID | Round ID 생성 & 추적 | 4 | ✅ Done | 28 tests (100%), Commit: (pending), Progress: docs/progress/REQ-A-RoundID.md |
 | REQ-A-FastMCP | FastMCP 서버 구현 | 4 | ✅ Done | 26 tests (100%), Commit: 006dc68, Progress: docs/progress/REQ-A-FastMCP.md |
 | REQ-A-DataContract | Tool 입출력 데이터 계약 | 4 | ✅ Done | 27 tests (100%), Commit: [pending], Progress: docs/progress/REQ-A-DataContract.md |
+| REQ-A-LangChain | LangChain Agent 구현 | 4 | ✅ Done | 13 tests (100%), Commit: [pending], Progress: docs/progress/REQ-A-LangChain.md |
 | REQ-B-B7 | 학습 일정 예고 프리뷰 | 0 | ⏳ Backlog | 3개 sub-tasks (MVP 1.0) |
 
 ---

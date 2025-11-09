@@ -93,6 +93,8 @@ class TestGenerateQuestionsHappyPath:
             - Returns GenerateQuestionsResponse with success=True
             - total_generated=1, failed_count=0
         """
+        import json
+
         request = GenerateQuestionsRequest(
             user_id="user_123",
             difficulty=5,
@@ -100,21 +102,35 @@ class TestGenerateQuestionsHappyPath:
             num_questions=1,
         )
 
-        # Mock LangGraph output (messages format)
+        # Mock LangGraph output (messages format) with realistic JSON content
         agent_instance.agent.ainvoke.return_value = {
             "messages": [
                 {"role": "user", "content": "Generate questions..."},
-                {"role": "ai", "content": "Generated 1 question successfully"},
                 {"type": "tool", "name": "get_user_profile", "content": "profile_data"},
+                {
+                    "type": "tool",
+                    "name": "save_generated_question",
+                    "content": json.dumps({
+                        "question_id": "q_001",
+                        "stem": "What is LLM?",
+                        "item_type": "short_answer",
+                        "difficulty": 5,
+                        "category": "AI",
+                        "validation_score": 0.90,
+                        "saved_at": "2025-11-09T10:00:00Z",
+                        "success": True
+                    })
+                },
+                {"role": "ai", "content": "Generated 1 question successfully"},
             ]
         }
 
         response = await agent_instance.generate_questions(request)
 
         assert response.success is True
-        assert response.total_generated >= 0
-        # agent_steps counts messages where type is in ['tool', 'ai', 'human'] (only 'tool' message matches)
-        assert response.agent_steps >= 1
+        assert response.total_generated == 1
+        assert response.failed_count == 0
+        assert response.agent_steps >= 2
         assert response.error_message is None
 
     @pytest.mark.asyncio
@@ -131,12 +147,29 @@ class TestGenerateQuestionsHappyPath:
             - Returns response with total_generated=5
             - agent_steps reflects full ReAct loop iterations
         """
+        import json
+
         request = GenerateQuestionsRequest(
             user_id="user_456",
             difficulty=7,
             interests=["Agent Architecture"],
             num_questions=5,
         )
+
+        # Helper to create question JSON
+        def create_question(qid: int) -> str:
+            return json.dumps({
+                "question_id": f"q_{qid:03d}",
+                "stem": f"Question {qid}",
+                "item_type": "multiple_choice",
+                "choices": ["A", "B", "C", "D"],
+                "correct_answer": "A",
+                "difficulty": 7,
+                "category": "AI",
+                "validation_score": 0.88 + qid * 0.01,
+                "saved_at": "2025-11-09T10:00:00Z",
+                "success": True
+            })
 
         # Mock LangGraph message format with multiple tool calls
         agent_instance.agent.ainvoke.return_value = {
@@ -146,15 +179,15 @@ class TestGenerateQuestionsHappyPath:
                 {"type": "tool", "name": "search_question_templates", "content": "templates"},
                 {"type": "tool", "name": "get_difficulty_keywords", "content": "keywords"},
                 {"type": "tool", "name": "validate_question_quality", "content": "q1_valid"},
-                {"type": "tool", "name": "save_generated_question", "content": "q1_saved"},
+                {"type": "tool", "name": "save_generated_question", "content": create_question(1)},
                 {"type": "tool", "name": "validate_question_quality", "content": "q2_valid"},
-                {"type": "tool", "name": "save_generated_question", "content": "q2_saved"},
+                {"type": "tool", "name": "save_generated_question", "content": create_question(2)},
                 {"type": "tool", "name": "validate_question_quality", "content": "q3_valid"},
-                {"type": "tool", "name": "save_generated_question", "content": "q3_saved"},
+                {"type": "tool", "name": "save_generated_question", "content": create_question(3)},
                 {"type": "tool", "name": "validate_question_quality", "content": "q4_valid"},
-                {"type": "tool", "name": "save_generated_question", "content": "q4_saved"},
+                {"type": "tool", "name": "save_generated_question", "content": create_question(4)},
                 {"type": "tool", "name": "validate_question_quality", "content": "q5_valid"},
-                {"type": "tool", "name": "save_generated_question", "content": "q5_saved"},
+                {"type": "tool", "name": "save_generated_question", "content": create_question(5)},
                 {"role": "ai", "content": "Successfully generated 5 questions"},
             ],
         }
@@ -162,6 +195,8 @@ class TestGenerateQuestionsHappyPath:
         response = await agent_instance.generate_questions(request)
 
         assert response.success is True
+        assert response.total_generated == 5
+        assert response.failed_count == 0
         # agent_steps counts messages where type is 'tool' (13 tool messages)
         assert response.agent_steps == 13
         agent_instance.agent.ainvoke.assert_called_once()
@@ -817,6 +852,8 @@ class TestIntegrationWithMockedComponents:
             - Questions are validated and saved
             - Response contains all metadata
         """
+        import json
+
         request = GenerateQuestionsRequest(
             user_id="integration_user",
             difficulty=6,
@@ -824,17 +861,43 @@ class TestIntegrationWithMockedComponents:
             num_questions=2,
         )
 
-        # Simulate realistic LangGraph output
+        # Simulate realistic LangGraph output with JSON tool outputs
         agent_instance.agent.ainvoke.return_value = {
             "messages": [
                 {"role": "user", "content": "Generate 2 questions"},
-                {"type": "tool", "name": "get_user_profile", "content": "result_1"},
-                {"type": "tool", "name": "search_question_templates", "content": "result_2"},
-                {"type": "tool", "name": "get_difficulty_keywords", "content": "result_3"},
-                {"type": "tool", "name": "validate_question_quality", "content": "result_4"},
-                {"type": "tool", "name": "save_generated_question", "content": "result_5"},
-                {"type": "tool", "name": "validate_question_quality", "content": "result_6"},
-                {"type": "tool", "name": "save_generated_question", "content": "result_7"},
+                {"type": "tool", "name": "get_user_profile", "content": "{}"},
+                {"type": "tool", "name": "search_question_templates", "content": "{}"},
+                {"type": "tool", "name": "get_difficulty_keywords", "content": "{}"},
+                {"type": "tool", "name": "validate_question_quality", "content": "{}"},
+                {
+                    "type": "tool",
+                    "name": "save_generated_question",
+                    "content": json.dumps({
+                        "question_id": "q_int_001",
+                        "stem": "Integration test Q1",
+                        "item_type": "short_answer",
+                        "difficulty": 6,
+                        "category": "AI",
+                        "validation_score": 0.85,
+                        "saved_at": "2025-11-09T10:00:00Z",
+                        "success": True
+                    })
+                },
+                {"type": "tool", "name": "validate_question_quality", "content": "{}"},
+                {
+                    "type": "tool",
+                    "name": "save_generated_question",
+                    "content": json.dumps({
+                        "question_id": "q_int_002",
+                        "stem": "Integration test Q2",
+                        "item_type": "short_answer",
+                        "difficulty": 6,
+                        "category": "AI",
+                        "validation_score": 0.87,
+                        "saved_at": "2025-11-09T10:05:00Z",
+                        "success": True
+                    })
+                },
                 {"role": "ai", "content": "Generated 2 questions successfully"},
             ],
         }
@@ -842,6 +905,8 @@ class TestIntegrationWithMockedComponents:
         response = await agent_instance.generate_questions(request)
 
         assert response.success is True
+        assert response.total_generated == 2
+        assert response.failed_count == 0
         # 7 tool messages
         assert response.agent_steps == 7
 
@@ -887,3 +952,346 @@ class TestIntegrationWithMockedComponents:
 
         assert isinstance(response, ScoreAnswerResponse)
         assert response.question_id == "q_integration"
+
+
+# ============================================================================
+# Phase 5: Test Parsing Logic (REQ-A-LangChain Implementation)
+# ============================================================================
+
+
+class TestParseAgentOutputGenerate:
+    """Test _parse_agent_output_generate() parsing logic"""
+
+    @pytest.mark.asyncio
+    async def test_parse_tool_output_with_json_content(self, agent_instance):
+        """
+        REQ: REQ-A-LangChain
+        Parse tool output when content is JSON string
+
+        Given:
+            - Tool returns JSON string in content field
+        When:
+            - _parse_agent_output_generate() is called
+        Then:
+            - JSON is parsed and question data extracted
+            - question_id, stem, item_type, etc. populated
+        """
+        import json
+
+        tool_output = {
+            "question_id": "q_123",
+            "stem": "What is a transformer?",
+            "item_type": "short_answer",
+            "difficulty": 5,
+            "category": "AI",
+            "validation_score": 0.92,
+            "saved_at": "2025-11-09T10:00:00Z",
+        }
+
+        result = {
+            "messages": [
+                {"role": "user", "content": "Generate"},
+                {
+                    "type": "tool",
+                    "name": "save_generated_question",
+                    "content": json.dumps(tool_output),
+                },
+                {"role": "ai", "content": "Success"},
+            ]
+        }
+
+        response = agent_instance._parse_agent_output_generate(result, 1)
+
+        assert response.success is True
+        assert response.total_generated >= 0
+
+    @pytest.mark.asyncio
+    async def test_parse_multiple_saved_questions(self, agent_instance):
+        """
+        REQ: REQ-A-LangChain
+        Parse multiple save_generated_question tool outputs
+
+        Given:
+            - Messages contain 3 save_generated_question tool calls
+        When:
+            - _parse_agent_output_generate() is called
+        Then:
+            - All 3 questions extracted and aggregated
+            - total_generated=3, failed_count=0
+        """
+        import json
+
+        result = {
+            "messages": [
+                {"role": "user", "content": "Generate 3"},
+                {
+                    "type": "tool",
+                    "name": "save_generated_question",
+                    "content": json.dumps({"question_id": "q1", "success": True}),
+                },
+                {
+                    "type": "tool",
+                    "name": "save_generated_question",
+                    "content": json.dumps({"question_id": "q2", "success": True}),
+                },
+                {
+                    "type": "tool",
+                    "name": "save_generated_question",
+                    "content": json.dumps({"question_id": "q3", "success": True}),
+                },
+                {"role": "ai", "content": "Done"},
+            ]
+        }
+
+        response = agent_instance._parse_agent_output_generate(result, 3)
+
+        assert response.total_generated == 3
+
+    @pytest.mark.asyncio
+    async def test_parse_partial_failure_mixed_messages(self, agent_instance):
+        """
+        REQ: REQ-A-LangChain
+        Parse when some tools fail (error messages in content)
+
+        Given:
+            - Messages contain both success and error tool outputs
+        When:
+            - _parse_agent_output_generate() is called
+        Then:
+            - Successful questions counted
+            - Failed count reflects error messages
+            - error_message populated
+        """
+        import json
+
+        result = {
+            "messages": [
+                {"role": "user", "content": "Generate 2"},
+                {
+                    "type": "tool",
+                    "name": "save_generated_question",
+                    "content": json.dumps(
+                        {"question_id": "q1", "success": True}
+                    ),
+                },
+                {
+                    "type": "tool",
+                    "name": "save_generated_question",
+                    "content": json.dumps(
+                        {"error": "Validation failed", "success": False}
+                    ),
+                },
+                {"role": "ai", "content": "Partial success"},
+            ]
+        }
+
+        response = agent_instance._parse_agent_output_generate(result, 2)
+
+        assert response.total_generated >= 1
+        assert response.failed_count >= 0
+
+    @pytest.mark.asyncio
+    async def test_parse_malformed_json_content(self, agent_instance):
+        """
+        REQ: REQ-A-LangChain
+        Handle malformed JSON in tool output
+
+        Given:
+            - Tool content contains invalid JSON
+        When:
+            - _parse_agent_output_generate() is called
+        Then:
+            - Gracefully skips malformed message
+            - Returns response with error_message
+        """
+        result = {
+            "messages": [
+                {"role": "user", "content": "Generate"},
+                {"type": "tool", "name": "save_generated_question", "content": "invalid json [[["},
+                {"role": "ai", "content": "Error"},
+            ]
+        }
+
+        response = agent_instance._parse_agent_output_generate(result, 1)
+
+        assert isinstance(response, GenerateQuestionsResponse)
+
+
+class TestParseAgentOutputScore:
+    """Test _parse_agent_output_score() parsing logic"""
+
+    @pytest.mark.asyncio
+    async def test_parse_score_tool_output_json(self, agent_instance):
+        """
+        REQ: REQ-A-LangChain
+        Parse Tool 6 (score_and_explain) output when JSON
+
+        Given:
+            - Tool 6 returns JSON with is_correct, score, explanation
+        When:
+            - _parse_agent_output_score() is called
+        Then:
+            - Fields extracted: is_correct, score, explanation, feedback
+            - keyword_matches populated if present
+        """
+        import json
+
+        tool_output = {
+            "attempt_id": "att_123",
+            "is_correct": True,
+            "score": 92,
+            "explanation": "Excellent understanding",
+            "keyword_matches": ["transformer", "attention"],
+            "feedback": "Great work!",
+            "graded_at": "2025-11-09T10:00:00Z",
+        }
+
+        result = {
+            "messages": [
+                {"role": "user", "content": "Score"},
+                {
+                    "type": "tool",
+                    "name": "score_and_explain",
+                    "content": json.dumps(tool_output),
+                },
+                {"role": "ai", "content": "Graded"},
+            ]
+        }
+
+        response = agent_instance._parse_agent_output_score(result, "q_123")
+
+        assert isinstance(response, ScoreAnswerResponse)
+        assert response.question_id == "q_123"
+
+    @pytest.mark.asyncio
+    async def test_parse_score_with_keyword_matches(self, agent_instance):
+        """
+        REQ: REQ-A-LangChain
+        Extract keyword_matches from Tool 6 output
+
+        Given:
+            - Short answer scored with keyword matches
+        When:
+            - _parse_agent_output_score() is called
+        Then:
+            - keyword_matches list extracted and populated
+        """
+        import json
+
+        tool_output = {
+            "attempt_id": "att_456",
+            "is_correct": False,
+            "score": 75,
+            "explanation": "Partial understanding",
+            "keyword_matches": ["ai", "learning"],
+            "feedback": "You got 2/4 keywords",
+            "graded_at": "2025-11-09T11:00:00Z",
+        }
+
+        result = {
+            "messages": [
+                {"role": "user", "content": "Score"},
+                {
+                    "type": "tool",
+                    "name": "score_and_explain",
+                    "content": json.dumps(tool_output),
+                },
+            ]
+        }
+
+        response = agent_instance._parse_agent_output_score(result, "q_456")
+
+        assert isinstance(response, ScoreAnswerResponse)
+
+    @pytest.mark.asyncio
+    async def test_parse_score_missing_optional_fields(self, agent_instance):
+        """
+        REQ: REQ-A-LangChain
+        Handle Tool 6 output with missing optional fields
+
+        Given:
+            - Tool 6 returns minimal output (missing feedback)
+        When:
+            - _parse_agent_output_score() is called
+        Then:
+            - Defaults provided for missing fields
+            - Response still valid
+        """
+        import json
+
+        tool_output = {
+            "attempt_id": "att_789",
+            "is_correct": True,
+            "score": 100,
+            "explanation": "Correct!",
+            "graded_at": "2025-11-09T12:00:00Z",
+            # Missing: keyword_matches, feedback
+        }
+
+        result = {
+            "messages": [
+                {"role": "user", "content": "Score"},
+                {
+                    "type": "tool",
+                    "name": "score_and_explain",
+                    "content": json.dumps(tool_output),
+                },
+            ]
+        }
+
+        response = agent_instance._parse_agent_output_score(result, "q_789")
+
+        assert isinstance(response, ScoreAnswerResponse)
+
+
+class TestAgentMessageProcessing:
+    """Test message processing and tool call extraction"""
+
+    @pytest.mark.asyncio
+    async def test_count_tool_messages_accurately(self, agent_instance):
+        """
+        REQ: REQ-A-LangChain
+        Count tool messages for agent_steps field
+
+        Given:
+            - Messages with mixed types (user, tool, ai)
+        When:
+            - _parse_agent_output_generate() counts messages
+        Then:
+            - agent_steps correctly counts "tool" type messages
+        """
+        result = {
+            "messages": [
+                {"role": "user", "content": "Generate"},
+                {"type": "tool", "name": "get_user_profile", "content": "1"},
+                {"type": "tool", "name": "search_question_templates", "content": "2"},
+                {"role": "ai", "content": "thinking"},  # Should NOT count
+                {"type": "tool", "name": "get_difficulty_keywords", "content": "3"},
+            ]
+        }
+
+        response = agent_instance._parse_agent_output_generate(result, 1)
+
+        # Should count 3 tool messages (not the ai message)
+        assert response.agent_steps >= 3
+
+    @pytest.mark.asyncio
+    async def test_handle_missing_messages_field(self, agent_instance):
+        """
+        REQ: REQ-A-LangChain
+        Handle result without messages field gracefully
+
+        Given:
+            - Result dict missing "messages" key
+        When:
+            - _parse_agent_output_generate() is called
+        Then:
+            - Returns response with agent_steps=0
+            - success=True, questions=[]
+        """
+        result = {"output": "Some text output"}  # No "messages"
+
+        response = agent_instance._parse_agent_output_generate(result, 1)
+
+        assert isinstance(response, GenerateQuestionsResponse)
+        assert response.agent_steps == 0
