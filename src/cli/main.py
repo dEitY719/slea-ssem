@@ -1,7 +1,7 @@
+import atexit
 import importlib
 import logging
 import sys
-import atexit
 from typing import Dict, List, Optional, Tuple
 
 from prompt_toolkit import PromptSession
@@ -138,7 +138,7 @@ class CLI:
                 break
         return command_path, args
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
         """CLI 종료 시 정리 작업을 수행합니다."""
         # prompt_toolkit 리소스 정리
         try:
@@ -148,7 +148,8 @@ class CLI:
         except Exception:
             pass  # Silently ignore cleanup errors
 
-    def run(self):
+    def run(self) -> None:
+        """Run the interactive CLI main loop."""
         self.console.print("[bold green]Welcome to the SLEA-SSEM CLI![/bold green]")
         self.console.print("[bold yellow]Type 'help' for a list of commands, or 'exit' to quit.[/bold yellow]")
 
@@ -176,6 +177,7 @@ class CLI:
                     self.should_exit = True
                     break
 
+                # Execute command and display results on same screen
                 self.dispatcher.dispatch(command_path, args)
 
             except KeyboardInterrupt:
