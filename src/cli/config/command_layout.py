@@ -129,6 +129,10 @@ COMMAND_LAYOUT = {
         "description": "사용 가능한 명령어 목록을 보여줍니다.",
         "target": "src.cli.actions.system.help",
     },
+    "clear": {
+        "description": "터미널 화면을 정리합니다.",
+        "target": "src.cli.actions.system.clear",
+    },
     "exit": {
         "description": "CLI를 종료합니다.",
         "target": "src.cli.actions.system.exit_cli",
