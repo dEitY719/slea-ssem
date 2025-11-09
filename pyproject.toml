@@ -15,10 +15,12 @@ dependencies = [
     "langchain>=1.0.5",
     "langchain-core>=1.0.4",
     "langchain-google-genai>=3.0.1",
+    "prompt-toolkit>=3.0.52",
     "pydantic",
     "pyjwt>=2.10.1",
     "python-dotenv>=1.2.1",
     "PyYAML",
+    "rich>=14.2.0",
     "sqlalchemy>=2.0.44",
     "sqlalchemy-utils>=0.42.0",
 ]

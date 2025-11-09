@@ -1,8 +1,14 @@
+"""
+Main CLI application module.
+
+This module contains the core CLI implementation including the dispatcher
+and interactive prompt loop.
+"""
+
 import atexit
 import importlib
 import logging
 import sys
-from typing import Dict, List, Optional, Tuple
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
@@ -15,24 +21,31 @@ from src.cli.context import CLIContext
 
 # Configure logging (WARNING level for user-friendly output)
 # Set to DEBUG for troubleshooting, INFO for important events, WARNING for errors only
-logging.basicConfig(
-    level=logging.WARNING,
-    stream=sys.stderr,
-    format="%(levelname)s: %(message)s"
-)
+logging.basicConfig(level=logging.WARNING, stream=sys.stderr, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Suppress asyncio debug logs
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 
+
 class CLIDispatcher:
-    def __init__(self, command_config: CommandConfig, context: CLIContext):
+    """Dispatcher for executing CLI commands based on configuration."""
+
+    def __init__(self, command_config: CommandConfig, context: CLIContext) -> None:
+        """
+        Initialize the CLI dispatcher.
+
+        Args:
+            command_config: Validated command configuration.
+            context: CLI context with console and logger.
+
+        """
         self.command_config = command_config
         self.context = context
         self.console = context.console
         self.logger = context.logger
 
-    def _get_command_target(self, command_path: List[str]) -> Optional[str]:
+    def _get_command_target(self, command_path: list[str]) -> str | None:
         """주어진 명령어 경로에 해당하는 실행 함수 경로를 찾습니다."""
         current_level = self.command_config.commands
         target = None
@@ -43,16 +56,25 @@ class CLIDispatcher:
                     target = cmd_obj.target
                 if cmd_obj.sub_commands:
                     current_level = cmd_obj.sub_commands
-                else: # 하위 명령어가 없는데 경로가 더 있으면 잘못된 경로
+                else:  # 하위 명령어가 없는데 경로가 더 있으면 잘못된 경로
                     break
             else:
-                return None # 명령어를 찾을 수 없음
+                return None  # 명령어를 찾을 수 없음
         return target
 
-    def _import_and_get_func(self, target_path: str):
-        """'module.function' 문자열로부터 함수 객체를 임포트하고 반환합니다."""
+    def _import_and_get_func(self, target_path: str) -> callable | None:
+        """
+        Import and return a function object from a module path string.
+
+        Args:
+            target_path: Module path in 'module.function' format.
+
+        Returns:
+            The function object if found, None otherwise.
+
+        """
         try:
-            module_path, func_name = target_path.rsplit('.', 1)
+            module_path, func_name = target_path.rsplit(".", 1)
             module = importlib.import_module(module_path)
             func = getattr(module, func_name)
             return func
@@ -61,9 +83,14 @@ class CLIDispatcher:
             self.console.print(f"[bold red]Error loading command: {target_path} - {e}[/bold red]")
             return None
 
-    def dispatch(self, command_path: List[str], args: List[str]):
+    def dispatch(self, command_path: list[str], args: list[str]) -> None:
         """
-        명령어 경로와 인자를 기반으로 해당 함수를 찾아 실행합니다.
+        Execute a CLI command based on path and arguments.
+
+        Args:
+            command_path: List of command tokens to find the target function.
+            args: Arguments to pass to the target function.
+
         """
         if not command_path:
             return
@@ -91,16 +118,21 @@ class CLIDispatcher:
                     self.logger.error(f"Error executing command: {e}", exc_info=True)
                     self.console.print(f"[bold red]Error: {e}[/bold red]")
             else:
-                self.console.print(f"[bold red]Could not find executable for command: {' '.join(command_path)}[/bold red]")
+                self.console.print(
+                    f"[bold red]Could not find executable for command: {' '.join(command_path)}[/bold red]"
+                )
         else:
             self.console.print(f"[bold red]Unknown command: {' '.join(command_path)}[/bold red]")
             self.console.print("[bold yellow]Type 'help' to see available commands.[/bold yellow]")
 
 
 class CLI:
-    def __init__(self):
+    """Interactive CLI application using prompt_toolkit."""
+
+    def __init__(self) -> None:
+        """Initialize the CLI application."""
         self.console = Console()
-        self.logger = logger # Use the module-level logger
+        self.logger = logger  # Use the module-level logger
         self.context = CLIContext(console=self.console, logger=self.logger)
         self.command_config = load_config()
         self.dispatcher = CLIDispatcher(self.command_config, self.context)
@@ -110,12 +142,12 @@ class CLI:
         # Register cleanup handler for graceful shutdown
         atexit.register(self._cleanup)
 
-    def _get_completer(self, current_commands: Dict[str, Command]) -> WordCompleter:
+    def _get_completer(self, current_commands: dict[str, Command]) -> WordCompleter:
         """현재 레벨의 명령어들을 위한 자동 완성 기능을 생성합니다."""
         words = list(current_commands.keys())
         return WordCompleter(words, ignore_case=True)
 
-    def _parse_input(self, text: str) -> Tuple[List[str], List[str]]:
+    def _parse_input(self, text: str) -> tuple[list[str], list[str]]:
         """입력 문자열을 명령어 경로와 인자로 분리합니다."""
         parts = text.strip().split()
         if not parts:
@@ -130,10 +162,10 @@ class CLI:
                 command_path.append(part)
                 if current_level[part].sub_commands:
                     current_level = current_level[part].sub_commands
-                else: # 더 이상 하위 명령어가 없으면 나머지는 모두 인자
-                    args = parts[i+1:]
+                else:  # 더 이상 하위 명령어가 없으면 나머지는 모두 인자
+                    args = parts[i + 1 :]
                     break
-            else: # 현재 레벨에서 명령어를 찾을 수 없으면 나머지는 모두 인자
+            else:  # 현재 레벨에서 명령어를 찾을 수 없으면 나머지는 모두 인자
                 args = parts[i:]
                 break
         return command_path, args
@@ -143,7 +175,7 @@ class CLI:
         # prompt_toolkit 리소스 정리
         try:
             # PromptSession 종료 (있다면)
-            if hasattr(self.session, 'app') and self.session.app:
+            if hasattr(self.session, "app") and self.session.app:
                 self.session.app.exit()
         except Exception:
             pass  # Silently ignore cleanup errors
@@ -196,6 +228,7 @@ class CLI:
                 self.logger.error(f"An unexpected error occurred: {e}", exc_info=True)
                 self.console.print(f"[bold red]Error: {e}[/bold red]")
 
+
 def main() -> None:
     """Start the interactive CLI."""
     try:
@@ -209,6 +242,7 @@ def main() -> None:
     finally:
         # Ensure clean exit
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

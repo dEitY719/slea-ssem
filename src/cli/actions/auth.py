@@ -1,4 +1,5 @@
-# src/cli/actions/auth.py
+"""Authentication-related CLI actions."""
+
 from src.cli.context import CLIContext
 
 
@@ -17,5 +18,5 @@ def login(context: CLIContext, *args: str) -> None:
 
     username = args[0]
     context.console.print(f"[bold green]✓ Successfully logged in as '{username}'[/bold green]")
-    context.console.print(f"[dim]  JWT token issued[/dim]")
+    context.console.print("[dim]  JWT token issued[/dim]")
     context.logger.info(f"User '{username}' logged in successfully.")

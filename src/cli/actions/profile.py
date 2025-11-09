@@ -1,8 +1,9 @@
-# src/cli/actions/profile.py
+"""Profile-related CLI actions."""
+
 from src.cli.context import CLIContext
 
 
-def profile_help(context: CLIContext, *args) -> None:
+def profile_help(context: CLIContext, *args: str) -> None:
     """Profile 도메인의 사용 가능한 명령어를 보여줍니다."""
     context.console.print("[bold yellow]Profile Commands:[/bold yellow]")
     context.console.print("  profile nickname check        - 닉네임 중복 확인")
@@ -57,4 +58,3 @@ def update_survey(context: CLIContext, *args: str) -> None:
     context.console.print("[bold green]✓ Profile survey updated successfully[/bold green]")
     context.console.print("[dim]  New profile record created[/dim]")
     context.logger.info(f"Survey updated with data: {args}.")
-

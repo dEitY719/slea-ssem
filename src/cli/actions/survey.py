@@ -1,4 +1,5 @@
-# src/cli/actions/survey.py
+"""Survey-related CLI actions."""
+
 from src.cli.context import CLIContext
 
 

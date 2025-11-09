@@ -280,3 +280,37 @@ Assistant: (Automatically follows 4-phase workflow below)
 **Forcing Function Principle**: Structure & clear pauses = prevent rework. Spec/test approval before code execution.
 
 **For Gemini Users**: Request user verification/execution for all bash commands. Provide formatted output templates for copy-paste workflows.
+
+---
+
+## Current Task: Implement Prompt-Based Dynamic CLI
+
+**Objective**: Implement a dynamic CLI based on `docs/CLI_IF_ENDPOINT.md` with a prompt-based interface using `prompt_toolkit`.
+
+**Current Status**:
+
+1. **Design Document Updated**: `docs/Dynamic_CLI_Design.md` has been updated to reflect the prompt-based approach (V3.0).
+2. **Dependencies Added**: `prompt-toolkit`, `rich`, `pydantic` have been added to `pyproject.toml` via `uv add`.
+3. **Directory Structure Created**:
+    - `src/cli/`
+    - `src/cli/config/`
+    - `src/cli/actions/`
+4. **Configuration Files Created**:
+    - `src/cli/config/models.py` (Pydantic models for commands)
+    - `src/cli/context.py` (CLIContext dataclass)
+    - `src/cli/config/command_layout.py` (Command structure based on `CLI_IF_ENDPOINT.md`)
+    - `src/cli/config/loader.py` (Loads and validates command configuration)
+5. **Placeholder Action Files Created**:
+    - `src/cli/actions/system.py` (`help`, `exit_cli`)
+    - `src/cli/actions/auth.py` (`login`)
+    - `src/cli/actions/survey.py` (`get_survey_schema`, `submit_survey`)
+
+**Next Steps**:
+
+1. **Create Remaining Placeholder Action Files**:
+    - `src/cli/actions/profile.py`
+    - `src/cli/actions/questions.py`
+2. **Implement Main CLI Loop**:
+    - `src/cli/main.py` (Integrate `prompt_toolkit`, command parser, dynamic dispatcher)
+3. **Create CLI Entrypoint**:
+    - `run.py` (at project root)

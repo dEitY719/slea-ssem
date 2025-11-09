@@ -1,16 +1,26 @@
-# src/cli/config/loader.py
-from src.cli.config.models import CommandConfig
+"""
+Load and validate CLI configuration.
+
+This module loads the COMMAND_LAYOUT dictionary from command_layout.py
+and validates it using Pydantic models.
+"""
+
 from src.cli.config.command_layout import COMMAND_LAYOUT
+from src.cli.config.models import CommandConfig
+
 
 def load_config() -> CommandConfig:
     """
-    command_layout.py에서 COMMAND_LAYOUT 딕셔너리를 로드하고,
-    Pydantic 모델(CommandConfig)을 사용하여 구조와 데이터 타입을 검증합니다.
+    Load and validate command configuration.
+
+    Loads COMMAND_LAYOUT dictionary from command_layout.py and validates
+    its structure and data types using Pydantic's CommandConfig model.
 
     Returns:
-        검증된 CommandConfig 객체.
+        Validated CommandConfig object.
 
     Raises:
-        pydantic.ValidationError: 설정 파일의 구조가 모델과 일치하지 않을 경우.
+        pydantic.ValidationError: If configuration structure doesn't match the model.
+
     """
     return CommandConfig(commands=COMMAND_LAYOUT)

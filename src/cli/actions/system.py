@@ -1,5 +1,7 @@
-# src/cli/actions/system.py
+"""System-level CLI actions."""
+
 import os
+
 from src.cli.context import CLIContext
 
 
@@ -41,4 +43,3 @@ def exit_cli(context: CLIContext, *args: str) -> None:
     # 이 함수는 main.py의 루프를 중단시키는 용도로, 직접 호출되기보다는
     # 'exit' 명령어에 대한 트리거로 사용됩니다.
     context.console.print("Exiting CLI...")
-

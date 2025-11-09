@@ -1,3 +1,5 @@
+"""Entry point for SLEA-SSEM CLI application."""
+
 import os
 import signal
 import sys

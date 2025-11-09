@@ -1,4 +1,5 @@
-# src/cli/actions/questions.py
+"""Questions and test-related CLI actions."""
+
 from src.cli.context import CLIContext
 
 
@@ -95,4 +96,3 @@ def generate_explanation(context: CLIContext, *args: str) -> None:
     context.console.print("[bold green]✓ Explanation generated[/bold green]")
     context.console.print("[dim]  Detailed explanation for question available[/dim]")
     context.logger.info(f"Explanation generated for: {' '.join(args)}.")
-

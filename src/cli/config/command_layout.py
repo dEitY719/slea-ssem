@@ -1,13 +1,14 @@
-# src/cli/config/command_layout.py
-
 """
-CLI 명령어의 계층 구조를 정의하는 설정 파일입니다.
-이 구조는 Pydantic 모델에 의해 검증되며, main.py의 커맨드 파서가 사용합니다.
+CLI command hierarchy configuration.
 
-- 최상위 키: 1-depth 명령어 (예: 'profile')
-- 'description': 명령어에 대한 설명 (help 메시지로 사용됨)
-- 'sub_commands': 하위 명령어들을 포함하는 딕셔너리
-- 'target': 명령어가 최종적으로 실행할 함수 경로 ('모듈.함수명')
+This module defines the hierarchical structure of CLI commands.
+The structure is validated by Pydantic models and used by the command parser in main.py.
+
+Keys:
+    - Top-level: First-depth commands (e.g., 'profile')
+    - 'description': Description of the command for help messages
+    - 'sub_commands': Dictionary containing sub-commands
+    - 'target': Module path of the function to execute ('module.function')
 """
 
 COMMAND_LAYOUT = {
