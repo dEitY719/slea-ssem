@@ -15,6 +15,7 @@
 **Purpose**: Define Pydantic models that specify exact input/output schemas for all 6 tools in the question generation and scoring pipeline.
 
 **Scope**:
+
 - Tool 1: Get User Profile
 - Tool 2: Search Question Templates
 - Tool 3: Get Difficulty Keywords
@@ -23,6 +24,7 @@
 - Tool 6: Score & Generate Explanation
 
 **Acceptance Criteria**:
+
 - [ ] All 6 tools have explicit input/output Pydantic models
 - [ ] Models include type hints, field validation, and docstrings
 - [ ] Error response contract defined
@@ -32,12 +34,14 @@
 **Implementation Location**: `src/agent/data_contracts.py`
 
 **Constraints**:
+
 - Use Pydantic v2 BaseModel
 - Strict type validation
 - Support optional fields where appropriate
 - Include metadata/traceability fields (round_id, validation_score, etc.)
 
 **Non-Functional Requirements**:
+
 - All models pass Pydantic validation
 - Integration tests verify tool-to-tool data flow
 - Type hints pass mypy strict mode
@@ -49,22 +53,26 @@
 ### Test Cases Designed
 
 #### Tool 1: Get User Profile
+
 - **TC1.1**: Valid output structure with all fields
 - **TC1.2**: Validation error on missing required field (self_level)
 - **TC1.3**: Valid input accepts user_id string
 - **TC1.4**: Validation error on empty user_id
 
 #### Tool 2: Search Question Templates
+
 - **TC2.1**: Valid input with interests, difficulty, category
 - **TC2.2**: Output contains list of QuestionTemplate objects
 - **TC2.3**: Handles empty search results (empty list)
 
 #### Tool 3: Get Difficulty Keywords
+
 - **TC3.1**: Valid input with difficulty and category
 - **TC3.2**: Output with keywords, concepts, example_questions
 - **TC3.3**: Validation error on missing required field
 
 #### Tool 4: Validate Question Quality
+
 - **TC4.1**: Input accepts stem, question_type, choices, correct_answer
 - **TC4.2**: Validates multiple_choice questions
 - **TC4.3**: Output with validation scores and recommendation
@@ -72,18 +80,21 @@
 - **TC4.5**: Handles REJECT recommendation (< 0.70 score)
 
 #### Tool 5: Save Generated Question
+
 - **TC5.1**: Input for multiple_choice question
 - **TC5.2**: Input for short_answer question
 - **TC5.3**: Output with question_id, round_id, saved_at
 - **TC5.4**: Validates round_id format
 
 #### Tool 6: Score & Generate Explanation
+
 - **TC6.1**: Input with all scoring parameters
 - **TC6.2**: Output for correct answer (score >= 80)
 - **TC6.3**: Output for partial answer (70 <= score < 80)
 - **TC6.4**: Output for incorrect answer (score < 70)
 
 #### Pipeline & Integration
+
 - **TC7.1**: Pipeline output with single generated question
 - **TC7.2**: Pipeline output aggregates multiple questions
 - **TC8.1**: Tool 4 output maps to Tool 5 input (validation_score)
@@ -210,6 +221,7 @@ ErrorResponse
 #### 2. `tests/agent/test_data_contracts.py` (NEW)
 
 **Test Classes**:
+
 - TestTool1UserProfileContract (4 tests)
 - TestTool2TemplateSearchContract (3 tests)
 - TestTool3DifficultyKeywordsContract (3 tests)
@@ -220,6 +232,7 @@ ErrorResponse
 - TestDataContractIntegration (2 tests)
 
 **Total Test Cases**: 27 test methods covering:
+
 - ✓ Valid inputs/outputs
 - ✓ Field validation
 - ✓ Required field enforcement
@@ -235,6 +248,7 @@ ErrorResponse
 ### Manual Testing (Standalone)
 
 Ran comprehensive validation with `test_data_contracts_standalone.py`:
+
 - All 6 tool contracts validated ✓
 - Pipeline output tested ✓
 - Error response tested ✓
@@ -341,6 +355,7 @@ All subsequent tool implementations will import and use these contracts.
 **Format**: `chore: Implement REQ-A-DataContract data contracts for all 6 tools`
 
 **Changes**:
+
 - `src/agent/data_contracts.py` - 416 lines (new)
 - `tests/agent/test_data_contracts.py` - 493 lines (new)
 - `docs/progress/REQ-A-DataContract.md` - Progress tracking (new)
@@ -352,4 +367,3 @@ All subsequent tool implementations will import and use these contracts.
 **Status**: ✅ COMPLETED
 **Date Completed**: 2025-11-09
 **Completion Rate**: 100% (4/4 phases)
-
