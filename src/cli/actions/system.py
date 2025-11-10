@@ -61,11 +61,32 @@ def help(context: CLIContext, *args: str) -> None:
     # Sort by command name
     all_commands.sort(key=lambda x: x[0])
 
+    # Separate CLI system commands from API commands
+    cli_system_commands = {"help", "clear", "exit"}
+    api_commands = []
+    system_commands = []
+
+    for cmd, usage, description in all_commands:
+        # Get the root command name (first word)
+        root_cmd = cmd.split()[0]
+        if root_cmd in cli_system_commands:
+            system_commands.append((cmd, usage, description))
+        else:
+            api_commands.append((cmd, usage, description))
+
     # Create rich table
     table = Table(show_header=False, box=None, padding=(0, 2))
 
-    # Display commands with usage and description
-    for _cmd, usage, description in all_commands:
+    # Display API commands
+    for _cmd, usage, description in api_commands:
+        # Usage in normal style (white), description in dim style
+        table.add_row(usage, f"[dim]{description}[/dim]")
+
+    # Add separator line
+    table.add_row(f"[dim]{'─' * 70}[/dim]", "")
+
+    # Display system commands
+    for _cmd, usage, description in system_commands:
         # Usage in normal style (white), description in dim style
         table.add_row(usage, f"[dim]{description}[/dim]")
 
