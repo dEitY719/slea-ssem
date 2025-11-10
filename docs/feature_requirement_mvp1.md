@@ -345,36 +345,169 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 ---
 
-## REQ-B-A2: 닉네임 등록 (Backend)
+## REQ-B-A2: 닉네임 관리 (Backend)
+
+### REQ-B-A2-Availability: 닉네임 중복 확인
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-B-A2-1** | Profile-Service가 닉네임 중복 여부를 1초 내에 확인하고 응답해야 한다. | **M** |
-| **REQ-B-A2-2** | 닉네임 유효성 검사(길이, 특수문자, 금칙어 필터)를 구현해야 한다. | **M** |
-| **REQ-B-A2-3** | 중복 시 대안 3개를 자동으로 생성해서 제안해야 한다. (예: 사용자명_1, 사용자명_2, 사용자명_3) | **S** |
-| **REQ-B-A2-4** | 금칙어 필터 목록을 유지하고, 위반 시 명확한 거부 사유를 반환해야 한다. | **S** |
-| **REQ-B-A2-5** | 닉네임 검증 후 users 테이블에 사용자 레코드를 저장해야 한다. | **M** |
+| **REQ-B-A2-Avail-1** | Profile-Service가 특정 닉네임의 중복 여부를 1초 내에 확인하고 응답해야 한다. (인증 불필요) | **M** |
+| **REQ-B-A2-Avail-2** | 닉네임 유효성 검사(길이 3-20자, 특수문자 제외, 금칙어 필터)를 구현해야 한다. | **M** |
+| **REQ-B-A2-Avail-3** | 중복 시 대안 3개를 자동으로 생성해서 제안해야 한다. (예: 사용자명_1, 사용자명_2, 사용자명_3) | **S** |
+| **REQ-B-A2-Avail-4** | 금칙어 필터 목록을 유지하고, 위반 시 명확한 거부 사유를 반환해야 한다. | **S** |
+
+**API 엔드포인트**: `POST /profile/nickname/check` (인증 불필요)
 
 **수용 기준**:
 
-- "닉네임 중복 확인 요청 후 1초 내 결과가 반환된다."
-- "가입 완료 후 DB 조회 시 사용자 레코드가 정확히 생성되어 있다."
+- "POST /profile/nickname/check?nickname=test123 요청 후 1초 내 {available: true/false} 응답"
+- "중복 시 3개 이상의 대안 제안"
+- "금칙어 위반 시 이유 명시"
 
 ---
 
-## REQ-B-A2-Edit: 프로필 수정 (Backend)
+### REQ-B-A2-Register: 닉네임 등록
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-B-A2-Edit-1** | Profile-Service가 사용자의 닉네임 변경 요청을 받아, 기존 닉네임은 제외하고 중복 여부를 확인해야 한다. | **M** |
-| **REQ-B-A2-Edit-2** | 닉네임 변경 시 users 테이블의 nickname 필드를 업데이트하고, updated_at 타임스탬프를 갱신해야 한다. | **M** |
-| **REQ-B-A2-Edit-3** | 자기평가 정보(수준, 경력, 직군, 업무, 관심분야) 변경 요청을 받아, user_profile_surveys 테이블에 새 레코드를 생성하거나 기존 레코드를 업데이트해야 한다. | **M** |
-| **REQ-B-A2-Edit-4** | 프로필 수정 API는 1초 내에 응답해야 한다. | **M** |
+| **REQ-B-A2-Reg-1** | JWT 토큰으로 현재 사용자를 식별하여 닉네임 등록 요청을 처리해야 한다. (인증 필수) | **M** |
+| **REQ-B-A2-Reg-2** | 닉네임 검증 후 users 테이블의 nickname 필드를 업데이트하고, updated_at 타임스탬프를 갱신해야 한다. | **M** |
+| **REQ-B-A2-Reg-3** | 같은 사용자가 중복 등록을 시도할 경우, 기존 닉네임을 제외하고 중복 여부를 확인해야 한다. | **M** |
+
+**API 엔드포인트**: `POST /profile/register` (인증 필수: Authorization 헤더의 JWT)
+
+**응답**:
+```json
+{
+  "success": true,
+  "message": "닉네임 등록 완료",
+  "user_id": "bwyoon",
+  "nickname": "test123",
+  "registered_at": "2025-11-10T12:00:00Z"
+}
+```
 
 **수용 기준**:
 
+- "JWT 토큰 없이 요청 시 401 Unauthorized 응답"
+- "등록 후 1초 내에 결과 반환"
+- "DB 조회 시 users.nickname이 정확히 업데이트됨"
+
+---
+
+### REQ-B-A2-View: 닉네임 조회
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-B-A2-View-1** | JWT 토큰으로 현재 사용자의 닉네임 정보를 조회해야 한다. (인증 필수) | **M** |
+| **REQ-B-A2-View-2** | 조회 응답에 사용자 ID, 현재 닉네임, 등록 일시, 수정 일시를 포함해야 한다. | **M** |
+
+**API 엔드포인트**: `GET /profile/nickname` (인증 필수: Authorization 헤더의 JWT)
+
+**응답**:
+```json
+{
+  "user_id": "bwyoon",
+  "knox_id": "bwyoon",
+  "nickname": "test123",
+  "registered_at": "2025-11-10T10:30:00Z",
+  "updated_at": "2025-11-10T12:00:00Z"
+}
+```
+
+**에러 응답**:
+```json
+{
+  "error": "Nickname not set",
+  "detail": "User has not registered a nickname yet"
+}
+```
+
+**수용 기준**:
+
+- "JWT 토큰 없이 요청 시 401 Unauthorized 응답"
+- "GET 요청 후 1초 내에 현재 사용자의 닉네임 정보 반환"
+- "다른 사용자의 정보는 조회 불가"
+
+---
+
+## REQ-B-A2-Edit: 닉네임 수정 (Backend)
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-B-A2-Edit-1** | JWT 토큰으로 현재 사용자를 식별하여 닉네임 변경 요청을 처리해야 한다. (인증 필수) | **M** |
+| **REQ-B-A2-Edit-2** | 기존 닉네임은 제외하고 새로운 닉네임의 중복 여부를 확인해야 한다. | **M** |
+| **REQ-B-A2-Edit-3** | 닉네임 변경 시 users 테이블의 nickname 필드를 업데이트하고, updated_at 타임스탬프를 갱신해야 한다. | **M** |
+| **REQ-B-A2-Edit-4** | 닉네임 수정 API는 1초 내에 응답해야 한다. | **M** |
+
+**API 엔드포인트**: `PUT /profile/nickname` (인증 필수: Authorization 헤더의 JWT)
+
+**요청**:
+```json
+{
+  "nickname": "newname123"
+}
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "message": "닉네임 수정 완료",
+  "user_id": "bwyoon",
+  "old_nickname": "test123",
+  "new_nickname": "newname123",
+  "updated_at": "2025-11-10T12:30:00Z"
+}
+```
+
+**수용 기준**:
+
+- "JWT 토큰 없이 요청 시 401 Unauthorized 응답"
 - "닉네임 변경 요청 후 1초 내 성공/실패 응답이 반환된다."
-- "DB 조회 시 updated_at이 최신 타임스탬프로 갱신되어 있다."
+- "DB 조회 시 users.nickname이 새로운 값으로 업데이트됨"
+- "updated_at이 최신 타임스탬프로 갱신되어 있다."
+
+---
+
+## REQ-B-A2-Profile: 자기평가 정보 수정 (Backend)
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-B-A2-Prof-1** | JWT 토큰으로 현재 사용자를 식별하여 자기평가 정보 변경 요청을 처리해야 한다. (인증 필수) | **M** |
+| **REQ-B-A2-Prof-2** | 자기평가 정보(수준, 경력, 직군, 업무, 관심분야) 변경 요청을 받아, user_profile_surveys 테이블에 새 레코드를 생성해야 한다. | **M** |
+| **REQ-B-A2-Prof-3** | 자기평가 수정 API는 1초 내에 응답해야 한다. | **M** |
+
+**API 엔드포인트**: `PUT /profile/survey` (인증 필수: Authorization 헤더의 JWT)
+
+**요청**:
+```json
+{
+  "level": "advanced",
+  "career": "10years",
+  "job_role": "Senior Engineer",
+  "duty": "System Architecture",
+  "interests": ["AI", "Cloud", "ML"]
+}
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "message": "자기평가 정보 업데이트 완료",
+  "user_id": "bwyoon",
+  "survey_id": "survey_xyz123",
+  "updated_at": "2025-11-10T12:35:00Z"
+}
+```
+
+**수용 기준**:
+
+- "JWT 토큰 없이 요청 시 401 Unauthorized 응답"
+- "자기평가 수정 요청 후 1초 내 성공/실패 응답이 반환된다."
+- "DB 조회 시 새로운 user_profile_surveys 레코드가 생성됨"
+- "이전 레코드는 유지되어 히스토리 추적 가능"
 
 ---
 
