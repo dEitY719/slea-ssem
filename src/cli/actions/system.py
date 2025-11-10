@@ -2,6 +2,8 @@
 
 import os
 
+from rich.table import Table
+
 from src.cli.config.command_layout import COMMAND_LAYOUT
 from src.cli.context import CLIContext
 
@@ -41,9 +43,17 @@ def _flatten_commands(commands: dict, prefix: str = "") -> list[tuple[str, str |
 
 def help(context: CLIContext, *args: str) -> None:
     """사용 가능한 명령어 목록을 보여줍니다."""
-    context.console.print("[bold cyan]╔════════════════════════════════════════════════════════════════╗[/bold cyan]")
-    context.console.print("[bold cyan]║  SLEA-SSEM CLI - Available Commands                           ║[/bold cyan]")
-    context.console.print("[bold cyan]╚════════════════════════════════════════════════════════════════╝[/bold cyan]")
+    context.console.print()
+    context.console.print(
+        "[bold cyan]╔════════════════════════════════════════════════════════════════════════════════╗[/bold cyan]"
+    )
+    context.console.print(
+        "[bold cyan]║  SLEA-SSEM CLI - Available Commands                                          ║[/bold cyan]"
+    )
+    context.console.print(
+        "[bold cyan]╚════════════════════════════════════════════════════════════════════════════════╝[/bold cyan]"
+    )
+    context.console.print()
 
     # Flatten and collect all commands
     all_commands = _flatten_commands(COMMAND_LAYOUT)
@@ -51,20 +61,20 @@ def help(context: CLIContext, *args: str) -> None:
     # Sort by command name
     all_commands.sort(key=lambda x: x[0])
 
-    # Find max length for alignment
-    max_usage_len = max(len(usage) for _, usage, _ in all_commands)
+    # Create rich table
+    table = Table(show_header=False, box=None, padding=(0, 2))
 
     # Display commands with usage and description
     for _cmd, usage, description in all_commands:
-        # Format: "usage" (padded) → description
-        usage_display = f"[dim]{usage}[/dim]"
-        spacing = " " * (max_usage_len - len(usage) + 2)
-        context.console.print(f"  {usage_display}{spacing}→  {description}")
+        # Usage in dim style, description in normal style
+        table.add_row(f"[dim]{usage}[/dim]", description)
+
+    context.console.print(table)
 
     context.console.print()
-    context.console.print(
-        "[bold yellow]📖 Tip: Type a command name to execute it or 'help' to see this list again.[/bold yellow]"
-    )
+    context.console.print("[bold yellow]💡 팁:[/bold yellow] 명령어를 입력하거나 'help'를 다시 입력하세요")
+    context.console.print("[dim]괄호 [] 안의 인자는 필수입니다[/dim]")
+    context.console.print()
 
 
 def clear(context: CLIContext, *args: str) -> None:
