@@ -1,141 +1,113 @@
 """
 Profile API endpoints.
 
-REQ: REQ-B-A2-1, REQ-B-A2-2, REQ-B-A2-3, REQ-B-A2-5, REQ-B-A2-Edit-1, REQ-B-A2-Edit-2, REQ-B-A2-Edit-3
+REQ: REQ-B-A2-Avail-1, REQ-B-A2-Avail-2, REQ-B-A2-Avail-3, REQ-B-A2-Avail-4,
+     REQ-B-A2-Reg-1, REQ-B-A2-Reg-2, REQ-B-A2-Reg-3,
+     REQ-B-A2-View-1, REQ-B-A2-View-2,
+     REQ-B-A2-Edit-1, REQ-B-A2-Edit-2, REQ-B-A2-Edit-3, REQ-B-A2-Edit-4,
+     REQ-B-A2-Prof-1, REQ-B-A2-Prof-2, REQ-B-A2-Prof-3
 """
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.backend.database import get_db
+from src.backend.models.user import User
 from src.backend.services.profile_service import ProfileService
+from src.backend.utils.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["profile"])
 
 
+# ============================================================================
+# Request/Response Models
+# ============================================================================
+
+
 class NicknameCheckRequest(BaseModel):
-    """
-    Request model for nickname availability check.
-
-    Attributes:
-        nickname: Nickname to check
-
-    """
+    """Request model for nickname availability check."""
 
     nickname: str = Field(..., description="Nickname to check", min_length=1)
 
 
 class NicknameCheckResponse(BaseModel):
-    """
-    Response model for nickname availability check.
-
-    Attributes:
-        available: True if nickname is available
-        suggestions: List of alternatives if taken
-
-    """
+    """Response model for nickname availability check."""
 
     available: bool = Field(..., description="Whether nickname is available")
     suggestions: list[str] = Field(..., description="Alternative suggestions if taken")
 
 
 class NicknameRegisterRequest(BaseModel):
-    """
-    Request model for nickname registration.
+    """Request model for nickname registration."""
 
-    Attributes:
-        nickname: Nickname to register
-
-    """
-
-    nickname: str = Field(..., description="Nickname to register")
+    nickname: str = Field(..., description="Nickname to register", min_length=3, max_length=20)
 
 
 class NicknameRegisterResponse(BaseModel):
-    """
-    Response model for nickname registration.
+    """Response model for nickname registration."""
 
-    Attributes:
-        user_id: User ID
-        nickname: Registered nickname
-        updated_at: Update timestamp
-
-    """
-
-    user_id: int = Field(..., description="User ID")
+    success: bool = Field(..., description="Registration success")
+    message: str = Field(..., description="Result message")
+    user_id: str = Field(..., description="User's knox_id")
     nickname: str = Field(..., description="Registered nickname")
-    updated_at: str = Field(..., description="Update timestamp")
+    registered_at: str = Field(..., description="Registration timestamp")
+
+
+class NicknameViewResponse(BaseModel):
+    """Response model for nickname view."""
+
+    user_id: str = Field(..., description="User's knox_id")
+    nickname: str | None = Field(..., description="Current nickname (null if not set)")
+    registered_at: str | None = Field(..., description="Registration timestamp")
+    updated_at: str | None = Field(..., description="Last update timestamp")
 
 
 class NicknameEditRequest(BaseModel):
-    """
-    Request model for nickname edit.
+    """Request model for nickname edit."""
 
-    Attributes:
-        nickname: New nickname to set
-
-    """
-
-    nickname: str = Field(..., description="New nickname")
+    nickname: str = Field(..., description="New nickname", min_length=3, max_length=20)
 
 
 class NicknameEditResponse(BaseModel):
-    """
-    Response model for nickname edit.
+    """Response model for nickname edit."""
 
-    Attributes:
-        user_id: User ID
-        nickname: Updated nickname
-        updated_at: Update timestamp
-
-    """
-
-    user_id: int = Field(..., description="User ID")
-    nickname: str = Field(..., description="Updated nickname")
+    success: bool = Field(..., description="Update success")
+    message: str = Field(..., description="Result message")
+    user_id: str = Field(..., description="User's knox_id")
+    old_nickname: str | None = Field(..., description="Previous nickname")
+    new_nickname: str = Field(..., description="New nickname")
     updated_at: str = Field(..., description="Update timestamp")
 
 
 class SurveyUpdateRequest(BaseModel):
-    """
-    Request model for survey update.
+    """Request model for survey update."""
 
-    Attributes:
-        self_level: Self-assessed level (beginner/intermediate/advanced)
-        years_experience: Years of experience
-        job_role: Job role/title
-        duty: Main responsibilities
-        interests: List of interest categories
-
-    """
-
-    self_level: str | None = Field(None, description="Self-assessed level")
-    years_experience: int | None = Field(None, description="Years of experience (0-60)")
-    job_role: str | None = Field(None, description="Job role/title (1-100 chars)")
-    duty: str | None = Field(None, description="Main responsibilities (1-500 chars)")
-    interests: list[str] | None = Field(None, description="Interest categories (1-20 items)")
+    level: str | None = Field(None, description="Self-assessed level")
+    career: str | None = Field(None, description="Years of experience")
+    job_role: str | None = Field(None, description="Job role/title")
+    duty: str | None = Field(None, description="Main responsibilities")
+    interests: list[str] | None = Field(None, description="Interest categories")
 
 
 class SurveyUpdateResponse(BaseModel):
-    """
-    Response model for survey update.
+    """Response model for survey update."""
 
-    Attributes:
-        survey_id: Survey record ID
-        user_id: User ID
-        self_level: Self-assessed level
-        submitted_at: Submission timestamp
+    success: bool = Field(..., description="Update success")
+    message: str = Field(..., description="Result message")
+    user_id: str = Field(..., description="User's knox_id")
+    survey_id: str = Field(..., description="Survey record ID")
+    updated_at: str = Field(..., description="Update timestamp")
 
-    """
 
-    survey_id: str = Field(..., description="Survey ID")
-    user_id: int = Field(..., description="User ID")
-    self_level: str | None = Field(..., description="Self-assessed level")
-    submitted_at: str = Field(..., description="Submission timestamp")
+# ============================================================================
+# API Endpoints
+# ============================================================================
 
 
 @router.post(
@@ -143,16 +115,16 @@ class SurveyUpdateResponse(BaseModel):
     response_model=NicknameCheckResponse,
     status_code=200,
     summary="Check Nickname Availability",
-    description="Check if nickname is available and get suggestions if taken",
+    description="Check if nickname is available (public, no authentication required)",
 )
 def check_nickname_availability(
     request: NicknameCheckRequest,
     db: Session = Depends(get_db),  # noqa: B008
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """
     Check if nickname is available.
 
-    REQ: REQ-B-A2-1, REQ-B-A2-3
+    REQ: REQ-B-A2-Avail-1, REQ-B-A2-Avail-2, REQ-B-A2-Avail-3, REQ-B-A2-Avail-4
 
     Args:
         request: Nickname check request
@@ -162,7 +134,7 @@ def check_nickname_availability(
         Response with availability and suggestions
 
     Raises:
-        HTTPException: If validation fails
+        HTTPException: 400 if validation fails
 
     """
     try:
@@ -181,37 +153,40 @@ def check_nickname_availability(
     response_model=NicknameRegisterResponse,
     status_code=201,
     summary="Register Nickname",
-    description="Register nickname for authenticated user",
+    description="Register nickname for authenticated user (requires JWT)",
 )
 def register_nickname(
     request: NicknameRegisterRequest,
+    user: User = Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """
-    Register nickname for user.
+    Register nickname for authenticated user.
 
-    REQ: REQ-B-A2-5
+    REQ: REQ-B-A2-Reg-1, REQ-B-A2-Reg-2, REQ-B-A2-Reg-3
 
     Args:
         request: Nickname registration request
+        user: Current authenticated user (from JWT)
         db: Database session
 
     Returns:
         Response with registered nickname and timestamp
 
     Raises:
-        HTTPException: If validation or registration fails
+        HTTPException: 400 if validation fails, 401 if not authenticated
 
     """
-    # TODO: Extract user_id from JWT token in production
-    # For now, using a placeholder. In production, extract from auth token.
-    # user_id = get_current_user_id(token)
-    user_id = 1  # Placeholder - should come from JWT
-
     try:
         profile_service = ProfileService(db)
-        result = profile_service.register_nickname(user_id, request.nickname)
-        return result
+        result = profile_service.register_nickname(user.id, request.nickname)
+        return {
+            "success": True,
+            "message": "닉네임 등록 완료",
+            "user_id": user.knox_id,
+            "nickname": result["nickname"],
+            "registered_at": result["updated_at"],
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -219,40 +194,80 @@ def register_nickname(
         raise HTTPException(status_code=500, detail="Failed to register nickname") from e
 
 
+@router.get(
+    "/nickname",
+    response_model=NicknameViewResponse,
+    status_code=200,
+    summary="Get Nickname",
+    description="Get current user's nickname information (requires JWT)",
+)
+def get_nickname(
+    user: User = Depends(get_current_user),  # noqa: B008
+) -> dict[str, Any]:
+    """
+    Get current user's nickname information.
+
+    REQ: REQ-B-A2-View-1, REQ-B-A2-View-2
+
+    Args:
+        user: Current authenticated user (from JWT)
+
+    Returns:
+        Response with user's nickname information
+
+    Raises:
+        HTTPException: 401 if not authenticated
+
+    """
+    return {
+        "user_id": user.knox_id,
+        "nickname": user.nickname,
+        "registered_at": user.created_at.isoformat() if user.nickname else None,
+        "updated_at": user.updated_at.isoformat() if user.nickname else None,
+    }
+
+
 @router.put(
     "/nickname",
     response_model=NicknameEditResponse,
     status_code=200,
     summary="Edit Nickname",
-    description="Edit user's nickname (excluding self from duplicate check)",
+    description="Edit current user's nickname (requires JWT)",
 )
 def edit_nickname(
     request: NicknameEditRequest,
+    user: User = Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """
-    Edit user's nickname.
+    Edit current user's nickname.
 
-    REQ: REQ-B-A2-Edit-1, REQ-B-A2-Edit-2
+    REQ: REQ-B-A2-Edit-1, REQ-B-A2-Edit-2, REQ-B-A2-Edit-3, REQ-B-A2-Edit-4
 
     Args:
         request: Nickname edit request
+        user: Current authenticated user (from JWT)
         db: Database session
 
     Returns:
         Response with updated nickname and timestamp
 
     Raises:
-        HTTPException: If validation or edit fails
+        HTTPException: 400 if validation fails, 401 if not authenticated
 
     """
-    # TODO: Extract user_id from JWT token in production
-    user_id = 1  # Placeholder - should come from JWT
-
     try:
+        old_nickname = user.nickname
         profile_service = ProfileService(db)
-        result = profile_service.edit_nickname(user_id, request.nickname)
-        return result
+        result = profile_service.edit_nickname(user.id, request.nickname)
+        return {
+            "success": True,
+            "message": "닉네임 수정 완료",
+            "user_id": user.knox_id,
+            "old_nickname": old_nickname,
+            "new_nickname": result["nickname"],
+            "updated_at": result["updated_at"],
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -265,38 +280,43 @@ def edit_nickname(
     response_model=SurveyUpdateResponse,
     status_code=201,
     summary="Update Survey",
-    description="Create new user profile survey record",
+    description="Update user profile survey information (requires JWT)",
 )
 def update_survey(
     request: SurveyUpdateRequest,
+    user: User = Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """
     Update user profile survey.
 
-    REQ: REQ-B-A2-Edit-3
+    REQ: REQ-B-A2-Prof-1, REQ-B-A2-Prof-2, REQ-B-A2-Prof-3
 
-    Creates new survey record (never updates existing). Maintains audit trail.
+    Creates new survey record (never updates existing) to maintain audit trail.
 
     Args:
         request: Survey update request
+        user: Current authenticated user (from JWT)
         db: Database session
 
     Returns:
         Response with created survey ID and details
 
     Raises:
-        HTTPException: If validation or creation fails
+        HTTPException: 400 if validation fails, 401 if not authenticated
 
     """
-    # TODO: Extract user_id from JWT token in production
-    user_id = 1  # Placeholder - should come from JWT
-
     try:
         profile_service = ProfileService(db)
         survey_data = request.model_dump(exclude_none=True)
-        result = profile_service.update_survey(user_id, survey_data)
-        return result
+        result = profile_service.update_survey(user.id, survey_data)
+        return {
+            "success": True,
+            "message": "자기평가 정보 업데이트 완료",
+            "user_id": user.knox_id,
+            "survey_id": result["survey_id"],
+            "updated_at": result["submitted_at"],
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
