@@ -28,7 +28,7 @@ case "$cmd" in
       fi
       if [ -n "$UVICORN_ENTRY" ]; then
         APP_ENV=${APP_ENV:-dev} DATASET=${DATASET:-"$DEFAULT_DATASET"} \
-        $PY_RUN uvicorn "$UVICORN_ENTRY" --reload --host 0.0.0.0 --port $PORT
+        $PY_RUN uvicorn "$UVICORN_ENTRY" --reload --host 127.0.0.1 --port $PORT
       else
         echo "❌ No dev server configured. Edit tools/dev.sh to add your start command."
         exit 1
@@ -100,7 +100,7 @@ case "$cmd" in
 Usage: ./tools/dev.sh <command>
 
 Commands:
-  up           Start dev server (uvicorn + DB init)
+  up           Start dev server (uvicorn on http://localhost:PORT)
   down         Stop dev server (free port)
   test         Run test suite (pytest)
   format       Format + lint code (tox -e ruff)
@@ -117,8 +117,8 @@ Environment Variables:
                Options: dev|staging|prod
 
 Examples:
-  ./tools/dev.sh up                 # Start on port 8000
-  PORT=8100 ./tools/dev.sh up       # Start on port 8100
+  ./tools/dev.sh up                 # Start on http://localhost:8000
+  PORT=8100 ./tools/dev.sh up       # Start on http://localhost:8100
   PORT=8100 ./tools/dev.sh down     # Stop port 8100
   ./tools/dev.sh cli                # Start CLI
   ./tools/dev.sh clean              # Clean Python cache (before restarting CLI)
