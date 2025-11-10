@@ -15,7 +15,7 @@ from src.backend.services.profile_service import ProfileService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/profile", tags=["profile"])
+router = APIRouter(tags=["profile"])
 
 
 class NicknameCheckRequest(BaseModel):

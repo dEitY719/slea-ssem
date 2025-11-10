@@ -62,6 +62,32 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-A-LangChain | LangChain Agent 구현 | 4 | ✅ Done | 13 tests (100%), Commit: [pending], Progress: docs/progress/REQ-A-LangChain.md |
 | REQ-B-B7 | 학습 일정 예고 프리뷰 | 0 | ⏳ Backlog | 3개 sub-tasks (MVP 1.0) |
 
+### CLI (bwyoon)
+
+| REQ ID | Feature | Phase | Status | Notes |
+|--------|---------|-------|--------|-------|
+| REQ-CLI-AUTH-1 | Login with JWT storage | 4 | ✅ Done | APIClient + token management, Commit: [pending] |
+| REQ-CLI-AUTH-2 | Auto token refresh | 0 | ⏳ Backlog | 향후 구현 예정 |
+| REQ-CLI-SURVEY-1 | Get survey schema | 4 | ✅ Done | API endpoint 연동 |
+| REQ-CLI-SURVEY-2 | Submit survey data | 4 | ✅ Done | 인증 확인, 데이터 제출 |
+| REQ-CLI-PROFILE-1 | Check nickname availability | 4 | ✅ Done | 제안 포함 |
+| REQ-CLI-PROFILE-2 | Register nickname | 4 | ✅ Done | 인증 필수 |
+| REQ-CLI-PROFILE-3 | Edit nickname | 4 | ✅ Done | 기존 닉네임 수정 |
+| REQ-CLI-PROFILE-4 | Update survey | 4 | ✅ Done | 프로필 업데이트 |
+| REQ-CLI-PROFILE-5 | View user profile | 0 | ⏳ Backlog | 프로필 조회 기능 |
+| REQ-CLI-QUESTIONS-1 | Generate Round 1 questions | 4 | ✅ Done | 세션 자동 생성 |
+| REQ-CLI-QUESTIONS-2 | Generate adaptive questions | 4 | ✅ Done | Round 2 문항 생성 |
+| REQ-CLI-QUESTIONS-3 | Autosave answer | 4 | ✅ Done | 실시간 저장 |
+| REQ-CLI-QUESTIONS-4 | Score answer | 4 | ✅ Done | 개별 채점 |
+| REQ-CLI-QUESTIONS-5 | Calculate round score | 4 | ✅ Done | 라운드 총점 계산 |
+| REQ-CLI-QUESTIONS-6 | Generate explanation | 4 | ✅ Done | 문제 해설 생성 |
+| REQ-CLI-QUESTIONS-7 | Resume session | 4 | ✅ Done | 중단된 세션 재개 |
+| REQ-CLI-QUESTIONS-8 | Check time status | 4 | ✅ Done | 시간 제한 확인 |
+| REQ-CLI-SESSION-1 | Save session to file | 0 | ⏳ Backlog | JSON 저장 |
+| REQ-CLI-SESSION-2 | Load session from file | 0 | ⏳ Backlog | JSON 복구 |
+| REQ-CLI-EXPORT-1 | Export results as JSON | 0 | ⏳ Backlog | 결과 내보내기 |
+| REQ-CLI-EXPORT-2 | Export results as CSV | 0 | ⏳ Backlog | 결과 내보내기 |
+
 ---
 
 ## 🔍 Phase Legend

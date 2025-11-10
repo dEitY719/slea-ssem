@@ -9,6 +9,8 @@ import atexit
 import importlib
 import logging
 import sys
+from collections.abc import Callable
+from typing import Any
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
@@ -62,7 +64,7 @@ class CLIDispatcher:
                 return None  # 명령어를 찾을 수 없음
         return target
 
-    def _import_and_get_func(self, target_path: str) -> callable | None:
+    def _import_and_get_func(self, target_path: str) -> Callable[..., Any] | None:
         """
         Import and return a function object from a module path string.
 

@@ -16,7 +16,7 @@ from src.backend.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 
 class LoginRequest(BaseModel):

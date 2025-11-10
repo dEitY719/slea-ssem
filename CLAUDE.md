@@ -16,10 +16,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development
 
-### Quick Start (3 Commands)
+### Quick Start (4 Commands)
 
 ```bash
 ./tools/dev.sh up              # Start dev server (localhost:8000)
+./tools/dev.sh down            # Stop dev server (free port)
 ./tools/dev.sh test            # Run tests
 ./tools/dev.sh format          # Format + lint code
 ```
@@ -27,12 +28,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Common Commands
 
 ```bash
+./tools/dev.sh cli             # Start interactive CLI
 ./tools/dev.sh shell           # Enter project shell
 ./tools/dev.sh help            # Show all commands
 
 tox -e py311                   # Test on Python 3.11
 tox -e style                   # Full format/lint pipeline
 ```
+
+### Server Management with Custom Port
+
+```bash
+PORT=8100 ./tools/dev.sh up    # Start on port 8100
+PORT=8100 ./tools/dev.sh down  # Stop port 8100 server
+```
+
+**Notes**:
+- Default port: 8000 (can override with `PORT` env var)
+- `down` automatically finds and kills the server on specified port
+- `down` works with or without `lsof` command available
 
 ### Package Management
 
@@ -193,6 +207,93 @@ Assistant: (Automatically follows 4-phase workflow below)
 
 **Key Principle**: Phase 1-2 pause for review = prevent rework. Spec must be approved before coding.
 **Progress Tracking**: Always complete Phase 4 progress files to maintain audit trail & team visibility.
+
+---
+
+## CLI Feature Requirement Workflow
+
+**When to use**: CLI 기능 추가/개선할 때, 모든 feature는 requirement 먼저 정의
+
+### Step 1: Requirement 작성
+
+**파일**: `docs/CLI-FEATURE-REQUIREMENTS.md`에 다음 포맷으로 추가
+
+**포맷**: `REQ-CLI-[DOMAIN]-[NUMBER]`
+- Domain: auth, survey, profile, questions, session, export, ...
+- Number: 도메인 내 순번 (1, 2, 3, ...)
+
+**템플릿**:
+```markdown
+### REQ-CLI-[DOMAIN]-[NUMBER]: [기능명]
+
+**Description**:
+한 문장 요약
+
+상세 설명 (2-3줄)
+
+**사용 예**:
+```bash
+> command [args]
+✓ success output
+```
+
+**기대 출력**:
+- 성공: 메시지 + 데이터
+- 실패: 에러 메시지
+
+**에러 케이스**:
+- Not authenticated → "Please login first"
+- API error → 상세 에러 메시지
+- Invalid input → Usage 가이드
+
+**Acceptance Criteria**:
+- [ ] 명령어 정확 작동
+- [ ] 에러 처리 완벽
+- [ ] 도움말 명확
+
+**Priority**: M/H/L
+**Dependencies**: [API / Module]
+**Status**: ⏳ Backlog
+```
+
+### Step 2-5: REQ-Based Workflow 적용
+
+**Phase 1-4는 기존 CLAUDE.md의 REQ-Based Development Workflow과 동일**
+
+```
+REQ-CLI-AUTH-1 기능 구현해
+↓
+Phase 1: 요구사항 검토 → Approve?
+Phase 2: 테스트 설계 → Approve?
+Phase 3: 구현 + 검증
+Phase 4: Commit + Progress tracking
+```
+
+### CLI Feature 발견 및 추가 방법
+
+**방법: 즉시 추가 (권장)**
+
+```
+사용자: "CLI에 세션 저장 기능이 필요해"
+↓
+1. docs/CLI-FEATURE-REQUIREMENTS.md에 REQ-CLI-SESSION-1 추가
+2. Requirement 정의 (5분)
+3. "REQ-CLI-SESSION-1 기능 구현해" 요청
+4. Claude가 4단계 Workflow 적용
+```
+
+### CLI Requirement 관리
+
+**조직**:
+- `docs/CLI-FEATURE-REQUIREMENTS.md`: 모든 CLI 요구사항 통합 관리
+- `docs/DEV-PROGRESS.md`: CLI 섹션에 진행 상황 추적
+- `docs/progress/REQ-CLI-*.md`: 각 기능별 Phase 4 documentation
+
+**진행 추적**:
+- Phase 4 완료 시:
+  1. `docs/CLI-FEATURE-REQUIREMENTS.md`에서 Status: ✅ Done 변경
+  2. `docs/DEV-PROGRESS.md`의 CLI 섹션에서 Phase 4로 변경
+  3. Commit SHA 기록
 
 ---
 

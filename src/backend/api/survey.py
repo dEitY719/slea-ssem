@@ -16,7 +16,7 @@ from src.backend.services.survey_service import SurveyService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/survey", tags=["survey"])
+router = APIRouter(tags=["survey"])
 
 
 class SurveySchemaResponse(BaseModel):

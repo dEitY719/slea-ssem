@@ -11,35 +11,69 @@ name = "slea-ssem"
 description = "An AI-driven learning platform designed to guide S.LSI employees from beginner to expert in AI."
 authors = [{ name = "deitey719", email = "deity719@github.com" }, { name = "larvine", email = "jeane2003@naver.com" }]
 dependencies = [
+    # Web Framework
     "fastapi>=0.121.0",
+    "uvicorn[standard]>=0.30.0",
+    "python-multipart>=0.0.7",
+    "httpx>=0.28.0",
+
+    # Data Validation
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+
+    # Authentication
+    "pyjwt>=2.10.1",
+
+    # Database
+    "sqlalchemy>=2.0.44",
+    "sqlalchemy-utils>=0.42.0",
+    "alembic>=1.13.0",
+    "psycopg[binary]>=3.2.0",  # PostgreSQL adapter
+
+    # Configuration
+    "python-dotenv>=1.2.1",
+    "PyYAML>=6.0",
+
+    # CLI & Utilities
+    "prompt-toolkit>=3.0.52",
+    "rich>=14.2.0",
+
+    # LLM & RAG
     "langchain>=1.0.5",
     "langchain-core>=1.0.4",
     "langchain-google-genai>=3.0.1",
-    "prompt-toolkit>=3.0.52",
-    "pydantic",
-    "pyjwt>=2.10.1",
-    "python-dotenv>=1.2.1",
-    "PyYAML",
-    "rich>=14.2.0",
-    "sqlalchemy>=2.0.44",
-    "sqlalchemy-utils>=0.42.0",
+    "langgraph>=1.0.0",
 ]
 
 
-# --- mypy 타입 스터브 ---
+# --- Development & Testing ---
 [project.optional-dependencies]
 dev = [
-  "tox",
-  # 코드 품질 및 포맷팅
-  "black",
-  "isort",
-  # 테스트 관련
-  "pytest",
-  "pytest-mock",
-  # mypy 타입 스터브 (types-*)
-  "types-toml",
-  "types-requests",
-  "types-PyYAML",
+  # Testing Framework
+  "pytest>=8.0.0",
+  "pytest-asyncio>=1.2.0",
+  "pytest-httpx>=0.35.0",
+  "pytest-mock>=3.14.0",
+  "pytest-cov>=5.0.0",
+
+  # Code Quality & Linting
+  "ruff>=0.7.0",
+  "black>=24.0.0",
+  "isort>=5.13.0",
+  "mypy>=1.0.0",
+  "pylint>=3.0.0",
+
+  # Type Stubs
+  "types-PyYAML>=6.0.0",
+  "types-requests>=2.31.0",
+  "types-toml>=0.10.0",
+  "sqlalchemy-stubs>=0.4.0",
+
+  # Development Tools
+  "tox>=4.0.0",
+  "pre-commit>=3.0.0",
+  "ipython>=8.0.0",
+  "ipdb>=0.13.0",
 ]
 
 
@@ -153,10 +187,4 @@ ignore = [
 [tool.ruff.format]
 
 
-[dependency-groups]
-dev = [
-    "pytest-asyncio>=1.2.0",
-    "pytest-httpx>=0.35.0",
-]
-# 포맷터 관련 설정 (라인 길이는 전역 설정을 따름)
-# quote-style = "double"
+# All dependencies are defined in [project] and [project.optional-dependencies]

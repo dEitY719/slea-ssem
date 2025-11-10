@@ -19,7 +19,7 @@ from src.backend.services.scoring_service import ScoringService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/questions", tags=["questions"])
+router = APIRouter(tags=["questions"])
 
 
 class GenerateQuestionsRequest(BaseModel):
