@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 # --- 프로젝트 기본 정보 ---
 [project]
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 version = "0.1.0"
 name = "slea-ssem"
 description = "An AI-driven learning platform designed to guide S.LSI employees from beginner to expert in AI."
