@@ -6,12 +6,12 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.backend.api import auth, profile, questions, survey
-from src.backend.database import init_db
-
-# Load environment variables from .env file
+# Load environment variables from .env file BEFORE importing database
 env_file = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_file)
+
+from src.backend.api import auth, profile, questions, survey
+from src.backend.database import init_db
 
 app = FastAPI(
     title="SLEA-SSEM",
