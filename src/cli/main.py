@@ -144,6 +144,14 @@ class CLI:
         # Register cleanup handler for graceful shutdown
         atexit.register(self._cleanup)
 
+    def _reset_terminal_colors(self) -> None:
+        """Reset terminal colors to default state."""
+        try:
+            sys.stdout.write("\033[0m")  # Reset all attributes
+            sys.stdout.flush()
+        except Exception:
+            pass  # Silently ignore if stdout is not available
+
     def _get_completer(self, current_commands: dict[str, Command]) -> WordCompleter:
         """현재 레벨의 명령어들을 위한 자동 완성 기능을 생성합니다."""
         words = list(current_commands.keys())
@@ -174,9 +182,11 @@ class CLI:
 
     def _cleanup(self) -> None:
         """CLI 종료 시 정리 작업을 수행합니다."""
-        # prompt_toolkit 리소스 정리
+        # Reset terminal colors to default state
+        self._reset_terminal_colors()
+
         try:
-            # PromptSession 종료 (있다면)
+            # prompt_toolkit 리소스 정리
             if hasattr(self.session, "app") and self.session.app:
                 self.session.app.exit()
         except Exception:
@@ -208,6 +218,7 @@ class CLI:
 
                 if command_path[0] == "exit":
                     self.dispatcher.dispatch(command_path, args)
+                    self._reset_terminal_colors()
                     self.should_exit = True
                     break
 
@@ -218,12 +229,14 @@ class CLI:
                 exit_count += 1
                 if exit_count >= 2:
                     self.console.print("\n[bold red]Exiting...[/bold red]")
+                    self._reset_terminal_colors()
                     self.should_exit = True
                     break
                 msg = "\n[bold yellow]Ctrl-C pressed. Press again to force exit, or type 'exit'.[/bold yellow]"
                 self.console.print(msg)
             except EOFError:
                 self.console.print("\n[bold yellow]Exiting...[/bold yellow]")
+                self._reset_terminal_colors()
                 self.should_exit = True
                 break
             except Exception as e:
@@ -242,7 +255,7 @@ def main() -> None:
         logger.error(f"Fatal error in CLI: {e}", exc_info=True)
         sys.exit(1)
     finally:
-        # Ensure clean exit
+        # Ensure clean exit (cleanup handler already resets colors)
         sys.exit(0)
 
 
