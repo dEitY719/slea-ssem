@@ -40,6 +40,12 @@ nano .env  # 또는 원하는 에디터 사용
 ### 3. 의존성 설치 및 개발 서버 시작
 
 ```bash
+# 의존성 설치
+pip install .[dev]             # pyproject.toml 파일 경로에서 수행
+
+# alembic 준비
+alembic init alembic
+
 # 첫 실행
 ./tools/dev.sh up              # 개발 서버 시작 (localhost:8000)
 

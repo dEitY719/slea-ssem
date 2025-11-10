@@ -2,23 +2,20 @@
 
 from collections.abc import Generator
 
-from sqlalchemy import Engine, create_engine
-from sqlalchemy.orm import Session, sessionmaker
+# ✅ 비동기 전용으로 바꿔
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 # Database connection string (SQLite for MVP, configurable via env)
 DATABASE_URL: str = "sqlite:///./test.db"
 
 # Create engine
-engine: Engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
-)
+engine = create_async_engine(DATABASE_URL, echo=False)
 
 # Create session factory
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 
 
-def get_db() -> Generator[Session, None, None]:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency injection for database session.
 
@@ -30,15 +27,12 @@ def get_db() -> Generator[Session, None, None]:
         ...     user = db.query(User).first()
 
     """
-    db: Session = SessionLocal()
-    try:
+    async with SessionLocal() as db:
         yield db
-    finally:
-        db.close()
 
 
 def init_db() -> None:
-    """Initialize database and create all tables."""
-    from src.backend.models.user import Base
-
-    Base.metadata.create_all(bind=engine)
+    assert isinstance(engine, AsyncEngine)
+    async with engine.begin() as conn:
+        # 동기 메타데이터 DDL을 비동기 컨텍스트에서 실행
+        await conn.run_sync(Base.metadata.create_all)
