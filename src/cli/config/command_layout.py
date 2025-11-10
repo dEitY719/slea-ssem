@@ -61,6 +61,11 @@ COMMAND_LAYOUT = {
                         "usage": "profile nickname register [nickname]",
                         "target": "src.cli.actions.profile.register_nickname",
                     },
+                    "view": {
+                        "description": "현재 닉네임 조회",
+                        "usage": "profile nickname view",
+                        "target": "src.cli.actions.profile.view_nickname",
+                    },
                     "edit": {
                         "description": "닉네임 수정",
                         "usage": "profile nickname edit [new_nickname]",

@@ -6,10 +6,11 @@ from src.cli.context import CLIContext
 def profile_help(context: CLIContext, *args: str) -> None:
     """Profile 도메인의 사용 가능한 명령어를 보여줍니다."""
     context.console.print("[bold yellow]Profile Commands:[/bold yellow]")
-    context.console.print("  profile nickname check        - 닉네임 중복 확인")
-    context.console.print("  profile nickname register     - 닉네임 등록")
-    context.console.print("  profile nickname edit         - 닉네임 수정")
-    context.console.print("  profile update_survey         - Survey 업데이트 (새 프로필 레코드 생성)")
+    context.console.print("  profile nickname check        - 닉네임 중복 확인 (인증 불필요)")
+    context.console.print("  profile nickname view         - 닉네임 조회 (인증 필요)")
+    context.console.print("  profile nickname register     - 닉네임 등록 (인증 필요)")
+    context.console.print("  profile nickname edit         - 닉네임 수정 (인증 필요)")
+    context.console.print("  profile update_survey         - Survey 업데이트 (인증 필요, 새 프로필 레코드 생성)")
 
 
 def check_nickname_availability(context: CLIContext, *args: str) -> None:
@@ -52,6 +53,49 @@ def check_nickname_availability(context: CLIContext, *args: str) -> None:
     context.logger.info(f"Checked nickname availability for: {nickname}.")
 
 
+def view_nickname(context: CLIContext, *args: str) -> None:
+    """현재 사용자의 닉네임 정보를 조회합니다."""
+    if not context.session.token:
+        context.console.print("[bold red]✗ Not authenticated[/bold red]")
+        context.console.print("[yellow]Please login first: auth login [username][/yellow]")
+        return
+
+    context.console.print("[dim]Fetching nickname information...[/dim]")
+
+    # JWT 토큰을 client에 설정
+    context.client.set_token(context.session.token)
+
+    # API 호출
+    status_code, response, error = context.client.make_request(
+        "GET",
+        "/profile/nickname",
+    )
+
+    if error:
+        context.console.print("[bold red]✗ Failed to fetch nickname[/bold red]")
+        context.console.print(f"[red]  Error: {error}[/red]")
+        context.logger.error(f"Nickname fetch failed: {error}")
+        return
+
+    if status_code != 200:
+        context.console.print(f"[bold red]✗ Failed (HTTP {status_code})[/bold red]")
+        return
+
+    nickname = response.get("nickname")
+    registered_at = response.get("registered_at")
+    updated_at = response.get("updated_at")
+
+    if nickname:
+        context.console.print(f"[bold green]✓ Nickname:[/bold green] {nickname}")
+        if registered_at:
+            context.console.print(f"[dim]  Registered: {registered_at}[/dim]")
+        if updated_at:
+            context.console.print(f"[dim]  Updated: {updated_at}[/dim]")
+    else:
+        context.console.print("[bold yellow]✓ No nickname set yet[/bold yellow]")
+    context.logger.info("Fetched nickname information.")
+
+
 def register_nickname(context: CLIContext, *args: str) -> None:
     """닉네임을 등록합니다."""
     if not context.session.token:
@@ -66,6 +110,9 @@ def register_nickname(context: CLIContext, *args: str) -> None:
 
     nickname = args[0]
     context.console.print(f"[dim]Registering nickname '{nickname}'...[/dim]")
+
+    # JWT 토큰을 client에 설정
+    context.client.set_token(context.session.token)
 
     # API 호출
     status_code, response, error = context.client.make_request(
@@ -102,6 +149,9 @@ def edit_nickname(context: CLIContext, *args: str) -> None:
 
     new_nickname = args[0]
     context.console.print(f"[dim]Updating nickname to '{new_nickname}'...[/dim]")
+
+    # JWT 토큰을 client에 설정
+    context.client.set_token(context.session.token)
 
     # API 호출
     status_code, response, error = context.client.make_request(
@@ -141,6 +191,9 @@ def update_survey(context: CLIContext, *args: str) -> None:
     interests = args[2] if len(args) > 2 else ""
 
     context.console.print("[dim]Updating survey...[/dim]")
+
+    # JWT 토큰을 client에 설정
+    context.client.set_token(context.session.token)
 
     # API 호출
     status_code, response, error = context.client.make_request(
