@@ -1,10 +1,17 @@
 """FastAPI application entry point."""
 
+from pathlib import Path
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.api import auth, profile, questions, survey
 from src.backend.database import init_db
+
+# Load environment variables from .env file
+env_file = Path(__file__).parent.parent.parent / ".env"
+load_dotenv(dotenv_path=env_file)
 
 app = FastAPI(
     title="SLEA-SSEM",

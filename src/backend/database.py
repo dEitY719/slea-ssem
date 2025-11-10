@@ -1,17 +1,22 @@
 """Database configuration and session management."""
 
+import os
 from collections.abc import Generator
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-# Database connection string (SQLite for MVP, configurable via env)
-DATABASE_URL: str = "sqlite:///./test.db"
+# Database connection string from environment or default to SQLite
+DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+
+# Convert async PostgreSQL URL to sync if needed
+# postgresql+asyncpg:// → postgresql://
+db_url_for_sync = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
 
 # Create engine
 engine: Engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
+    db_url_for_sync,
+    connect_args={"check_same_thread": False} if "sqlite" in db_url_for_sync else {},
 )
 
 # Create session factory
