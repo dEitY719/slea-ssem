@@ -3,15 +3,16 @@
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+# MUST load environment variables BEFORE importing anything that uses them
+env_file = Path(__file__).parent.parent.parent / ".env"
+load_dotenv(dotenv_path=env_file)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.api import auth, profile, questions, survey
 from src.backend.database import init_db
-
-# Load environment variables from .env file BEFORE importing database
-env_file = Path(__file__).parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_file)
 
 
 app = FastAPI(
