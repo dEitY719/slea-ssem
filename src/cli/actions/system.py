@@ -2,31 +2,69 @@
 
 import os
 
+from src.cli.config.command_layout import COMMAND_LAYOUT
 from src.cli.context import CLIContext
+
+
+def _flatten_commands(commands: dict, prefix: str = "") -> list[tuple[str, str | None, str]]:
+    """
+    Flatten hierarchical command structure into list of (full_cmd, usage, description).
+
+    Args:
+        commands: Command dictionary from COMMAND_LAYOUT
+        prefix: Current command prefix for nested commands
+
+    Returns:
+        List of (full_command, usage, description) tuples
+
+    """
+    result: list[tuple[str, str | None, str]] = []
+
+    for cmd_name, cmd_obj in commands.items():
+        full_cmd = f"{prefix}{cmd_name}".strip()
+
+        result.append(
+            (
+                full_cmd,
+                cmd_obj.get("usage") or full_cmd,
+                cmd_obj.get("description", ""),
+            )
+        )
+
+        # Recursively add sub-commands
+        if "sub_commands" in cmd_obj and cmd_obj["sub_commands"]:
+            sub_commands = _flatten_commands(cmd_obj["sub_commands"], f"{full_cmd} ")
+            result.extend(sub_commands)
+
+    return result
 
 
 def help(context: CLIContext, *args: str) -> None:
     """사용 가능한 명령어 목록을 보여줍니다."""
-    context.console.print("[bold yellow]Available commands:[/bold yellow]")
-    context.console.print("  auth login")
-    context.console.print("  survey schema")
-    context.console.print("  survey submit")
-    context.console.print("  profile nickname check")
-    context.console.print("  profile nickname register")
-    context.console.print("  profile nickname edit")
-    context.console.print("  profile update_survey")
-    context.console.print("  questions session resume")
-    context.console.print("  questions session status")
-    context.console.print("  questions session time_status")
-    context.console.print("  questions generate")
-    context.console.print("  questions generate adaptive")
-    context.console.print("  questions answer autosave")
-    context.console.print("  questions answer score")
-    context.console.print("  questions score")
-    context.console.print("  questions explanation generate")
-    context.console.print("  help")
-    context.console.print("  clear")
-    context.console.print("  exit")
+    context.console.print("[bold cyan]╔════════════════════════════════════════════════════════════════╗[/bold cyan]")
+    context.console.print("[bold cyan]║  SLEA-SSEM CLI - Available Commands                           ║[/bold cyan]")
+    context.console.print("[bold cyan]╚════════════════════════════════════════════════════════════════╝[/bold cyan]")
+
+    # Flatten and collect all commands
+    all_commands = _flatten_commands(COMMAND_LAYOUT)
+
+    # Sort by command name
+    all_commands.sort(key=lambda x: x[0])
+
+    # Find max length for alignment
+    max_usage_len = max(len(usage) for _, usage, _ in all_commands)
+
+    # Display commands with usage and description
+    for _cmd, usage, description in all_commands:
+        # Format: "usage" (padded) → description
+        usage_display = f"[dim]{usage}[/dim]"
+        spacing = " " * (max_usage_len - len(usage) + 2)
+        context.console.print(f"  {usage_display}{spacing}→  {description}")
+
+    context.console.print()
+    context.console.print(
+        "[bold yellow]📖 Tip: Type a command name to execute it or 'help' to see this list again.[/bold yellow]"
+    )
 
 
 def clear(context: CLIContext, *args: str) -> None:
