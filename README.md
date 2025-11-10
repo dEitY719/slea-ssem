@@ -137,6 +137,73 @@ Two-round adaptive testing with RAG-based dynamic question generation, LLM auto-
 
 ---
 
+## 🗄️ Database Setup
+
+### 1. Install PostgreSQL (Ubuntu / WSL)
+
+```bash
+sudo apt update
+sudo apt install -y postgresql postgresql-contrib
+````
+
+> ✅ *Optional (PostgreSQL 16)*
+> 기본 저장소에 16 버전이 없는 경우 [공식 APT 저장소](https://www.postgresql.org/download/linux/ubuntu/)를 추가 후 설치하세요.
+
+```bash
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+sudo chmod 644 /etc/apt/trusted.gpg.d/postgresql.gpg
+sudo apt update
+sudo apt install -y postgresql-16
+pg_lsclusters
+```
+
+---
+
+### 2. Start PostgreSQL Service
+
+```bash
+sudo service postgresql start
+sudo service postgresql status
+```
+
+> 상태가 `active (running)` 이면 정상입니다.
+
+---
+
+### 3. Create Database and User
+
+```bash
+sudo -u postgres psql <<'SQL'
+CREATE ROLE himena WITH LOGIN PASSWORD 'change_me_strong_pw';
+CREATE DATABASE sleassem_dev OWNER himena;
+GRANT ALL PRIVILEGES ON DATABASE sleassem_dev TO himena;
+SQL
+```
+
+---
+
+### 4. Test Connection
+
+```bash
+psql "host=localhost dbname=sleassem_dev user=himena password=change_me_strong_pw" -c "\conninfo"
+```
+
+> 정상 출력 예시:
+> `You are connected to database "sleassem_dev" as user "himena" on host "localhost" (address "127.0.0.1") at port "5432".`
+
+---
+
+### 5. Environment Variable (for Backend)
+
+`.env` 개발 환경에 다음 변수를 추가합니다. (.env_example을 복사해서 사용하세요.)
+
+```bash
+DATABASE_URL="postgresql+asyncpg://himena:change_me_strong_pw@localhost:5432/sleassem_dev"
+```
+
+---
+
 ## 💬 Development Guidelines
 
 모든 개발은 `CLAUDE.md`에 정의된 컨벤션을 따릅니다:
