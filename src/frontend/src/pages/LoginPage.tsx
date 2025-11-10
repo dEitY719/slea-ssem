@@ -4,7 +4,17 @@ import './LoginPage.css'
 
 const LoginPage: React.FC = () => {
   const handleLogin = () => {
-    window.location.href = '/api/auth/login'
+    // 개발 환경에서는 mock 모드로 CallbackPage로 직접 이동
+    // 실제 프로덕션에서는 Samsung AD SSO 페이지로 리다이렉트
+    const isDevelopment = import.meta.env.DEV
+
+    if (isDevelopment) {
+      // 개발 모드: mock 데이터로 콜백 페이지 호출
+      window.location.href = '/auth/callback?mock=true'
+    } else {
+      // 프로덕션: Samsung AD SSO 페이지로 리다이렉트
+      window.location.href = '/api/auth/sso/redirect'
+    }
   }
 
   return (

@@ -26,8 +26,8 @@ describe('LoginPage', () => {
     expect(loginButton).toBeVisible()
   })
 
-  // Test 3: Happy Path - 버튼 클릭 시 리다이렉트
-  it('should redirect to /api/auth/login when button is clicked', () => {
+  // Test 3: Happy Path - 버튼 클릭 시 리다이렉트 (개발 모드)
+  it('should redirect to /auth/callback?mock=true in development mode', () => {
     const originalLocation = window.location
     // @ts-ignore
     delete window.location
@@ -42,7 +42,8 @@ describe('LoginPage', () => {
 
     fireEvent.click(loginButton)
 
-    expect(window.location.href).toBe('/api/auth/login')
+    // 개발 모드에서는 mock 모드로 콜백 페이지로 리다이렉트
+    expect(window.location.href).toBe('/auth/callback?mock=true')
 
     // Cleanup
     window.location = originalLocation
