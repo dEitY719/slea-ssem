@@ -10,12 +10,15 @@
 ## 📋 요구사항
 
 ### 요약
+
 로그인 실패 시 명확한 에러 메시지를 표시하고, "계정 정보 확인" 링크 및 "관리자 문의" 헬프 링크를 함께 제공
 
 ### 수용 기준
+
 - ✅ "로그인 실패 시, 에러 메시지와 함께 '계정 정보 확인', '관리자 문의' 두 링크가 표시된다."
 
 ### 관련 문서
+
 - `docs/feature_requirement_mvp1.md` - REQ-F-A1-3
 - `docs/user_scenarios_mvp1.md` - 시나리오 0 (사용자 가입)
 
@@ -24,16 +27,19 @@
 ## 🎯 Phase 1: Specification
 
 ### Intent
+
 로그인 실패 시 사용자에게 명확한 피드백을 제공하고, 문제 해결을 위한 도움말 링크 제공
 
 ### 구현 위치
+
 - `src/frontend/src/components/ErrorMessage.tsx` - 재사용 가능한 에러 메시지 컴포넌트
 - `src/frontend/src/components/ErrorMessage.css` - 에러 메시지 스타일
 - `src/frontend/src/pages/CallbackPage.tsx` - ErrorMessage 사용
 
 ### 주요 기능
+
 1. 에러 메시지 명확하게 표시
-2. "계정 정보 확인" 링크 제공 (https://account.samsung.com)
+2. "계정 정보 확인" 링크 제공 (<https://account.samsung.com>)
 3. "관리자 문의" 링크 제공 (mailto:support@samsung.com)
 4. 깔끔한 UI/UX
 
@@ -42,9 +48,11 @@
 ## 🧪 Phase 2: Test Design
 
 ### 테스트 파일
+
 **`src/frontend/src/pages/__tests__/CallbackPage.test.tsx`**
 
 ### 테스트 커버리지
+
 - ✅ Test 3: API 호출 실패 시 에러 메시지 표시
 - ✅ Test 4: 인증 실패 시 헬프 링크 표시
   - "계정 정보 확인" 링크 존재 확인
@@ -52,6 +60,7 @@
   - 링크 href 속성 검증
 
 **Test 4 코드** (CallbackPage.test.tsx:165-193):
+
 ```typescript
 it('should display help links when authentication fails', async () => {
   ;(global.fetch as any).mockResolvedValueOnce({
@@ -87,9 +96,11 @@ it('should display help links when authentication fails', async () => {
 ### 생성된 파일
 
 #### 1. `src/frontend/src/components/ErrorMessage.tsx`
+
 **목적**: 재사용 가능한 에러 메시지 컴포넌트
 
 **주요 기능**:
+
 ```typescript
 interface ErrorMessageProps {
   title?: string                    // 에러 제목 (기본: "오류 발생")
@@ -102,6 +113,7 @@ interface ErrorMessageProps {
 ```
 
 **특징**:
+
 - 재사용 가능한 컴포넌트 (다른 페이지에서도 사용 가능)
 - 커스터마이징 가능한 title, message, helpLinks
 - 깔끔한 UI
@@ -109,9 +121,11 @@ interface ErrorMessageProps {
 ---
 
 #### 2. `src/frontend/src/components/ErrorMessage.css`
+
 **목적**: ErrorMessage 스타일링
 
 **주요 스타일**:
+
 - 중앙 정렬
 - 빨간색 제목 (#d32f2f)
 - 회색 메시지 (#666)
@@ -121,6 +135,7 @@ interface ErrorMessageProps {
 ---
 
 #### 3. `src/frontend/src/pages/CallbackPage.tsx` (사용)
+
 **REQ-F-A1-3 구현 부분** (Line 38-51):
 
 ```typescript
@@ -188,10 +203,12 @@ Test Files  1 passed (1)
 ## 📁 변경된 파일 목록
 
 ### 신규 생성 (2개)
+
 - `src/frontend/src/components/ErrorMessage.tsx` (Commit 2bd263b)
 - `src/frontend/src/components/ErrorMessage.css` (Commit 2bd263b)
 
 ### 수정 (1개)
+
 - `src/frontend/src/pages/CallbackPage.tsx` - ErrorMessage 사용 (Commit 2bd263b)
 
 ---
@@ -199,11 +216,13 @@ Test Files  1 passed (1)
 ## 🎓 배운 점 & 개선사항
 
 ### 성공 요인
+
 1. **재사용 가능한 컴포넌트**: ErrorMessage를 다른 페이지에서도 사용 가능
 2. **명확한 사용자 안내**: 에러 발생 시 명확한 메시지 + 해결 방법 제공
 3. **깔끔한 UI/UX**: 사용자 친화적인 디자인
 
 ### 구현 장점
+
 1. **Separation of Concerns**: 에러 표시 로직을 별도 컴포넌트로 분리
 2. **Reusability**: 다른 페이지의 에러 표시에도 활용 가능
 3. **Customizability**: title, message, helpLinks 커스터마이징 가능
@@ -221,10 +240,12 @@ Test Files  1 passed (1)
 ## 📝 관련 요구사항
 
 **함께 구현됨**:
+
 - **REQ-F-A1-2**: SSO 콜백 페이지 구현 (Commit fdee134)
   - REQ-F-A1-3는 REQ-F-A1-2의 에러 처리 부분
 
 **의존성**:
+
 - REQ-F-A1-1: 로그인 페이지 (사전 구현 완료)
 
 ---

@@ -7,6 +7,7 @@
 ---
 
 ## 목차
+
 1. [개요](#개요)
 2. [동료 의견 요약](#동료-의견-요약)
 3. [REQ ID 체계](#req-id-체계)
@@ -18,12 +19,14 @@
 ## 개요
 
 ### 현재 상황
+
 - **완성됨**: Agent 구현 (`src/agent/llm_agent.py` 900+줄)
 - **완성됨**: Agent 테스트 (`tests/agent/test_llm_agent.py` 1290줄, Mock 기반)
 - **완성됨**: FastAPI 백엔드 (Mock 데이터 사용)
 - **필요함**: 실제 LLM 통합, 백엔드 연결, E2E 테스트
 
 ### 목표
+
 1. ✅ **Phase 0**: Agent가 실제 Google Gemini LLM과 정상 동작하는지 확인
 2. ✅ **Phase 1**: CLI에서 직접 Agent를 테스트할 수 있는 명령어 추가
 3. ✅ **Phase 2**: FastAPI 백엔드가 Agent를 호출하도록 통합
@@ -66,17 +69,21 @@
 ## 동료 의견 요약
 
 ### 동료 A (CLI 구조 개선) ✅
+
 **핵심**: Agent는 SSE 서버가 아니라 일회성 객체. CLI 명령어로 직접 호출 가능.
 
 **주요 제안**:
+
 - `./tools/dev.sh cli agent generate-questions --survey-id "..."` 형태의 명령어 추가
 - 기존 CLI 구조 (`src/cli/main.py`, `src/cli/actions/`) 활용
 - Phase 1에서 실행
 
 ### 동료 B (Agent 검증 & 백엔드 통합) ✅
+
 **핵심**: Agent 동작 확인 → Backend 통합 순서로 진행
 
 **주요 제안**:
+
 - Phase 0: Python 스크립트로 Agent 최소 재현 (inline script)
 - `LANGCHAIN_DEBUG=1` 또는 `LANGCHAIN_TRACING_V2=1`로 Thought→Action→Observation 추적
 - Phase 2: `QuestionGenerationService`의 Mock을 `await create_agent()` 호출로 변경
@@ -610,6 +617,7 @@ Status: ⏳ Backlog
 ### Phase 0️⃣: Agent 기본 동작 확인 (REQ-A-Agent-Sanity-0)
 
 **준비 작업**:
+
 ```bash
 # 1. 환경변수 설정
 export GEMINI_API_KEY="your_actual_key"
@@ -620,6 +628,7 @@ uv sync
 ```
 
 **구현 (30분)**:
+
 1. `scripts/test_agent_sanity_check.py` 생성
    - `create_agent()` 호출
    - `GenerateQuestionsRequest` 생성
@@ -627,6 +636,7 @@ uv sync
    - JSON 출력
 
 2. 실행:
+
    ```bash
    uv run python scripts/test_agent_sanity_check.py
    ```
@@ -637,6 +647,7 @@ uv sync
    - 최종 출력 JSON 포맷
 
 **산출물**:
+
 - `scripts/test_agent_sanity_check.py`
 - `docs/progress/REQ-A-Agent-Sanity-0.md` (Phase 1-4 문서)
 
@@ -645,6 +656,7 @@ uv sync
 ### Phase 1️⃣: CLI 명령어 확장 (REQ-CLI-Agent-1, 2, 3)
 
 **파일 구조**:
+
 ```
 src/cli/
 ├── main.py                    ← 수정: agent 명령 등록
@@ -653,11 +665,13 @@ src/cli/
 ```
 
 **Task 1-1: CLI 구조 파악 (10분)**
+
 - `src/cli/main.py` 읽기 (명령 그룹 구조)
 - `src/cli/actions/questions.py` 참고 (구현 패턴)
 - `run.py` 확인 (진입점)
 
 **Task 1-2: agent.py 구현 (30분)**
+
 ```python
 # src/cli/actions/agent.py
 
@@ -677,6 +691,7 @@ async def score_answer(round_id, item_id, user_answer, ...):
 ```
 
 **Task 1-3: main.py 수정 (10분)**
+
 ```python
 from src.cli.actions import agent
 
@@ -695,6 +710,7 @@ main.add_command(agent_cmd, name="agent")
 ```
 
 **Task 1-4: 테스트 (10분)**
+
 ```bash
 ./tools/dev.sh cli agent --help
 ./tools/dev.sh cli agent generate-questions --survey-id "test_001" --round 1
@@ -702,6 +718,7 @@ main.add_command(agent_cmd, name="agent")
 ```
 
 **산출물**:
+
 - `src/cli/actions/agent.py`
 - `src/cli/main.py` 수정
 - `docs/progress/REQ-CLI-Agent-{1,2,3}.md` (각각 Phase 1-4 문서)
@@ -715,6 +732,7 @@ main.add_command(agent_cmd, name="agent")
 **파일**: `src/backend/services/question_gen_service.py`
 
 **주요 변경**:
+
 ```python
 # Before (현재 - Mock)
 class QuestionGenerationService:
@@ -752,6 +770,7 @@ class QuestionGenerationService:
 ```
 
 **추가 메서드**:
+
 ```python
 def _get_previous_answers(self, survey_id: str, prev_round: int) -> list[dict]:
     """이전 라운드 답변 조회"""
@@ -884,6 +903,7 @@ async def test_generate_questions_saves_to_db(db_session):
 ```
 
 **산출물**:
+
 - `src/backend/services/question_gen_service.py` 수정
 - `src/backend/services/scoring_service.py` 수정 (선택사항)
 - `src/backend/api/questions.py` 검증
@@ -977,6 +997,7 @@ tox -e py311
 ```
 
 **산출물**:
+
 - `tests/integration/test_agent_backend_e2e.py`
 - `scripts/test_e2e_cli.sh`
 - `docs/progress/REQ-A-Agent-Integration-1.md` (Phase 1-4 문서)
@@ -1005,6 +1026,7 @@ tox -e py311
 각 REQ 완료 후:
 
 1. **진행 파일 생성**: `docs/progress/REQ-[ID].md`
+
    ```markdown
    # REQ-A-Agent-Sanity-0: Agent 기본 동작 검증
 
@@ -1026,11 +1048,13 @@ tox -e py311
    ```
 
 2. **Progress 파일 업데이트**: `docs/DEV-PROGRESS.md`
+
    ```markdown
    | REQ-A-Agent-Sanity-0 | 4 | ✅ Done | Commit: abc123 |
    ```
 
 3. **Git Commit**:
+
    ```bash
    git add docs/progress/REQ-A-Agent-Sanity-0.md docs/DEV-PROGRESS.md
    git commit -m "feat: REQ-A-Agent-Sanity-0 - Agent 기본 동작 검증
@@ -1047,6 +1071,7 @@ tox -e py311
 ## 다음 단계: 시작하기
 
 **준비**:
+
 1. 이 문서 검토 (지금)
 2. 동료 의견 통합 완료 ✅
 3. REQ ID 체계 확정 ✅
@@ -1054,6 +1079,7 @@ tox -e py311
 **개발 시작**:
 
 ### Option A: Phase 0부터 순차 진행 (추천)
+
 ```bash
 # Phase 0
 uv run python scripts/test_agent_sanity_check.py
@@ -1069,6 +1095,7 @@ pytest tests/integration/test_agent_backend_e2e.py
 ```
 
 ### Option B: 병렬 진행 (빠름)
+
 - Phase 0, 1, 2를 동시에 진행
 - 약 3-4시간 소요
 
@@ -1077,16 +1104,19 @@ pytest tests/integration/test_agent_backend_e2e.py
 ## 참고 자료
 
 ### 기존 코드 참고
+
 - Agent 구현: `src/agent/llm_agent.py` (910줄)
 - Agent 테스트: `tests/agent/test_llm_agent.py` (1290줄)
 - CLI 구조: `src/cli/main.py`, `src/cli/actions/`
 - BackEnd 서비스: `src/backend/services/`
 
 ### 문서
+
 - CLAUDE.md: REQ-Based Workflow 정의
 - CLAUDE.md § CLI Feature Requirement Workflow
 
 ### 동료 의견 원문
+
 - 동료 A: CLI 구조 확장 (Task 1-1, 1-2, 1-3)
 - 동료 B: Agent 검증 우선 (Phase 0, LANGCHAIN_DEBUG)
 

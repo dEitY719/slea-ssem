@@ -203,21 +203,159 @@ def score_answer(context: CLIContext, *args: str) -> None:
     """
     Score a single answer using Tool 6 with explanation generation.
 
-    Requires:
-    - question_id: ID of the question
-    - answer: User's answer text
+    Supports multiple question types (MC, short answer, true/false) and returns
+    detailed scoring with LLM-generated explanation.
 
     Args:
         context: CLI context with console and logger.
-        *args: Arguments (question_id, answer).
+        *args: Parsed arguments (--question-id, --question, --answer-type,
+                                 --user-answer, --correct-answer, --context).
+
+    REQ: REQ-CLI-Agent-3
 
     """
-    msg1 = "[bold yellow]⚠️  Placeholder:[/bold yellow] score-answer implementation "
-    msg1 += "pending (REQ-CLI-Agent-3)"
-    context.console.print(msg1)
-    msg2 = "[dim]REQ-CLI-Agent-3 will implement: Tool 6 (score_and_explain) "
-    msg2 += "invocation[/dim]"
-    context.console.print(msg2)
+    # Parse arguments
+    question_id = None
+    question_stem = None
+    answer_type = None
+    user_answer = None
+    correct_answer = None
+    context_str = None
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--question-id" and i + 1 < len(args):
+            question_id = args[i + 1]
+            i += 2
+        elif arg == "--question" and i + 1 < len(args):
+            question_stem = args[i + 1]
+            i += 2
+        elif arg == "--answer-type" and i + 1 < len(args):
+            answer_type = args[i + 1]
+            i += 2
+        elif arg == "--user-answer" and i + 1 < len(args):
+            user_answer = args[i + 1]
+            i += 2
+        elif arg == "--correct-answer" and i + 1 < len(args):
+            correct_answer = args[i + 1]
+            i += 2
+        elif arg == "--context" and i + 1 < len(args):
+            context_str = args[i + 1]
+            i += 2
+        elif arg == "--help":
+            _print_score_answer_help(context)
+            return
+        else:
+            i += 1
+
+    # Validate required parameters
+    if not question_id:
+        context.console.print("[bold red]❌ Error:[/bold red] --question-id is required")
+        _print_score_answer_help(context)
+        return
+
+    if not question_stem:
+        context.console.print("[bold red]❌ Error:[/bold red] --question is required")
+        _print_score_answer_help(context)
+        return
+
+    if not answer_type:
+        context.console.print("[bold red]❌ Error:[/bold red] --answer-type is required")
+        _print_score_answer_help(context)
+        return
+
+    if not user_answer:
+        context.console.print("[bold red]❌ Error:[/bold red] --user-answer is required")
+        _print_score_answer_help(context)
+        return
+
+    if not correct_answer:
+        context.console.print("[bold red]❌ Error:[/bold red] --correct-answer is required")
+        _print_score_answer_help(context)
+        return
+
+    # Validate answer-type
+    valid_types = ["multiple_choice", "short_answer", "true_false"]
+    if answer_type not in valid_types:
+        context.console.print(f"[bold red]❌ Error:[/bold red] --answer-type must be one of: {', '.join(valid_types)}")
+        return
+
+    # Initialize agent
+    context.console.print("🚀 Initializing Agent... (GEMINI_API_KEY required)")
+    try:
+        agent = ItemGenAgent()
+    except Exception as e:
+        context.console.print("[bold red]❌ Error:[/bold red] Agent initialization failed")
+        context.console.print(f"[dim]Reason: {e}[/dim]")
+        return
+
+    context.console.print("✅ Agent initialized")
+
+    # Create request
+    context.console.print()
+    context.console.print("🎯 Scoring answer...")
+    context.console.print(f"   question_id={question_id}, type={answer_type}")
+
+    from src.agent.llm_agent import ScoreAnswerRequest
+
+    request = ScoreAnswerRequest(
+        item_id=question_id,
+        question_stem=question_stem,
+        question_type=answer_type,
+        user_answer=user_answer,
+        correct_answer=correct_answer,
+        context=context_str,
+    )
+
+    # Execute agent (async)
+    try:
+        response = asyncio.run(agent.score_answer(request))
+    except Exception as e:
+        context.console.print()
+        context.console.print("[bold red]❌ Error:[/bold red] Answer scoring failed")
+        context.console.print(f"[dim]Reason: {e}[/dim]")
+        return
+
+    # Display results
+    context.console.print()
+    context.console.print("✅ Scoring Complete")
+    context.console.print(f"   correct: {response.correct}")
+    context.console.print(f"   score: {response.score}")
+    if hasattr(response, "confidence") and response.confidence is not None:
+        context.console.print(f"   confidence: {response.confidence:.2f}")
+    context.console.print()
+
+    # Display scoring result panel
+    correctness_status = "✅ CORRECT" if response.correct else "❌ INCORRECT"
+    panel_content = f"""
+Question: {question_stem[:60]}...
+User Answer: {user_answer}
+Correct Answer: {correct_answer}
+Score: {response.score}/100
+Status: {correctness_status}"""
+
+    from rich.panel import Panel
+
+    context.console.print(Panel(panel_content, title="📊 Scoring Result", style="cyan"))
+
+    # Display explanation
+    if response.explanation:
+        context.console.print()
+        context.console.print("📝 Explanation:")
+        context.console.print(response.explanation)
+
+    # Display matched keywords if available
+    if hasattr(response, "keyword_matches") and response.keyword_matches:
+        context.console.print()
+        context.console.print(f"💡 Keywords Matched: {response.keyword_matches}")
+
+    # Display confidence
+    if hasattr(response, "confidence") and response.confidence is not None:
+        context.console.print()
+        context.console.print(f"🎯 Confidence: {response.confidence * 100:.0f}%")
+
+    context.console.print()
 
 
 def batch_score(context: CLIContext, *args: str) -> None:
@@ -447,5 +585,56 @@ def _print_generate_questions_help(context: CLIContext) -> None:
     context.console.print("  # Generate Round 2 with adaptive difficulty")
     context.console.print(
         '  agent generate-questions --survey-id survey_123 --round 2 \'--prev-answers [{"item_id":"q1","score":85}]\''
+    )
+    context.console.print()
+
+
+def _print_score_answer_help(context: CLIContext) -> None:
+    """
+    Display help for score-answer command.
+
+    Args:
+        context: CLI context with console and logger.
+
+    """
+    context.console.print()
+    context.console.print(
+        "[bold cyan]╔════════════════════════════════════════════════════════════════════════════════╗[/bold cyan]"
+    )
+    context.console.print(
+        "[bold cyan]║  agent score-answer - Mode 2 Single Answer Scoring                           ║[/bold cyan]"
+    )
+    context.console.print(
+        "[bold cyan]╚════════════════════════════════════════════════════════════════════════════════╝[/bold cyan]"
+    )
+    context.console.print()
+    context.console.print("[bold white]Usage:[/bold white]")
+    context.console.print("  agent score-answer --question-id ID --question STEM --answer-type TYPE")
+    context.console.print("                     --user-answer ANSWER --correct-answer CORRECT [--context TEXT]")
+    context.console.print()
+    context.console.print("[bold white]Options:[/bold white]")
+    context.console.print("  --question-id TEXT       Question ID (required)")
+    context.console.print("  --question TEXT          Question stem (required)")
+    context.console.print(
+        "  --answer-type TEXT       Question type (required): multiple_choice, short_answer, true_false"
+    )
+    context.console.print("  --user-answer TEXT       User's answer (required)")
+    context.console.print("  --correct-answer TEXT    Correct answer (required)")
+    context.console.print("  --context TEXT           Additional context (optional)")
+    context.console.print("  --help                   Show this help message")
+    context.console.print()
+    context.console.print("[bold white]Examples:[/bold white]")
+    context.console.print("  # Score a multiple choice answer")
+    context.console.print(
+        "  agent score-answer --question-id q_001 --question 'What is X?' \\\n"
+        "                     --answer-type multiple_choice --user-answer 'Option A' \\\n"
+        "                     --correct-answer 'Option A'"
+    )
+    context.console.print()
+    context.console.print("  # Score a short answer")
+    context.console.print(
+        "  agent score-answer --question-id q_002 --question 'Explain Y' \\\n"
+        "                     --answer-type short_answer --user-answer 'My explanation' \\\n"
+        "                     --correct-answer 'Complete explanation'"
     )
     context.console.print()

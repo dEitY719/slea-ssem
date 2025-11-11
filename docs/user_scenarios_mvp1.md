@@ -52,7 +52,7 @@
 
 - 이름: 김태호 (입사 1개월 차 신입)
 - 직책: 엔지니어
-- AD 계정: knox_id=kim.taeho, email=kim.taeho@company.com
+- AD 계정: knox_id=kim.taeho, email=<kim.taeho@company.com>
 - 부서: SW개발팀
 - 사업부: System LSI
 
@@ -68,7 +68,7 @@
 | 1 | 웹사이트 접속 (unauthenticated) | 로그인 페이지 노출, "Samsung AD로 로그인" 버튼 표시 | 초기 상태 |
 | 2 | "Samsung AD로 로그인" 버튼 클릭 | Samsung AD 로그인 페이지로 리다이렉트 | 인증 중 |
 | 3 | AD 계정으로 로그인 (knox_id + 암호) | AD 인증 성공 → 시스템으로 콜백 (knox_id, name, dept, business_unit, email 전달) | 인증됨 |
-| 4 | 백엔드: AuthService.authenticate_or_create_user() | **User 레코드 생성** (knox_id='kim.taeho', name='김태호', dept='SW개발팀', business_unit='System LSI', email='kim.taeho@company.com', nickname=NULL) + JWT 토큰 발급 (is_new_user=True) | User 생성 완료 |
+| 4 | 백엔드: AuthService.authenticate_or_create_user() | **User 레코드 생성** (knox_id='kim.taeho', name='김태호', dept='SW개발팀', business_unit='System LSI', email='<kim.taeho@company.com>', nickname=NULL) + JWT 토큰 발급 (is_new_user=True) | User 생성 완료 |
 | 5 | 프론트엔드: JWT 수신 | 홈화면으로 자동 리다이렉트 | 홈화면 진입 |
 | 6 | 홈화면 노출 | "환영합니다, 김태호님!" 메시지 + 중앙에 "시작하기" 버튼 표시 | 홈화면 |
 | 7 | "시작하기" 버튼 클릭 | 백엔드에서 nickname 확인 → nickname == NULL 감지 → 닉네임 설정 페이지로 리다이렉트 | 닉네임 설정 페이지 진입 |
