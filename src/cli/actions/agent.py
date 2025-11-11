@@ -1,12 +1,19 @@
 """
 Agent-based question generation and scoring CLI actions.
 
-REQ: REQ-CLI-Agent-1
+REQ: REQ-CLI-Agent-1, REQ-CLI-Agent-2
 """
+
+import asyncio
+import json
+import logging
 
 from rich.table import Table
 
+from src.agent.llm_agent import GenerateQuestionsRequest, ItemGenAgent
 from src.cli.context import CLIContext
+
+logger = logging.getLogger(__name__)
 
 
 def agent_help(context: CLIContext, *args: str) -> None:
@@ -68,15 +75,128 @@ def generate_questions(context: CLIContext, *args: str) -> None:
 
     Args:
         context: CLI context with console and logger.
-        *args: Additional arguments (round_idx, etc. - reserved for future).
+        *args: Parsed arguments (--survey-id, --round, --prev-answers).
+
+    REQ: REQ-CLI-Agent-2
 
     """
-    msg1 = "[bold yellow]⚠️  Placeholder:[/bold yellow] generate-questions "
-    msg1 += "implementation pending (REQ-CLI-Agent-2)"
-    context.console.print(msg1)
-    msg2 = "[dim]REQ-CLI-Agent-2 will implement: ItemGenAgent(Mode 1) Tool chain "
-    msg2 += "invocation[/dim]"
-    context.console.print(msg2)
+    # Parse arguments
+    survey_id = None
+    round_idx = 1
+    prev_answers_json = None
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--survey-id" and i + 1 < len(args):
+            survey_id = args[i + 1]
+            i += 2
+        elif arg == "--round" and i + 1 < len(args):
+            try:
+                round_idx = int(args[i + 1])
+                i += 2
+            except ValueError:
+                context.console.print(f"[bold red]❌ Error:[/bold red] --round must be integer (got: {args[i + 1]})")
+                return
+        elif arg == "--prev-answers" and i + 1 < len(args):
+            prev_answers_json = args[i + 1]
+            i += 2
+        elif arg == "--help":
+            _print_generate_questions_help(context)
+            return
+        else:
+            i += 1
+
+    # Validate required survey-id
+    if not survey_id:
+        context.console.print("[bold red]❌ Error:[/bold red] --survey-id is required")
+        _print_generate_questions_help(context)
+        return
+
+    # Validate round
+    if round_idx not in (1, 2):
+        context.console.print(f"[bold red]❌ Error:[/bold red] --round must be 1 or 2 (got: {round_idx})")
+        return
+
+    # Parse prev-answers if provided
+    prev_answers = None
+    if prev_answers_json:
+        if round_idx != 2:
+            context.console.print("[bold yellow]⚠️  Warning:[/bold yellow] --prev-answers only used in Round 2")
+        try:
+            prev_answers = json.loads(prev_answers_json)
+            if not isinstance(prev_answers, list):
+                context.console.print("[bold red]❌ Error:[/bold red] --prev-answers must be JSON array")
+                return
+        except json.JSONDecodeError as e:
+            context.console.print(f"[bold red]❌ Error:[/bold red] Invalid JSON in --prev-answers: {e}")
+            return
+
+    # Initialize agent
+    context.console.print("🚀 Initializing Agent... (GEMINI_API_KEY required)")
+    try:
+        agent = ItemGenAgent()
+    except Exception as e:
+        context.console.print("[bold red]❌ Error:[/bold red] Agent initialization failed")
+        context.console.print(f"[dim]Reason: {e}[/dim]")
+        return
+
+    context.console.print("✅ Agent initialized")
+
+    # Create request
+    context.console.print()
+    context.console.print("📝 Generating questions...")
+    context.console.print(f"   survey_id={survey_id}, round={round_idx}")
+
+    request = GenerateQuestionsRequest(survey_id=survey_id, round_idx=round_idx, prev_answers=prev_answers)
+
+    # Execute agent (async)
+    try:
+        response = asyncio.run(agent.generate_questions(request))
+    except Exception as e:
+        context.console.print()
+        context.console.print("[bold red]❌ Error:[/bold red] Question generation failed")
+        context.console.print(f"[dim]Reason: {e}[/dim]")
+        return
+
+    # Display results
+    context.console.print()
+    context.console.print("✅ Generation Complete")
+    context.console.print(f"   round_id: {response.round_id}")
+    context.console.print(f"   items generated: {len(response.items)}, failed: {response.failed_count}")
+    context.console.print(f"   agent_steps: {response.agent_steps}")
+    context.console.print()
+
+    # Display table
+    table = Table(title="Generated Items", show_header=True, header_style="bold cyan")
+    table.add_column("ID", style="dim")
+    table.add_column("Type")
+    table.add_column("Difficulty", justify="right")
+    table.add_column("Validation", justify="right")
+
+    for item in response.items:
+        item_id_short = item.id[:12] + "..." if len(item.id) > 12 else item.id
+        table.add_row(
+            item_id_short,
+            item.type,
+            str(item.difficulty),
+            f"{item.validation_score:.2f}",
+        )
+
+    context.console.print("📋 Generated Items:")
+    context.console.print(table)
+    context.console.print()
+
+    # Display first item details
+    if response.items:
+        first_item = response.items[0]
+        context.console.print("📄 First Item Details:")
+        context.console.print(f"   Stem: {first_item.stem}")
+        context.console.print(f"   Answer Schema: {first_item.answer_schema.type}")
+        if first_item.answer_schema.keywords:
+            keywords_str = ", ".join(first_item.answer_schema.keywords)
+            context.console.print(f"   Keywords: [{keywords_str}]")
+        context.console.print()
 
 
 def score_answer(context: CLIContext, *args: str) -> None:
@@ -289,3 +409,43 @@ def t6_score_and_explain(context: CLIContext, *args: str) -> None:
     msg2 = "[dim]REQ-CLI-Agent-5 will implement: Direct FastMCP Tool 6 "
     msg2 += "invocation[/dim]"
     context.console.print(msg2)
+
+
+def _print_generate_questions_help(context: CLIContext) -> None:
+    """
+    Display help for generate-questions command.
+
+    Args:
+        context: CLI context with console and logger.
+
+    """
+    context.console.print()
+    context.console.print(
+        "[bold cyan]╔════════════════════════════════════════════════════════════════════════════════╗[/bold cyan]"
+    )
+    context.console.print(
+        "[bold cyan]║  agent generate-questions - Mode 1 Question Generation                        ║[/bold cyan]"
+    )
+    context.console.print(
+        "[bold cyan]╚════════════════════════════════════════════════════════════════════════════════╝[/bold cyan]"
+    )
+    context.console.print()
+    context.console.print("[bold white]Usage:[/bold white]")
+    context.console.print("  agent generate-questions --survey-id SURVEY_ID [--round 1|2] [--prev-answers JSON]")
+    context.console.print()
+    context.console.print("[bold white]Options:[/bold white]")
+    context.console.print("  --survey-id TEXT         Survey ID (required)")
+    context.console.print("  --round INTEGER          Round number: 1 (initial) or 2 (adaptive) [default: 1]")
+    context.console.print("  --prev-answers TEXT      JSON array of previous answers (Round 2 only)")
+    context.console.print('                           Format: \'[{"item_id":"q1","score":85}]\'')
+    context.console.print("  --help                   Show this help message")
+    context.console.print()
+    context.console.print("[bold white]Examples:[/bold white]")
+    context.console.print("  # Generate Round 1 questions")
+    context.console.print("  agent generate-questions --survey-id survey_123")
+    context.console.print()
+    context.console.print("  # Generate Round 2 with adaptive difficulty")
+    context.console.print(
+        '  agent generate-questions --survey-id survey_123 --round 2 \'--prev-answers [{"item_id":"q1","score":85}]\''
+    )
+    context.console.print()
