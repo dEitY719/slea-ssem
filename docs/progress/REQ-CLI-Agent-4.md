@@ -445,4 +445,21 @@ async def score_batch_parallel():
 - Phase 1: ✓ Comprehensive specification with parallel execution details
 - Phase 2: ✓ 15 detailed test cases with mocking strategy (15/15 passing)
 - Phase 3: ✓ Full implementation with parallel batch scoring
-- Phase 4: ✓ Documentation complete, ready for git commit
+- Phase 4: ✓ Documentation complete, git commit: **719d5c4**
+
+### Git Commit Details
+
+**Commit SHA**: `719d5c4`
+**Message**: `feat(cli-agent): Implement REQ-CLI-Agent-4 - agent batch-score command`
+
+**Changes**:
+- Modified: src/cli/actions/agent.py (340 lines total: 288 + 52)
+- Created: tests/cli/test_agent_batch_score.py (486 lines)
+- Created: docs/progress/REQ-CLI-Agent-4.md (449 lines)
+- Modified: docs/DEV-PROGRESS.md (updated status and commit)
+
+**Statistics**:
+- Total insertions: 1266 lines
+- Test coverage: 15 tests (100% passing)
+- Execution time: 2.43s
+- Error handling: 9 comprehensive error scenarios

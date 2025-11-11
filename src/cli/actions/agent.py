@@ -376,7 +376,6 @@ def batch_score(context: CLIContext, *args: str) -> None:
     from time import time
 
     from rich.progress import Progress
-    from rich.panel import Panel
 
     from src.agent.llm_agent import ScoreAnswerRequest
 
@@ -396,16 +395,12 @@ def batch_score(context: CLIContext, *args: str) -> None:
                 parallel_workers = int(args[i + 1])
                 if parallel_workers < 1 or parallel_workers > 10:
                     context.console.print(
-                        "[bold red]❌ Error:[/bold red] --parallel must be between 1-10 (got: {})".format(
-                            parallel_workers
-                        )
+                        f"[bold red]❌ Error:[/bold red] --parallel must be between 1-10 (got: {parallel_workers})"
                     )
                     return
                 i += 2
             except ValueError:
-                context.console.print(
-                    "[bold red]❌ Error:[/bold red] --parallel must be integer (got: {})".format(args[i + 1])
-                )
+                context.console.print(f"[bold red]❌ Error:[/bold red] --parallel must be integer (got: {args[i + 1]})")
                 return
         elif arg == "--output" and i + 1 < len(args):
             output_file = args[i + 1]
@@ -633,9 +628,7 @@ def batch_score(context: CLIContext, *args: str) -> None:
                 }
                 for item, response in completed_results
             ],
-            "errors": [
-                {"question_id": item["question_id"], "error": error} for item, error in failed
-            ],
+            "errors": [{"question_id": item["question_id"], "error": error} for item, error in failed],
         }
 
         try:
