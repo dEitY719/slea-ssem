@@ -60,14 +60,17 @@ Samsung AD SSO 인증 후 사용자 정보를 받아 백엔드 API를 호출하�
    - saveToken, getToken, removeToken 함수 검증
    - 토큰 lifecycle 테스트
 
-### 테스트 커버리지
-- ✅ 모든 사용자 → /home 리다이렉트
-- ✅ API 호출 실패 시 에러 메시지
-- ✅ 헬프 링크 표시 (계정 정보 확인, 관리자 문의)
-- ✅ Mock 모드 동작
-- ✅ 3초 이내 리다이렉트
-- ✅ 로딩 스피너 표시
-- ⚠️ **Note**: 테스트는 기존 구현 기준이므로, 향후 업데이트 필요
+### 테스트 커버리지 (Updated 2025-11-11)
+- ✅ 신규 사용자 → /home 리다이렉트 (Test 1)
+- ✅ 기존 사용자 → /home 리다이렉트 (Test 2)
+- ✅ API 호출 실패 시 에러 메시지 (Test 3)
+- ✅ 헬프 링크 표시 (계정 정보 확인, 관리자 문의) (Test 4)
+- ✅ Mock 모드 동작 (Test 5)
+- ✅ 3초 이내 리다이렉트 (Test 6)
+- ✅ 필수 파라미터 누락 에러 (Test 7)
+- ✅ 로딩 스피너 표시 (Test 8)
+
+**테스트 결과**: ✅ All 8 tests passed
 
 ---
 
@@ -216,8 +219,9 @@ const HomePage: React.FC = () => {
 
 ## ✅ Phase 4: Test Results
 
-### 테스트 실행 결과
+### 테스트 실행 결과 (Updated 2025-11-11)
 
+**Initial (2025-11-10)**:
 ```
 Test Files  3 passed (3)
      Tests  20 passed (20)
@@ -228,26 +232,47 @@ Test Files  3 passed (3)
 ✓ src/utils/__tests__/auth.test.ts (7 tests)
 ```
 
+**Updated (2025-11-11)** - Home-first flow:
+```
+Test Files  1 passed (1)
+     Tests  8 passed (8)
+  Duration  1.96s
+
+✓ src/pages/__tests__/CallbackPage.test.tsx (8 tests)
+  ✓ should redirect to /home for new users after successful login
+  ✓ should redirect to /home for existing users after successful login
+  ✓ should display error message when API call fails
+  ✓ should display help links when authentication fails
+  ✓ should use mock response without API call when mock=true
+  ✓ should redirect within 3 seconds after successful authentication
+  ✓ should display error when required parameters are missing
+  ✓ should display loading spinner during authentication
+```
+
 **모든 테스트 통과** ✅
 
 ---
 
-## 📊 Traceability Matrix (Updated)
+## 📊 Traceability Matrix (Updated 2025-11-11)
 
-| REQ ID | Specification | Implementation | Test |
-|--------|--------------|----------------|------|
-| REQ-F-A1-2 | SSO 콜백 페이지 구현 | `CallbackPage.tsx:1-153` | `CallbackPage.test.tsx:1-304` ⚠️ |
-| - 토큰 저장 | localStorage에 JWT 저장 | `auth.ts:15-17` | `auth.test.ts:33-49` |
-| - 토큰 조회 | localStorage에서 JWT 조회 | `auth.ts:24-26` | `auth.test.ts:51-62` |
-| - 토큰 삭제 | localStorage에서 JWT 삭제 | `auth.ts:31-33` | `auth.test.ts:64-75` |
-| - **홈 리다이렉트** | **모든 사용자 /home 이동** | **`CallbackPage.tsx:96`** | **⚠️ 업데이트 필요** |
-| - 홈 화면 | "시작하기" 버튼 제공 | `HomePage.tsx:1-38` | ⚠️ 테스트 필요 |
-| - 인증 체크 | JWT 검증 후 접근 제어 | `HomePage.tsx:18-21` | ⚠️ 테스트 필요 |
-| - 에러 처리 | 에러 메시지 + 헬프 링크 | `CallbackPage.tsx:97-150` | `CallbackPage.test.tsx:145-196` |
-| - Mock 모드 | 개발/테스트용 mock 데이터 | `CallbackPage.tsx:32-50` | `CallbackPage.test.tsx:198-219` |
-| - 3초 이내 리다이렉트 | 성능 요구사항 | `CallbackPage.tsx:96` | `CallbackPage.test.tsx:221-253` |
+| REQ ID | Specification | Implementation | Test | Status |
+|--------|--------------|----------------|------|--------|
+| REQ-F-A1-2 | SSO 콜백 페이지 구현 | `CallbackPage.tsx:1-153` | `CallbackPage.test.tsx:1-297` | ✅ |
+| - 토큰 저장 | localStorage에 JWT 저장 | `auth.ts:15-17` | `auth.test.ts:33-49` | ✅ |
+| - 토큰 조회 | localStorage에서 JWT 조회 | `auth.ts:24-26` | `auth.test.ts:51-62` | ✅ |
+| - 토큰 삭제 | localStorage에서 JWT 삭제 | `auth.ts:31-33` | `auth.test.ts:64-75` | ✅ |
+| - **홈 리다이렉트 (신규)** | **신규 사용자 /home 이동** | **`CallbackPage.tsx:96`** | **`CallbackPage.test.tsx:53-103`** | ✅ |
+| - **홈 리다이렉트 (기존)** | **기존 사용자 /home 이동** | **`CallbackPage.tsx:96`** | **`CallbackPage.test.tsx:106-139`** | ✅ |
+| - 홈 화면 | "시작하기" 버튼 제공 | `HomePage.tsx:1-38` | ⚠️ 향후 추가 | Pending |
+| - 인증 체크 | JWT 검증 후 접근 제어 | `HomePage.tsx:18-21` | ⚠️ 향후 추가 | Pending |
+| - 에러 처리 (API 실패) | 에러 메시지 표시 | `CallbackPage.tsx:97-106` | `CallbackPage.test.tsx:142-162` | ✅ |
+| - 에러 처리 (헬프 링크) | 계정/관리자 링크 | `CallbackPage.tsx:124-150` | `CallbackPage.test.tsx:165-193` | ✅ |
+| - Mock 모드 | 개발/테스트용 mock 데이터 | `CallbackPage.tsx:32-50` | `CallbackPage.test.tsx:196-213` | ✅ |
+| - 3초 이내 리다이렉트 | 성능 요구사항 | `CallbackPage.tsx:96` | `CallbackPage.test.tsx:216-250` | ✅ |
+| - 필수 파라미터 검증 | 누락 시 에러 | `CallbackPage.tsx:61-65` | `CallbackPage.test.tsx:253-263` | ✅ |
+| - 로딩 스피너 | 인증 진행 중 표시 | `CallbackPage.tsx:113-121` | `CallbackPage.test.tsx:266-296` | ✅ |
 
-⚠️ **Note**: 기존 테스트는 /signup, /dashboard 리다이렉트 기준이므로, /home 리다이렉트 테스트로 업데이트 필요
+**테스트 커버리지**: 13/15 (87%) - HomePage 테스트 2개 향후 추가 예정
 
 ---
 
@@ -263,11 +288,13 @@ Test Files  3 passed (3)
 - `src/frontend/src/utils/__tests__/auth.test.ts` (Commit 3eeff9d)
 - `docs/progress/REQ-F-A1-2.md` (Commit 3eeff9d)
 
-### 수정 (4개)
+### 수정 (6개)
 - `src/frontend/src/App.tsx` - /home 라우트 추가 **(Updated in fdee134)**
 - `src/frontend/src/pages/CallbackPage.tsx` - /home 리다이렉트 **(Updated in fdee134)**
+- `src/frontend/src/pages/__tests__/CallbackPage.test.tsx` - /home 테스트 ✨ **(Updated in 2025-11-11)**
 - `docs/feature_requirement_mvp1.md` - 홈화면 리다이렉트 **(Updated in fdee134)**
 - `docs/user_scenarios_mvp1.md` - Home-first flow (Commit f169c36)
+- `docs/progress/REQ-F-A1-2.md` - 전면 업데이트 ✨ **(Commits 7cc4c20, 2025-11-11)**
 
 ---
 
@@ -306,9 +333,11 @@ Test Files  3 passed (3)
 
 ## 📝 다음 단계
 
+### 완료됨 ✅
+1. ~~테스트 업데이트~~: CallbackPage.test.tsx를 /home 리다이렉트 기준으로 수정 ✅ (2025-11-11)
+
 ### 즉시 필요
-1. **테스트 업데이트**: CallbackPage.test.tsx를 /home 리다이렉트 기준으로 수정
-2. **HomePage 테스트**: HomePage.test.tsx 생성 (인증 체크, "시작하기" 버튼)
+1. **HomePage 테스트**: HomePage.test.tsx 생성 (인증 체크, "시작하기" 버튼)
 
 ### 다음 구현
 - **REQ-F-A2**: 닉네임 설정 화면 구현
@@ -323,10 +352,12 @@ Test Files  3 passed (3)
 
 **구현 완료일**:
 - Initial: 2025-11-10 (Commit 3eeff9d)
-- **Updated: 2025-11-11 (Commit fdee134)** ✨
+- **Implementation Update: 2025-11-11 (Commit fdee134)** ✨
+- **Test Update: 2025-11-11 (Pending Commit)** ✨
 
 **총 소요 시간**:
 - Initial: ~1시간
-- Update: ~30분
+- Implementation Update: ~30분
+- Test Update: ~20분
 
-**상태**: ✅ Done (Home-first flow implemented)
+**상태**: ✅ Done (Home-first flow implemented & tested)

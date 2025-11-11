@@ -49,8 +49,8 @@ describe('CallbackPage - REQ-F-A1-2', () => {
     vi.resetAllMocks()
   })
 
-  // Test 1: Happy Path - 신규 사용자 로그인 성공
-  it('should redirect to /signup for new users after successful login', async () => {
+  // Test 1: Happy Path - 신규 사용자 로그인 성공 (home-first flow)
+  it('should redirect to /home for new users after successful login', async () => {
     const mockResponse = {
       access_token: 'test_token_123',
       token_type: 'bearer',
@@ -96,14 +96,14 @@ describe('CallbackPage - REQ-F-A1-2', () => {
       expect(localStorageMock.getItem('slea_ssem_token')).toBe('test_token_123')
     })
 
-    // /signup으로 리다이렉트 확인
+    // /home으로 리다이렉트 확인 (home-first approach)
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/signup')
+      expect(mockNavigate).toHaveBeenCalledWith('/home')
     })
   })
 
-  // Test 2: Happy Path - 기존 사용자 로그인 성공
-  it('should redirect to /dashboard for existing users after successful login', async () => {
+  // Test 2: Happy Path - 기존 사용자 로그인 성공 (home-first flow)
+  it('should redirect to /home for existing users after successful login', async () => {
     const mockResponse = {
       access_token: 'existing_user_token_456',
       token_type: 'bearer',
@@ -132,9 +132,9 @@ describe('CallbackPage - REQ-F-A1-2', () => {
       expect(localStorageMock.getItem('slea_ssem_token')).toBe('existing_user_token_456')
     })
 
-    // /dashboard로 리다이렉트 확인
+    // /home으로 리다이렉트 확인 (home-first approach)
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
+      expect(mockNavigate).toHaveBeenCalledWith('/home')
     })
   })
 
@@ -192,7 +192,7 @@ describe('CallbackPage - REQ-F-A1-2', () => {
     })
   })
 
-  // Test 5: Acceptance Criteria - Mock 모드
+  // Test 5: Acceptance Criteria - Mock 모드 (home-first flow)
   it('should use mock response without API call when mock=true', async () => {
     render(
       <MemoryRouter initialEntries={['/auth/callback?mock=true']}>
@@ -202,7 +202,7 @@ describe('CallbackPage - REQ-F-A1-2', () => {
 
     // Mock 모드에서는 API 호출이 발생하지 않아야 함
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/signup')
+      expect(mockNavigate).toHaveBeenCalledWith('/home')
     })
 
     // fetch가 호출되지 않았는지 확인
