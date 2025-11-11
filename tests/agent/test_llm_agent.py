@@ -469,20 +469,21 @@ class TestScoreAnswerValidation:
     async def test_score_answer_missing_round_id(self):
         """
         REQ: REQ-A-ItemGen
-        Reject request without round_id
+        round_id is now optional for backward compatibility
 
         Given:
             - ScoreAnswerRequest without round_id
         When:
             - Request is created
         Then:
-            - Pydantic validation raises error
+            - Request is successfully created (round_id is optional)
         """
-        with pytest.raises(Exception):
-            ScoreAnswerRequest(
-                item_id="item_test",
-                user_answer="answer",
-            )
+        request = ScoreAnswerRequest(
+            item_id="item_test",
+            user_answer="answer",
+        )
+        assert request.user_answer == "answer"
+        assert request.round_id is None  # round_id is optional
 
     @pytest.mark.asyncio
     async def test_score_answer_missing_user_answer(self):

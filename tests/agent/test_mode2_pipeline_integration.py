@@ -519,11 +519,28 @@ class TestBatchScoring:
                 },
             ]
 
-            results = pipeline.score_answers_batch(answers)
+            response = pipeline.score_answers_batch(answers)
 
-            assert len(results) == 2
-            assert all(r["is_correct"] is True for r in results)
-            assert all(r["score"] == 100 for r in results)
+            # Verify response structure (graceful degradation enabled)
+            assert "results" in response
+            assert "failed_question_ids" in response
+            assert "batch_stats" in response
+
+            # Verify successful results
+            assert len(response["results"]) == 2
+            assert all(r["is_correct"] is True for r in response["results"])
+            assert all(r["score"] == 100 for r in response["results"])
+
+            # Verify batch stats
+            assert response["batch_stats"]["total_count"] == 2
+            assert response["batch_stats"]["successful_count"] == 2
+            assert response["batch_stats"]["failed_count"] == 0
+            assert response["batch_stats"]["average_score"] == 100.0
+            assert response["batch_stats"]["correct_count"] == 2
+            assert response["batch_stats"]["correct_rate"] == 1.0
+
+            # Verify no failures
+            assert len(response["failed_question_ids"]) == 0
 
 
 # ============================================================================

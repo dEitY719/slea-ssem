@@ -69,21 +69,24 @@ class RoundIDGenerator:
 
         Args:
             session_id: Test session identifier
-            round_number: Round number (1 or 2)
+            round_number: Round number (positive integer: 1, 2, 3, ...)
 
         Returns:
             Round ID string
 
         Raises:
-            ValueError: If round_number not 1 or 2
+            ValueError: If round_number is not positive
             TypeError: If inputs are wrong type
+
+        NOTE: Supports multiple rounds (1, 2, 3+) for adaptive testing scenarios.
+              Feature Requirement MVPNote 1.0 mentions 3차 이상 (3rd+ round) scenarios.
 
         """
         # Validate round number
         if not isinstance(round_number, int):
             raise TypeError(f"round_number must be int, got {type(round_number)}")
-        if round_number not in (1, 2):
-            raise ValueError(f"round_number must be 1 or 2, got {round_number}")
+        if round_number < 1:
+            raise ValueError(f"round_number must be >= 1, got {round_number}")
 
         # Validate session_id
         if not isinstance(session_id, str):
@@ -127,15 +130,15 @@ class RoundIDGenerator:
 
         # Parse format: {session_id}_{round_number}_{iso_timestamp}
         # ISO timestamp format: 2025-11-09T14:30:45.123456+00:00
-        # Round number is always single digit (1 or 2)
-        # Find last occurrence of _<digit>_ pattern
+        # Round number can be multi-digit (1, 2, 3, ...)
 
         # Find the ISO timestamp by looking for the date pattern (YYYY-MM-DD)
         import re as regex_module
 
-        # Pattern: session_id ending in underscore, digit, underscore, then ISO datetime
+        # Pattern: session_id ending in underscore, one or more digits, underscore, then ISO datetime
+        # Greedy match for session_id, then capture digits for round_number, then timestamp
         match = regex_module.match(
-            r"^(.+)_([1-2])_(\d{4}-\d{2}-\d{2}T.+)$",
+            r"^(.+)_(\d+)_(\d{4}-\d{2}-\d{2}T.+)$",
             round_id,
         )
 
@@ -151,8 +154,8 @@ class RoundIDGenerator:
         except ValueError as e:
             raise ValueError(f"Invalid round_number in Round ID: {match.group(2)}") from e
 
-        if round_number not in (1, 2):
-            raise ValueError(f"round_number must be 1 or 2, got {round_number}")
+        if round_number < 1:
+            raise ValueError(f"round_number must be >= 1, got {round_number}")
 
         timestamp_str = match.group(3)
         try:

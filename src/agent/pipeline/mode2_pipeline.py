@@ -291,9 +291,13 @@ class Mode2Pipeline:
     def score_answers_batch(
         self,
         answers: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
+    ) -> dict[str, Any]:
         """
-        Score multiple answers in batch.
+        Score multiple answers in batch with graceful degradation.
+
+        Implements graceful degradation pattern: Individual answer failures do not stop
+        the entire batch. Successful answers are returned with statistics, and failed
+        question IDs are tracked separately.
 
         Args:
             answers: List of answer dicts with fields:
@@ -302,7 +306,15 @@ class Mode2Pipeline:
                 - difficulty, category (optional)
 
         Returns:
-            List of scoring results (one per answer)
+            dict with:
+                - results: List of successful scoring results
+                - failed_question_ids: List of question IDs that failed
+                - batch_stats: Statistics for successful results
+                  - total_count: Total answers processed
+                  - successful_count: Successfully scored answers
+                  - failed_count: Failed answers
+                  - average_score: Average score of successful answers
+                  - correct_count: Number of correct answers
 
         Example:
             >>> answers = [
@@ -321,15 +333,25 @@ class Mode2Pipeline:
             ...         "correct_keywords": ["RAG", "retrieval"],
             ...     },
             ... ]
-            >>> results = pipeline.score_answers_batch(answers)
-            >>> len(results)
+            >>> response = pipeline.score_answers_batch(answers)
+            >>> len(response["results"])  # Successful answers
+            2
+            >>> response["batch_stats"]["successful_count"]
             2
 
         """
-        logger.info(f"Mode 2 Pipeline: Batch scoring {len(answers)} answers")
+        logger.info(f"Mode 2 Pipeline: Batch scoring {len(answers)} answers (graceful degradation enabled)")
 
-        results = []
+        # Track results and failures
+        successful_results: list[dict[str, Any]] = []
+        failed_question_ids: list[str] = []
+
+        # Metrics for statistics
+        total_score = 0.0
+        correct_count = 0
+
         for i, answer in enumerate(answers):
+            question_id = answer.get("question_id", f"unknown_{i}")
             try:
                 result = self.score_answer(
                     user_id=answer["user_id"],
@@ -341,13 +363,49 @@ class Mode2Pipeline:
                     difficulty=answer.get("difficulty"),
                     category=answer.get("category"),
                 )
-                results.append(result)
-                logger.info(f"Mode 2 Pipeline: Batch {i + 1}/{len(answers)} - q={answer['question_id']} scored")
-            except (ValueError, TypeError) as e:
-                logger.error(f"Mode 2 Pipeline: Batch {i + 1}/{len(answers)} - failed: {e}")
-                # Return partial results on failure, or continue?
-                # For now, re-raise to let caller handle
-                raise
+                successful_results.append(result)
 
-        logger.info(f"Mode 2 Pipeline: Batch scoring complete - {len(results)} results")
-        return results
+                # Accumulate stats
+                total_score += result.get("score", 0)
+                if result.get("is_correct", False):
+                    correct_count += 1
+
+                logger.info(f"Mode 2 Pipeline: Batch {i + 1}/{len(answers)} - q={question_id} ✓")
+
+            except (ValueError, TypeError) as e:
+                # Graceful degradation: Log error and continue
+                logger.warning(f"Mode 2 Pipeline: Batch {i + 1}/{len(answers)} - q={question_id} ✗ ({str(e)[:100]})")
+                failed_question_ids.append(question_id)
+
+            except Exception as e:
+                # Unexpected error
+                logger.error(f"Mode 2 Pipeline: Batch {i + 1}/{len(answers)} - q={question_id} unexpected error: {e}")
+                failed_question_ids.append(question_id)
+
+        # Calculate statistics
+        successful_count = len(successful_results)
+        failed_count = len(failed_question_ids)
+        average_score = (total_score / successful_count) if successful_count > 0 else 0.0
+
+        batch_stats = {
+            "total_count": len(answers),
+            "successful_count": successful_count,
+            "failed_count": failed_count,
+            "average_score": average_score,
+            "correct_count": correct_count,
+            "correct_rate": (correct_count / successful_count) if successful_count > 0 else 0.0,
+        }
+
+        response = {
+            "results": successful_results,
+            "failed_question_ids": failed_question_ids,
+            "batch_stats": batch_stats,
+        }
+
+        logger.info(
+            f"Mode 2 Pipeline: Batch complete - "
+            f"success={successful_count}/{len(answers)}, "
+            f"failed={failed_count}, "
+            f"avg_score={average_score:.1f}"
+        )
+        return response
