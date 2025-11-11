@@ -10,8 +10,15 @@ const mockData: Record<string, any> = {
     registered_at: null,
     updated_at: null,
   },
+  '/profile/nickname/check': {
+    available: true,
+    suggestions: [],
+  },
   // Add more mock endpoints here
 }
+
+// Track taken nicknames for mock
+const takenNicknames = new Set(['admin', 'test', 'mockuser', 'existing_user'])
 
 // Mock configuration
 export const mockConfig = {
@@ -21,8 +28,8 @@ export const mockConfig = {
 }
 
 class MockTransport implements HttpTransport {
-  private async mockRequest<T>(url: string, method: string): Promise<T> {
-    console.log(`[Mock Transport] ${method} ${url}`)
+  private async mockRequest<T>(url: string, method: string, requestData?: any): Promise<T> {
+    console.log(`[Mock Transport] ${method} ${url}`, requestData)
 
     // Simulate network delay
     const delay = mockConfig.slowNetwork ? 3000 : mockConfig.delay
@@ -31,6 +38,24 @@ class MockTransport implements HttpTransport {
     // Simulate error
     if (mockConfig.simulateError) {
       throw new Error('Mock Transport: Simulated API error')
+    }
+
+    // Handle nickname check endpoint
+    if (url === '/profile/nickname/check' && method === 'POST' && requestData?.nickname) {
+      const nickname = requestData.nickname
+      const isTaken = takenNicknames.has(nickname.toLowerCase())
+
+      const response = {
+        available: !isTaken,
+        suggestions: isTaken ? [
+          `${nickname}_1`,
+          `${nickname}_2`,
+          `${nickname}_3`
+        ] : []
+      }
+
+      console.log('[Mock Transport] Response:', response)
+      return response as T
     }
 
     // Find mock data for this endpoint
@@ -49,11 +74,11 @@ class MockTransport implements HttpTransport {
   }
 
   async post<T>(url: string, data?: any, config?: RequestConfig): Promise<T> {
-    return this.mockRequest<T>(url, 'POST')
+    return this.mockRequest<T>(url, 'POST', data)
   }
 
   async put<T>(url: string, data?: any, config?: RequestConfig): Promise<T> {
-    return this.mockRequest<T>(url, 'PUT')
+    return this.mockRequest<T>(url, 'PUT', data)
   }
 
   async delete<T>(url: string, config?: RequestConfig): Promise<T> {

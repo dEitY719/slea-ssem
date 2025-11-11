@@ -16,8 +16,9 @@ const HomePage: React.FC = () => {
       const currentNickname = await checkNickname()
 
       if (currentNickname === null) {
-        // User hasn't set nickname yet, redirect to signup
-        navigate('/signup')
+        // User hasn't set nickname yet, redirect to nickname setup
+        // REQ-F-A2-2: Navigate to /nickname-setup
+        navigate('/nickname-setup')
       } else {
         // User has nickname, proceed to next step
         // TODO: When REQ-F-B1 (assessment) is implemented, navigate to /assessment
