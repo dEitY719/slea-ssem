@@ -26,7 +26,7 @@ def create_llm() -> ChatGoogleGenerativeAI:
 
     return ChatGoogleGenerativeAI(
         api_key=api_key,
-        model="gemini-1.5-pro",
+        model="gemini-2.0-flash",
         temperature=0.7,  # 창의성과 정확성의 균형 (0~1)
         max_tokens=2048,  # 응답 최대 길이
         top_p=0.95,  # Nucleus sampling (다양성 제어)

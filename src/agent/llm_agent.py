@@ -23,7 +23,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel, Field
 
@@ -428,12 +428,12 @@ Important:
 """
 
             # 에이전트 실행 (Tool Calling 루프)
-            # AgentExecutor가 다음을 자동으로 수행:
-            # - Agent Thought: 에이전트 추론
-            # - Action: 도구 선택 및 호출
-            # - Observation: 도구 결과
-            # - 반복 또는 종료
-            result = await self.executor.ainvoke({"input": agent_input})
+            # LangGraph v2 create_react_agent는 messages 형식으로 입력 받음
+            # - messages: 대화 히스토리 (HumanMessage, AIMessage, ToolMessage 등)
+            # - Agent가 자동으로 Thought → Action → Observation 반복
+            result = await self.executor.ainvoke(
+                {"messages": [HumanMessage(content=agent_input)]}
+            )
 
             logger.info("✅ 에이전트 실행 완료")
 

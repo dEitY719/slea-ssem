@@ -47,6 +47,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 
 | REQ ID | Feature | Phase | Status | Notes |
 |--------|---------|-------|--------|-------|
+| REQ-A-Agent-Sanity-0 | Agent 기본 동작 검증 (LangGraph v2) | 4 | ✅ Done | 5 steps verified, 9 tests (100%), Commit: (pending), Progress: docs/progress/REQ-A-Agent-Sanity-0.md |
 | REQ-A-ItemGen | Item-Gen-Agent (통합) | 4 | ✅ Done | 24 tests (100%), Commit: a9b1597, Progress: docs/progress/REQ-A-ItemGen.md |
 | REQ-A-Mode1-Tool1 | Get User Profile | 4 | ✅ Done | 13 tests (100%), Commit: 93136e6, Progress: docs/progress/REQ-A-Mode1-Tool1-PHASE3.md |
 | REQ-A-Mode1-Tool2 | Search Question Templates | 4 | ✅ Done | 13 tests (100%), Commit: (pending), Progress: docs/progress/REQ-A-Mode1-Tool2.md |
