@@ -233,10 +233,9 @@ async def _a_score_answer_impl(
         TimeoutError: If LLM times out (graceful fallback provided)
 
     """
-    # Run the synchronous implementation in a thread pool to avoid blocking
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None,
+    # Run the synchronous implementation in a thread pool to avoid blocking.
+    # Use asyncio.to_thread() for Python 3.9+ compatibility (avoids get_event_loop() issues in 3.12+)
+    return await asyncio.to_thread(
         _score_answer_impl,
         session_id,
         user_id,
@@ -264,19 +263,93 @@ class Mode2Pipeline:
     - Request validation before tool call
     - Graceful error handling with fallback
     - Full context preservation (request → response)
+    - Bounded concurrency to prevent resource exhaustion and API rate limits
 
     """
 
-    def __init__(self, session_id: str | None = None) -> None:
+    # Maximum concurrent scoring tasks to prevent thread pool exhaustion
+    # and Gemini API rate limiting. Semaphore is created per-instance.
+    MAX_CONCURRENT_SCORING = 5
+
+    def __init__(self, session_id: str | None = None, max_concurrent: int | None = None) -> None:
         """
         Initialize Mode 2 Pipeline.
 
         Args:
             session_id: Optional test session ID for logging context
+            max_concurrent: Optional override for max concurrent tasks (default: 5)
 
         """
         self.session_id = session_id
-        logger.info(f"Mode 2 Pipeline initialized (session={session_id})")
+        self.max_concurrent = max_concurrent or self.MAX_CONCURRENT_SCORING
+        # Semaphore for bounding concurrent Task 6 calls
+        # This prevents resource exhaustion and API rate limiting
+        self._concurrent_semaphore: asyncio.Semaphore | None = None
+        logger.info(f"Mode 2 Pipeline initialized (session={session_id}, max_concurrent={self.max_concurrent})")
+
+    async def _get_semaphore(self) -> asyncio.Semaphore:
+        """
+        Get or create the concurrency semaphore.
+
+        Returns:
+            asyncio.Semaphore for limiting concurrent scoring tasks
+
+        """
+        if self._concurrent_semaphore is None:
+            self._concurrent_semaphore = asyncio.Semaphore(self.max_concurrent)
+        return self._concurrent_semaphore
+
+    async def _score_answer_with_semaphore(
+        self,
+        user_id: str,
+        question_id: str,
+        question_type: str,
+        user_answer: str,
+        correct_answer: str | None = None,
+        correct_keywords: list[str] | None = None,
+        difficulty: int | None = None,
+        category: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Score a single answer with semaphore-based concurrency limiting.
+
+        REQ: AC2 (Resource efficiency), AC7 (Thread safety)
+
+        Uses asyncio.Semaphore to limit concurrent Tool 6 calls, preventing:
+        - Thread pool exhaustion
+        - Gemini API rate limit violations
+        - System resource starvation
+
+        Args:
+            user_id: User identifier
+            question_id: Question identifier
+            question_type: "multiple_choice" | "true_false" | "short_answer"
+            user_answer: User's response text
+            correct_answer: Expected answer (required for MC/OX)
+            correct_keywords: Keywords for SA validation (required for SA)
+            difficulty: Question difficulty level (optional)
+            category: Question category (optional)
+
+        Returns:
+            dict with scoring result
+
+        Raises:
+            ValueError: If inputs are invalid
+            TypeError: If types are wrong
+
+        """
+        semaphore = await self._get_semaphore()
+        async with semaphore:
+            return await self.a_score_answer(
+                user_id=user_id,
+                question_id=question_id,
+                question_type=question_type,
+                user_answer=user_answer,
+                correct_answer=correct_answer,
+                correct_keywords=correct_keywords,
+                difficulty=difficulty,
+                category=category,
+            )
 
     def score_answer(
         self,
@@ -534,7 +607,7 @@ class Mode2Pipeline:
         answers: list[dict[str, Any]],
     ) -> dict[str, Any]:
         """
-        Score multiple answers in parallel using asyncio.gather.
+        Score multiple answers in parallel using asyncio.gather with bounded concurrency.
 
         REQ: REQ-A-Mode2-Parallel (Phase 3)
 
@@ -542,17 +615,24 @@ class Mode2Pipeline:
         Uses asyncio.gather(return_exceptions=True) to execute multiple scoring
         tasks concurrently while maintaining error handling.
 
-        Performance:
+        **Key Feature: Bounded Concurrency (AC2, AC7)**
+        - Limits concurrent Tool 6 calls to max_concurrent (default: 5)
+        - Prevents thread pool exhaustion
+        - Prevents Gemini API rate limit violations
+        - Ensures resource efficiency and thread safety
+
+        Performance (with 5 concurrent workers):
         - 10 answers: ~0.5s (vs 3-5s sequential)
-        - 20 answers: ~1s (vs 6-10s sequential)
-        - 50 answers: ~2-3s (vs 15-25s sequential)
+        - 20 answers: ~2-3s (vs 6-10s sequential, queued internally)
+        - 50 answers: ~10-15s (vs 15-25s sequential, with managed concurrency)
 
         Implementation:
-        1. Create asyncio tasks for each answer using a_score_answer()
-        2. Execute all tasks concurrently with asyncio.gather()
-        3. Separate successes from exceptions
-        4. Calculate metrics from successful results only
-        5. Return results with stats and failed question IDs
+        1. Create asyncio tasks for each answer using _score_answer_with_semaphore()
+        2. Each task acquires semaphore before calling a_score_answer()
+        3. Execute all tasks concurrently with asyncio.gather() (bounded by semaphore)
+        4. Separate successes from exceptions
+        5. Calculate metrics from successful results only
+        6. Return results with stats and failed question IDs
 
         Args:
             answers: List of answer dicts (same structure as score_answers_batch)
@@ -612,9 +692,10 @@ class Mode2Pipeline:
                 },
             }
 
-        # Create concurrent tasks for all answers
+        # Create concurrent tasks for all answers with semaphore-based concurrency limiting
+        # The semaphore ensures we don't exceed max_concurrent simultaneous Tool 6 calls
         tasks = [
-            self.a_score_answer(
+            self._score_answer_with_semaphore(
                 user_id=answer["user_id"],
                 question_id=answer["question_id"],
                 question_type=answer["question_type"],
@@ -628,7 +709,10 @@ class Mode2Pipeline:
         ]
 
         # Execute all tasks concurrently with graceful degradation
-        logger.info(f"Mode 2 Pipeline: Starting {len(tasks)} concurrent scoring tasks")
+        # Note: Even though we create max(50, len(answers)) tasks, only max_concurrent (5) execute simultaneously
+        logger.info(
+            f"Mode 2 Pipeline: Starting {len(tasks)} concurrent scoring tasks (max {self.max_concurrent} simultaneous)"
+        )
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Separate successful results from exceptions
