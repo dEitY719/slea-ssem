@@ -14,7 +14,6 @@ from langchain_core.prompts import (
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
 )
-from langchain_core.messages import HumanMessage
 
 
 def get_react_prompt() -> ChatPromptTemplate:

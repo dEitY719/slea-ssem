@@ -431,9 +431,14 @@ Important:
             # LangGraph v2 create_react_agent는 messages 형식으로 입력 받음
             # - messages: 대화 히스토리 (HumanMessage, AIMessage, ToolMessage 등)
             # - Agent가 자동으로 Thought → Action → Observation 반복
-            result = await self.executor.ainvoke(
-                {"messages": [HumanMessage(content=agent_input)]}
-            )
+            #
+            # 성능 최적화 (향후 개선사항):
+            # 1. Tool 병렬 실행: 독립적인 Tool들 (validate + save)은 asyncio.gather로 병렬화 가능
+            #    - ReAct 패턴의 제약: 각 Tool 결과 → 다음 Thought 결정
+            #    - 가능한 경우: 같은 질문의 validate/save 단계를 병렬화
+            # 2. Tool 비동기화: 모든 Tool을 async 함수로 변경 (현재는 동기)
+            # 3. 캐싱: 자주 호출되는 Tool (get_difficulty_keywords)에 캐싱 적용
+            result = await self.executor.ainvoke({"messages": [HumanMessage(content=agent_input)]})
 
             logger.info("✅ 에이전트 실행 완료")
 

@@ -28,7 +28,7 @@ def create_llm() -> ChatGoogleGenerativeAI:
         api_key=api_key,
         model="gemini-2.0-flash",
         temperature=0.7,  # 창의성과 정확성의 균형 (0~1)
-        max_tokens=2048,  # 응답 최대 길이
+        max_tokens=1024,  # 응답 최대 길이 (최적화: 2048 → 1024)
         top_p=0.95,  # Nucleus sampling (다양성 제어)
         timeout=30,  # API 타임아웃 (초)
     )
@@ -43,12 +43,12 @@ AGENT_CONFIG = {
     "return_intermediate_steps": True,  # 중간 단계 반환 (디버깅용)
 }
 
-# Tool 타임아웃 설정
+# Tool 타임아웃 설정 (최적화: 응답성 개선)
 TOOL_CONFIG = {
-    "get_user_profile": 5,  # 5초
-    "search_question_templates": 10,  # 10초
-    "get_difficulty_keywords": 5,  # 5초
-    "validate_question_quality": 15,  # 15초 (LLM 호출)
-    "save_generated_question": 10,  # 10초
-    "score_and_explain": 15,  # 15초 (LLM 호출)
+    "get_user_profile": 3,  # 5초 → 3초 (DB 쿼리 빠름)
+    "search_question_templates": 5,  # 10초 → 5초 (캐싱 활용)
+    "get_difficulty_keywords": 2,  # 5초 → 2초 (메모리 기반)
+    "validate_question_quality": 8,  # 15초 → 8초 (LLM 호출 최적화)
+    "save_generated_question": 5,  # 10초 → 5초 (DB 저장)
+    "score_and_explain": 8,  # 15초 → 8초 (LLM 호출 최적화)
 }
