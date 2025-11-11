@@ -1,0 +1,45 @@
+/* REQ: REQ-F-A1-2 */
+.error-container {
+  padding: 2.5rem;
+  text-align: center;
+}
+
+.error-title {
+  color: #d32f2f;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.error-message {
+  color: #666;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+.error-links {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.help-link {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background-color: #1976d2;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.help-link:hover {
+  background-color: #1565c0;
+}
+
+.help-link:first-child {
+  background-color: #2196f3;
+}
+
+.help-link:first-child:hover {
+  background-color: #1976d2;
+}
