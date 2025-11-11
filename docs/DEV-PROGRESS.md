@@ -100,7 +100,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-CLI-Agent-1 | Agent 명령 그룹 & 계층적 메뉴 | 4 | ✅ Done | 33 tests (100%), Commit: b9f61fe, Progress: docs/progress/REQ-CLI-Agent-1.md |
 | REQ-CLI-Agent-2 | generate-questions 명령 구현 | 4 | ✅ Done | 12 tests (100%), Commit: [pending], Progress: docs/progress/REQ-CLI-Agent-2.md |
 | REQ-CLI-Agent-3 | score-answer 명령 구현 | 4 | ✅ Done | 15 tests (100%), Commit: [pending], Progress: docs/progress/REQ-CLI-Agent-3.md |
-| REQ-CLI-Agent-4 | batch-score 명령 구현 | 0 | ⏳ Backlog | Mode 2 Parallel Scoring |
+| REQ-CLI-Agent-4 | batch-score 명령 구현 | 4 | ✅ Done | 15 tests (100%), Commit: [pending], Progress: docs/progress/REQ-CLI-Agent-4.md |
 | REQ-CLI-Agent-5 | tools (t1-t6) 명령 구현 | 0 | ⏳ Backlog | Tool Debugging Interface |
 | REQ-CLI-SESSION-1 | Save session to file | 0 | ⏳ Backlog | JSON 저장 |
 | REQ-CLI-SESSION-2 | Load session from file | 0 | ⏳ Backlog | JSON 복구 |

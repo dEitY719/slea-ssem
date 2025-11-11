@@ -362,22 +362,289 @@ def batch_score(context: CLIContext, *args: str) -> None:
     """
     Score multiple answers in parallel using Tool 6.
 
-    Requires:
-    - batch_file: JSON file with array of {question_id, answer} objects
-
-    Supports parallel execution for improved performance.
+    Processes batch JSON file with array of scoring items and executes
+    scoring concurrently using asyncio.gather() for improved performance.
 
     Args:
         context: CLI context with console and logger.
-        *args: Arguments (batch_file path).
+        *args: Parsed arguments (--batch-file, --parallel, --output).
+
+    REQ: REQ-CLI-Agent-4
 
     """
-    msg1 = "[bold yellow]⚠️  Placeholder:[/bold yellow] batch-score implementation "
-    msg1 += "pending (REQ-CLI-Agent-4)"
-    context.console.print(msg1)
-    msg2 = "[dim]REQ-CLI-Agent-4 will implement: Parallel Tool 6 execution "
-    msg2 += "(asyncio.gather)[/dim]"
-    context.console.print(msg2)
+    from pathlib import Path
+    from time import time
+
+    from rich.progress import Progress
+    from rich.panel import Panel
+
+    from src.agent.llm_agent import ScoreAnswerRequest
+
+    # Parse arguments
+    batch_file = None
+    parallel_workers = 3
+    output_file = None
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--batch-file" and i + 1 < len(args):
+            batch_file = args[i + 1]
+            i += 2
+        elif arg == "--parallel" and i + 1 < len(args):
+            try:
+                parallel_workers = int(args[i + 1])
+                if parallel_workers < 1 or parallel_workers > 10:
+                    context.console.print(
+                        "[bold red]❌ Error:[/bold red] --parallel must be between 1-10 (got: {})".format(
+                            parallel_workers
+                        )
+                    )
+                    return
+                i += 2
+            except ValueError:
+                context.console.print(
+                    "[bold red]❌ Error:[/bold red] --parallel must be integer (got: {})".format(args[i + 1])
+                )
+                return
+        elif arg == "--output" and i + 1 < len(args):
+            output_file = args[i + 1]
+            i += 2
+        elif arg == "--help":
+            _print_batch_score_help(context)
+            return
+        else:
+            i += 1
+
+    # Validate required batch-file
+    if not batch_file:
+        context.console.print("[bold red]❌ Error:[/bold red] --batch-file is required")
+        _print_batch_score_help(context)
+        return
+
+    # Load batch file
+    context.console.print("📂 Loading batch file...")
+    batch_path = Path(batch_file)
+
+    if not batch_path.exists():
+        context.console.print(f"[bold red]❌ Error:[/bold red] Batch file not found: {batch_file}")
+        return
+
+    try:
+        with open(batch_path) as f:
+            batch_data = json.load(f)
+    except json.JSONDecodeError as e:
+        context.console.print("[bold red]❌ Error:[/bold red] Invalid JSON in batch file")
+        context.console.print(f"[dim]Reason: {e}[/dim]")
+        return
+    except Exception as e:
+        context.console.print(f"[bold red]❌ Error:[/bold red] Failed to read batch file: {e}")
+        return
+
+    # Validate batch is array
+    if not isinstance(batch_data, list):
+        context.console.print("[bold red]❌ Error:[/bold red] Batch file must contain JSON array")
+        return
+
+    # Validate batch is not empty
+    if not batch_data:
+        context.console.print("[bold red]❌ Error:[/bold red] Batch file contains no items (empty array)")
+        return
+
+    # Validate each item has required fields
+    required_fields = {"question_id", "question", "answer_type", "user_answer", "correct_answer"}
+    for idx, item in enumerate(batch_data):
+        if not isinstance(item, dict):
+            context.console.print(
+                f"[bold red]❌ Error:[/bold red] Item at index {idx} is not a dict (got: {type(item).__name__})"
+            )
+            return
+
+        missing_fields = required_fields - set(item.keys())
+        if missing_fields:
+            context.console.print(f"[bold red]❌ Error:[/bold red] Item at index {idx} missing required fields")
+            context.console.print(f"[dim]Required: {', '.join(sorted(required_fields))}[/dim]")
+            context.console.print(f"[dim]Missing: {', '.join(sorted(missing_fields))}[/dim]")
+            return
+
+        # Validate answer_type
+        valid_types = ["multiple_choice", "short_answer", "true_false"]
+        if item["answer_type"] not in valid_types:
+            context.console.print(
+                f"[bold red]❌ Error:[/bold red] Item at index {idx} has invalid answer_type: {item['answer_type']}"
+            )
+            context.console.print(f"[dim]Must be one of: {', '.join(valid_types)}[/dim]")
+            return
+
+    context.console.print(f"   File: {batch_file}")
+    context.console.print(f"   Items: {len(batch_data)}")
+    context.console.print("✅ Batch loaded")
+
+    # Initialize agent
+    context.console.print()
+    context.console.print("🚀 Initializing Agent... (GEMINI_API_KEY required)")
+    try:
+        agent = ItemGenAgent()
+    except Exception as e:
+        context.console.print("[bold red]❌ Error:[/bold red] Agent initialization failed")
+        context.console.print(f"[dim]Reason: {e}[/dim]")
+        return
+
+    context.console.print("✅ Agent initialized")
+
+    # Score answers in parallel
+    context.console.print()
+    context.console.print("🔄 Scoring answers in parallel...")
+    context.console.print(f"   Workers: {parallel_workers}")
+    context.console.print(f"   Processing: {', '.join(item['question_id'] for item in batch_data[:3])}, ...")
+    context.console.print()
+
+    start_time = time()
+    results = []
+    failed_items = []
+
+    async def score_single_item(item: dict) -> tuple:
+        """Score a single item and return result tuple."""
+        try:
+            request = ScoreAnswerRequest(
+                item_id=item["question_id"],
+                question_type=item["answer_type"],
+                user_answer=item["user_answer"],
+                correct_answer=item["correct_answer"],
+            )
+            response = await agent.score_answer(request)
+            return (True, item, response)
+        except Exception as e:
+            return (False, item, str(e))
+
+    async def score_batch_parallel() -> tuple:
+        """Score all items in batch with controlled concurrency."""
+        tasks = [score_single_item(item) for item in batch_data]
+
+        # Use semaphore to control concurrency
+        results_list = []
+        errors_list = []
+
+        with Progress(transient=True) as progress:
+            task = progress.add_task("[cyan]Scoring...", total=len(tasks))
+
+            # Execute tasks with limited concurrency
+            for i in range(0, len(tasks), parallel_workers):
+                chunk = tasks[i : i + parallel_workers]
+                chunk_results = await asyncio.gather(*chunk)
+
+                for success, item, response in chunk_results:
+                    if success:
+                        results_list.append((item, response))
+                    else:
+                        errors_list.append((item, response))
+                    progress.update(task, advance=1)
+
+        return results_list, errors_list
+
+    # Execute async scoring
+    try:
+        completed_results, failed = asyncio.run(score_batch_parallel())
+    except Exception as e:
+        context.console.print()
+        context.console.print("[bold red]❌ Error:[/bold red] Batch scoring failed")
+        context.console.print(f"[dim]Reason: {e}[/dim]")
+        return
+
+    # Calculate statistics
+    total_items = len(batch_data)
+    failed_count = len(failed)
+    passed_count = sum(1 for _, resp in completed_results if resp.correct)
+    partial_count = sum(1 for _, resp in completed_results if not resp.correct and resp.score > 0)
+    failed_only_count = sum(1 for _, resp in completed_results if resp.score == 0)
+
+    scores = [resp.score for _, resp in completed_results]
+    avg_score = sum(scores) / len(scores) if scores else 0
+
+    elapsed_time = time() - start_time
+
+    # Display results summary
+    context.console.print()
+    context.console.print("✅ Batch Scoring Complete")
+    context.console.print(f"   Total: {total_items} items")
+    context.console.print(f"   Passed (100): {passed_count}")
+    context.console.print(f"   Partial (1-99): {partial_count}")
+    context.console.print(f"   Failed (0): {failed_only_count}")
+    context.console.print(f"   Scoring failures: {failed_count}")
+    context.console.print(f"   Average Score: {avg_score:.1f}")
+    context.console.print(f"   Execution Time: {elapsed_time:.2f}s")
+    context.console.print()
+
+    # Display results table
+    table = Table(title="Batch Scoring Results", show_header=True, header_style="bold cyan")
+    table.add_column("ID", style="dim")
+    table.add_column("Type")
+    table.add_column("Score", justify="right")
+    table.add_column("Status")
+
+    for item, response in completed_results:
+        question_id = item["question_id"]
+        question_id_short = question_id[:12] + "..." if len(question_id) > 12 else question_id
+
+        if response.correct:
+            status_icon = "✅"
+        elif response.score > 0:
+            status_icon = "⚠️ "
+        else:
+            status_icon = "❌"
+
+        table.add_row(
+            question_id_short,
+            item["answer_type"][:5],  # MC, SA, T/F abbreviation
+            str(response.score),
+            status_icon,
+        )
+
+    # Add failed items to table
+    for item, error in failed:
+        question_id = item["question_id"]
+        question_id_short = question_id[:12] + "..." if len(question_id) > 12 else question_id
+        table.add_row(question_id_short, item["answer_type"][:5], "ERROR", "❌")
+
+    context.console.print("📊 Batch Results:")
+    context.console.print(table)
+    context.console.print()
+
+    # Save results to file if output specified
+    if output_file:
+        output_path = Path(output_file)
+        output_data = {
+            "metadata": {
+                "total_items": total_items,
+                "passed_count": passed_count,
+                "partial_count": partial_count,
+                "failed_count": failed_only_count,
+                "errors_count": failed_count,
+                "average_score": avg_score,
+                "execution_time": elapsed_time,
+            },
+            "results": [
+                {
+                    "question_id": item["question_id"],
+                    "answer_type": item["answer_type"],
+                    "score": response.score,
+                    "correct": response.correct,
+                    "explanation": response.explanation,
+                }
+                for item, response in completed_results
+            ],
+            "errors": [
+                {"question_id": item["question_id"], "error": error} for item, error in failed
+            ],
+        }
+
+        try:
+            with open(output_path, "w") as f:
+                json.dump(output_data, f, indent=2)
+            context.console.print(f"📁 Results saved to: {output_file}")
+        except Exception as e:
+            context.console.print(f"[bold yellow]⚠️  Warning:[/bold yellow] Failed to save results: {e}")
+        context.console.print()
 
 
 def tools_help(context: CLIContext, *args: str) -> None:
@@ -637,4 +904,58 @@ def _print_score_answer_help(context: CLIContext) -> None:
         "                     --answer-type short_answer --user-answer 'My explanation' \\\n"
         "                     --correct-answer 'Complete explanation'"
     )
+    context.console.print()
+
+
+def _print_batch_score_help(context: CLIContext) -> None:
+    """
+    Display help for batch-score command.
+
+    Args:
+        context: CLI context with console and logger.
+
+    """
+    context.console.print()
+    context.console.print(
+        "[bold cyan]╔════════════════════════════════════════════════════════════════════════════════╗[/bold cyan]"
+    )
+    context.console.print(
+        "[bold cyan]║  agent batch-score - Mode 2 Parallel Batch Scoring                           ║[/bold cyan]"
+    )
+    context.console.print(
+        "[bold cyan]╚════════════════════════════════════════════════════════════════════════════════╝[/bold cyan]"
+    )
+    context.console.print()
+    context.console.print("[bold white]Usage:[/bold white]")
+    context.console.print("  agent batch-score --batch-file FILE [--parallel N] [--output FILE]")
+    context.console.print()
+    context.console.print("[bold white]Options:[/bold white]")
+    context.console.print("  --batch-file TEXT      Path to JSON file with batch array (required)")
+    context.console.print("  --parallel INTEGER     Number of parallel workers 1-10 (default: 3)")
+    context.console.print("  --output TEXT          Output file path for results in JSON (optional)")
+    context.console.print("  --help                 Show this help message")
+    context.console.print()
+    context.console.print("[bold white]Batch File Format:[/bold white]")
+    context.console.print("JSON array of scoring items:")
+    context.console.print()
+    context.console.print(
+        "  [\\n"
+        "    {\\n"
+        '      "question_id": "q_001",\\n'
+        '      "question": "What is X?",\\n'
+        '      "answer_type": "multiple_choice",\\n'
+        '      "user_answer": "Option A",\\n'
+        '      "correct_answer": "Option A",\\n'
+        '      "context": "optional context"\\n'
+        "    },\\n"
+        "    ...\\n"
+        "  ]"
+    )
+    context.console.print()
+    context.console.print("[bold white]Examples:[/bold white]")
+    context.console.print("  # Score batch with default 3 workers")
+    context.console.print("  agent batch-score --batch-file batch.json")
+    context.console.print()
+    context.console.print("  # Score batch with 5 workers and save results")
+    context.console.print("  agent batch-score --batch-file batch.json --parallel 5 --output results.json")
     context.console.print()
