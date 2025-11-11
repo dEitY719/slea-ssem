@@ -15,6 +15,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-A1-2 | SSO 콜백 페이지 구현 | 4 | ✅ Done | 15 tests (100%), Commit: 3eeff9d, Progress: docs/progress/REQ-F-A1-2.md |
 | REQ-F-A1-3 | 로그인 실패 시 에러 메시지 및 헬프 링크 | 4 | ✅ Done | 2 tests (100%), Commit: 2bd263b, Progress: docs/progress/REQ-F-A1-3.md |
 | REQ-F-A2 | 회원가입 화면 (닉네임 등록) | 0 | ⏳ Backlog | 5개 sub-tasks |
+| REQ-F-A2-1 | 홈화면 "시작하기" 클릭 시 닉네임 체크 | 4 | ✅ Done | 7 tests (100%), Commit: fa43b6d, Progress: docs/progress/REQ-F-A2-1.md |
 | REQ-F-A2-Edit | 프로필 수정 화면 | 0 | ⏳ Backlog | 6개 sub-tasks |
 | REQ-F-A3 | 온보딩 모달 | 0 | ⏳ Backlog | 2개 sub-tasks |
 | REQ-F-B1 | 자기평가 입력 화면 | 0 | ⏳ Backlog | 3개 sub-tasks |

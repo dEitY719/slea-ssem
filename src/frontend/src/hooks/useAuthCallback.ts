@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { saveToken } from '../utils/auth'
 import { parseUserData } from '../utils/parseUserData'
+import { transport } from '../lib/transport'
 
 interface LoginResponse {
   access_token: string
@@ -58,7 +59,7 @@ export function useAuthCallback(searchParams: URLSearchParams): UseAuthCallbackR
           // 실제 API 호출처럼 약간의 딜레이 추가
           await new Promise((resolve) => setTimeout(resolve, 500))
         } else {
-          // 실제 모드: 백엔드 API 호출
+          // 실제 모드: 백엔드 API 호출 (Transport pattern 사용)
           const userData = parseUserData(searchParams)
 
           // Validate required parameters
@@ -68,21 +69,8 @@ export function useAuthCallback(searchParams: URLSearchParams): UseAuthCallbackR
             return
           }
 
-          // Call backend authentication API
-          const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(userData),
-          })
-
-          if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.detail || '로그인에 실패했습니다.')
-          }
-
-          data = await response.json()
+          // Call backend authentication API using transport layer
+          data = await transport.post<LoginResponse>('/api/auth/login', userData)
         }
 
         // Save JWT token to localStorage
