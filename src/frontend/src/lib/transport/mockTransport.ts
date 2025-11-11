@@ -58,6 +58,47 @@ class MockTransport implements HttpTransport {
       return response as T
     }
 
+    // Handle nickname register endpoint
+    if (url === '/profile/register' && method === 'POST' && requestData?.nickname) {
+      const nickname: string = requestData.nickname
+
+      if (nickname.length < 3) {
+        throw new Error('닉네임은 3자 이상이어야 합니다.')
+      }
+
+      if (nickname.length > 30) {
+        throw new Error('닉네임은 30자 이하여야 합니다.')
+      }
+
+      const validPattern = /^[a-zA-Z0-9_]+$/
+      if (!validPattern.test(nickname)) {
+        throw new Error('닉네임은 영문자, 숫자, 언더스코어만 사용 가능합니다.')
+      }
+
+      if (takenNicknames.has(nickname.toLowerCase())) {
+        throw new Error('이미 사용 중인 닉네임입니다.')
+      }
+
+      takenNicknames.add(nickname.toLowerCase())
+      mockData['/api/profile/nickname'] = {
+        ...mockData['/api/profile/nickname'],
+        nickname,
+        registered_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
+      const response = {
+        success: true,
+        message: '닉네임 등록 완료',
+        user_id: 'mock_user@samsung.com',
+        nickname,
+        registered_at: mockData['/api/profile/nickname'].registered_at,
+      }
+
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
     // Find mock data for this endpoint
     const data = mockData[url]
 

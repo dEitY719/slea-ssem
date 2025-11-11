@@ -4,6 +4,7 @@ import CallbackPage from './pages/CallbackPage'
 import HomePage from './pages/HomePage'
 import SignupPage from './pages/SignupPage'
 import NicknameSetupPage from './pages/NicknameSetupPage'
+import SelfAssessmentPage from './pages/SelfAssessmentPage'
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/home" element={<HomePage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/nickname-setup" element={<NicknameSetupPage />} />
+        <Route path="/self-assessment" element={<SelfAssessmentPage />} />
       </Routes>
     </BrowserRouter>
   )
