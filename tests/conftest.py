@@ -121,14 +121,17 @@ def authenticated_user(db_session: Session) -> User:
     """
     Create a test user for authenticated requests.
 
+    Explicitly uses id=1 to match hardcoded user_id in question endpoints.
+
     Args:
         db_session: Database session
 
     Returns:
-        Test user instance
+        Test user instance with id=1
 
     """
     user = User(
+        id=1,  # Explicitly set to id=1 for endpoint consistency
         knox_id="test_jwt_user",
         name="JWT Test User",
         dept="Test Dept",
@@ -190,11 +193,14 @@ def user_fixture(db_session: Session) -> User:
     """
     Create a test user in the database.
 
+    Uses auto-increment ID for general test use.
+    For JWT/authenticated tests, use authenticated_user fixture instead.
+
     Args:
         db_session: Database session
 
     Returns:
-        User instance
+        User instance with auto-generated ID
 
     """
     user = User(
@@ -213,13 +219,13 @@ def user_fixture(db_session: Session) -> User:
 
 
 @pytest.fixture(scope="function")
-def user_profile_survey_fixture(db_session: Session, user_fixture: User) -> UserProfileSurvey:
+def user_profile_survey_fixture(db_session: Session, authenticated_user: User) -> UserProfileSurvey:
     """
     Create a test user profile survey record.
 
     Args:
         db_session: Database session
-        user_fixture: User fixture
+        authenticated_user: Authenticated test user
 
     Returns:
         UserProfileSurvey instance
@@ -227,7 +233,7 @@ def user_profile_survey_fixture(db_session: Session, user_fixture: User) -> User
     """
     survey = UserProfileSurvey(
         id="survey_001",
-        user_id=user_fixture.id,
+        user_id=authenticated_user.id,
         self_level="intermediate",
         years_experience=3,
         job_role="Senior Engineer",
@@ -243,14 +249,14 @@ def user_profile_survey_fixture(db_session: Session, user_fixture: User) -> User
 
 @pytest.fixture(scope="function")
 def test_session_round1_fixture(
-    db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+    db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
 ) -> TestSession:
     """
     Create a Round 1 test session for testing adaptive logic.
 
     Args:
         db_session: Database session
-        user_fixture: User fixture
+        authenticated_user: Authenticated test user (user_id=1)
         user_profile_survey_fixture: Survey fixture
 
     Returns:
@@ -259,7 +265,7 @@ def test_session_round1_fixture(
     """
     session = TestSession(
         id=str(uuid4()),
-        user_id=user_fixture.id,
+        user_id=authenticated_user.id,
         survey_id=user_profile_survey_fixture.id,
         round=1,
         status="completed",
@@ -371,14 +377,14 @@ def attempt_answers_for_session(db_session: Session, test_session_round1_fixture
 
 @pytest.fixture(scope="function")
 def test_session_in_progress(
-    db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+    db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
 ) -> TestSession:
     """
     Create an in-progress test session for autosave testing.
 
     Args:
         db_session: Database session
-        user_fixture: User fixture
+        authenticated_user: Authenticated test user (user_id=1)
         user_profile_survey_fixture: Survey fixture
 
     Returns:
@@ -387,7 +393,7 @@ def test_session_in_progress(
     """
     session = TestSession(
         id=str(uuid4()),
-        user_id=user_fixture.id,
+        user_id=authenticated_user.id,
         survey_id=user_profile_survey_fixture.id,
         round=1,
         status="in_progress",

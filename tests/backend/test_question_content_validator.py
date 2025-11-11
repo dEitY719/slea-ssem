@@ -418,11 +418,11 @@ class TestEdgeCases:
         """
         Edge case: Very long question stem.
 
-        Given: Question with 2000+ character stem
+        Given: Question with 1900 character stem (DB limit is 2000)
         When: validate_question() called
         Then: Still filters correctly without timeout
         """
-        long_stem = "A" * 1000 + "What is AI?" + "B" * 1000
+        long_stem = "A" * 900 + "What is AI?" + "B" * 900  # Total ~1811 chars (under 2000)
         question = question_factory(stem=long_stem, choices=["A", "B"])
 
         validator = QuestionContentValidator()
