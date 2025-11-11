@@ -1,17 +1,32 @@
-// REQ: REQ-F-A1-2, REQ-F-A3
-import React from 'react'
+// REQ: REQ-F-A1-2, REQ-F-A2-1, REQ-F-A3
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getToken } from '../utils/auth'
+import { useUserProfile } from '../hooks/useUserProfile'
 import './HomePage.css'
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate()
+  const { checkNickname } = useUserProfile()
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const handleStart = () => {
-    // REQ-F-A3: When user clicks "Start", check if nickname/profile exists
-    // For now, navigate to signup (nickname setup)
-    // This will be enhanced when REQ-F-A2, REQ-F-A4 are implemented
-    navigate('/signup')
+  const handleStart = async () => {
+    // REQ-F-A2-1: Check if user has set nickname before proceeding
+    try {
+      const currentNickname = await checkNickname()
+
+      if (currentNickname === null) {
+        // User hasn't set nickname yet, redirect to signup
+        navigate('/signup')
+      } else {
+        // User has nickname, proceed to next step
+        // TODO: When REQ-F-B1 (assessment) is implemented, navigate to /assessment
+        // For now, we still go to /signup as placeholder
+        navigate('/signup')
+      }
+    } catch (err) {
+      setErrorMessage('프로필 정보를 불러오는데 실패했습니다. 다시 시도해주세요.')
+    }
   }
 
   // Verify user is authenticated
@@ -31,6 +46,11 @@ const HomePage: React.FC = () => {
         <p className="home-subtitle">
           개인 맞춤형 레벨 테스트로 학습을 시작하세요.
         </p>
+        {errorMessage && (
+          <p className="error-message" style={{ color: '#d32f2f', marginBottom: '1rem' }}>
+            {errorMessage}
+          </p>
+        )}
         <button className="start-button" onClick={handleStart}>
           시작하기
         </button>
