@@ -72,7 +72,7 @@ const SelfAssessmentPage: React.FC = () => {
       })
 
       setIsSubmitting(false)
-      navigate('/profile-review', { replace: true })
+      navigate('/profile-review', { replace: true, state: { level } })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : '자기평가 정보 저장에 실패했습니다.'

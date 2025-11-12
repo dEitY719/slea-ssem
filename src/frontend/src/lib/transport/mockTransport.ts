@@ -164,6 +164,13 @@ class MockTransport implements HttpTransport {
       return response as T
     }
 
+    // Handle GET /profile/nickname endpoint
+    if (url === '/profile/nickname' && method === 'GET') {
+      const response = mockData['/api/profile/nickname']
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
     // Find mock data for this endpoint
     const data = mockData[url]
 
