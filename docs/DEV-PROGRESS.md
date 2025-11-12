@@ -18,6 +18,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-A2-1 | 홈화면 "시작하기" 클릭 시 닉네임 체크 | 4 | ✅ Done | 7 tests (100%), Commit: fa43b6d, Progress: docs/progress/REQ-F-A2-1.md |
 | REQ-F-A2-2 | 닉네임 입력 필드와 "중복 확인" 버튼 제공 | 4 | ✅ Done | Commit: 2190e73 |
 | REQ-F-A2-3 | 실시간 유효성 검사 및 에러 메시지 표시 | 4 | ✅ Done | Commit: 2190e73 |
+| REQ-F-A2-4 | 닉네임 중복 시 대안 3개 시각적 제안 | 4 | ✅ Done | 3 tests (100%), Commit: 1e57443, Progress: docs/progress/REQ-F-A2-4.md |
 | REQ-F-A2-6 | "사용 가능" 상태 표시 및 "다음" 버튼 활성화 | 4 | ✅ Done | Commit: 21243fd |
 | REQ-F-A2-7 | "다음" 버튼 클릭 시 nickname 업데이트 및 리다이렉트 | 4 | ✅ Done | Commit: c3e06ea |
 | REQ-F-A2-Edit | 프로필 수정 화면 | 0 | ⏳ Backlog | 6개 sub-tasks |
