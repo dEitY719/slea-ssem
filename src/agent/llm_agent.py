@@ -314,65 +314,103 @@ class ItemGenAgent:
 
         """
         tool_results = []
+        logger.info(f"\n🔧 _extract_tool_results: Looking for tool_name='{tool_name}'")
 
         # Format 1: AgentExecutor intermediate_steps (for backward compatibility with tests)
         intermediate_steps = result.get("intermediate_steps", [])
         if intermediate_steps:
-            logger.debug("Using intermediate_steps format (test mock detected)")
-            for step_tool_name, tool_output_str in intermediate_steps:
+            logger.info("✓ Format 1: intermediate_steps detected (test mock)")
+            logger.info(f"  Total steps: {len(intermediate_steps)}")
+            for i, (step_tool_name, tool_output_str) in enumerate(intermediate_steps):
+                logger.info(f"  [{i}] step_tool_name='{step_tool_name}', matches_target={step_tool_name == tool_name}")
                 if step_tool_name == tool_name:
                     tool_results.append((step_tool_name, tool_output_str))
+                    logger.info(f"       ✓ MATCHED - output_type={type(tool_output_str).__name__}")
+            logger.info(f"  Result: {len(tool_results)} matching tools found\n")
             return tool_results
 
         # Format 2: LangGraph messages format (actual LangGraph output)
         messages = result.get("messages", [])
         if not messages:
-            logger.warning("No intermediate_steps or messages found in agent result")
+            logger.warning("No intermediate_steps or messages found in agent result\n")
             return []
 
-        logger.debug("Using messages format (actual LangGraph output)")
+        logger.info("✓ Format 2: messages detected (LangGraph output)")
+        logger.info(f"  Total messages: {len(messages)}\n")
 
-        # Build a map of tool_call_id → ToolMessage for quick lookup
+        # Step 1: Build a map of tool_call_id → ToolMessage for quick lookup
+        logger.info("Step 1️⃣: Scanning for ToolMessages...")
         tool_messages_by_id: dict[str, ToolMessage] = {}
-        for message in messages:
+        for i, message in enumerate(messages):
+            msg_type = type(message).__name__
             if isinstance(message, ToolMessage):
                 tool_call_id = message.tool_call_id
+                name = getattr(message, "name", "?")
+                content_preview = str(getattr(message, "content", ""))[:100]
+                logger.info(f"  [{i}] ToolMessage found:")
+                logger.info(f"       tool_call_id={tool_call_id}, name={name}")
+                logger.info(f"       content_preview={content_preview}...")
                 if tool_call_id:
                     tool_messages_by_id[tool_call_id] = message
-                    logger.debug(f"Found ToolMessage for tool_call_id={tool_call_id}, tool_name={message.name}")
+                    logger.info(f"       ✓ Added to map")
+                else:
+                    logger.info(f"       ⚠️  No tool_call_id!")
+            elif msg_type == "AIMessage":
+                logger.info(f"  [{i}] AIMessage (checking for tool_calls...)")
+            else:
+                logger.info(f"  [{i}] {msg_type}")
 
-        # Iterate through AIMessages to find matching tool calls
-        for message in messages:
+        logger.info(f"\nToolMessage map summary: {len(tool_messages_by_id)} items\n")
+
+        # Step 2: Iterate through AIMessages to find matching tool calls
+        logger.info("Step 2️⃣: Scanning AIMessages for tool_calls...")
+        ai_message_count = 0
+        for i, message in enumerate(messages):
             if isinstance(message, AIMessage):
+                ai_message_count += 1
+                logger.info(f"  [{i}] AIMessage #{ai_message_count}")
+
                 # AIMessage has tool_calls list with ToolCall objects
                 tool_calls = getattr(message, "tool_calls", [])
+                logger.info(f"       tool_calls: {len(tool_calls)} found")
+
                 if not tool_calls:
+                    logger.info(f"       ⚠️  No tool_calls in this message")
                     continue
 
-                for tool_call in tool_calls:
+                for j, tool_call in enumerate(tool_calls):
                     try:
                         # ToolCall is an object with .id and .name attributes
                         call_id = tool_call.id if hasattr(tool_call, "id") else tool_call.get("id")
                         call_name = tool_call.name if hasattr(tool_call, "name") else tool_call.get("name")
 
+                        logger.info(f"         [{j}] tool_call: name='{call_name}', id={call_id}")
+                        logger.info(f"              target_tool_name='{tool_name}', matches={call_name == tool_name}")
+
                         # Check if this tool call matches what we're looking for
                         if call_name == tool_name:
+                            logger.info(f"              ✓ NAME MATCHED!")
                             # Find the corresponding ToolMessage
                             if call_id in tool_messages_by_id:
                                 tool_msg = tool_messages_by_id[call_id]
                                 content = tool_msg.content if hasattr(tool_msg, "content") else str(tool_msg)
                                 tool_results.append((tool_name, content))
-                                logger.debug(
-                                    f"Matched tool_call: tool_name={tool_name}, "
-                                    f"tool_call_id={call_id}, content_preview={str(content)[:50]}..."
-                                )
+                                content_preview = str(content)[:100]
+                                logger.info(f"              ✓ FOUND ToolMessage with id={call_id}")
+                                logger.info(f"              content_preview={content_preview}...")
                             else:
-                                logger.warning(f"Tool call {call_id} for {tool_name} has no matching ToolMessage")
+                                logger.warning(
+                                    f"              ✗ NO ToolMessage found for id={call_id}!\n"
+                                    f"                 Available IDs in map: {list(tool_messages_by_id.keys())}"
+                                )
+                        else:
+                            logger.info(f"              ✗ Name mismatch (looking for '{tool_name}')")
 
                     except (AttributeError, KeyError, TypeError) as e:
-                        logger.warning(f"Error extracting tool_call properties: {e}")
+                        logger.error(f"         [{j}] ERROR extracting tool_call properties: {e}")
                         continue
 
+        logger.info(f"\nStep 2️⃣ Result: {len(tool_results)} matching tools found\n")
         return tool_results
 
     async def generate_questions(self, request: GenerateQuestionsRequest) -> GenerateQuestionsResponse:
@@ -729,10 +767,84 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
         logger.info(f"문항 생성 결과 파싱 중... round_id={round_id}")
 
         try:
+            # DEBUG: Agent output 구조 분석
+            logger.info("=" * 80)
+            logger.info("🔍 AGENT OUTPUT STRUCTURE ANALYSIS")
+            logger.info("=" * 80)
+
+            # 1. Result dict 키 확인
+            result_keys = list(result.keys())
+            logger.info(f"Result 최상위 키: {result_keys}")
+
+            # 2. intermediate_steps 확인
+            intermediate_steps = result.get("intermediate_steps", [])
+            if intermediate_steps:
+                logger.info(f"\n✓ intermediate_steps 발견: {len(intermediate_steps)}개")
+                for i, (tool_name, tool_output) in enumerate(intermediate_steps):
+                    output_preview = str(tool_output)[:150]
+                    logger.info(f"  [{i}] tool_name={tool_name}, output_type={type(tool_output).__name__}")
+                    logger.info(f"      output_preview={output_preview}...")
+            else:
+                logger.info("\n✗ intermediate_steps 없음")
+
+            # 3. messages 확인
+            messages = result.get("messages", [])
+            if messages:
+                logger.info(f"\n✓ messages 발견: {len(messages)}개")
+                for i, msg in enumerate(messages):
+                    msg_type = type(msg).__name__
+                    msg_attrs = {
+                        "type": getattr(msg, "type", "N/A"),
+                        "has_content": hasattr(msg, "content"),
+                        "has_tool_calls": hasattr(msg, "tool_calls"),
+                        "has_tool_call_id": hasattr(msg, "tool_call_id"),
+                    }
+                    logger.info(f"  [{i}] type={msg_type}, attrs={msg_attrs}")
+
+                    # AIMessage의 경우 tool_calls 확인
+                    if msg_type == "AIMessage" and hasattr(msg, "tool_calls"):
+                        tool_calls = getattr(msg, "tool_calls", [])
+                        if tool_calls:
+                            logger.info(f"      tool_calls: {len(tool_calls)}개")
+                            for j, tc in enumerate(tool_calls):
+                                tc_name = getattr(tc, "name", tc.get("name") if isinstance(tc, dict) else "?")
+                                tc_id = getattr(tc, "id", tc.get("id") if isinstance(tc, dict) else "?")
+                                logger.info(f"        [{j}] name={tc_name}, id={tc_id}")
+                        # DEBUG: AIMessage의 content 전체 출력
+                        ai_content = getattr(msg, "content", "")
+                        if ai_content:
+                            content_preview = str(ai_content)[:500]
+                            logger.info(f"      AIMessage.content (first 500 chars):")
+                            logger.info(f"        {content_preview}...")
+
+                    # ToolMessage의 경우 내용 확인
+                    if msg_type == "ToolMessage":
+                        content = getattr(msg, "content", "?")
+                        tool_call_id = getattr(msg, "tool_call_id", "?")
+                        name = getattr(msg, "name", "?")
+                        logger.info(f"      tool_call_id={tool_call_id}, name={name}")
+                        logger.info(f"      content_preview={str(content)[:200]}...")
+            else:
+                logger.info("\n✗ messages 없음")
+
+            logger.info("=" * 80)
+
             # 1. save_generated_question 도구 결과 추출 (포맷 무관)
+            logger.info("\n📊 Extracting save_generated_question tool results...")
             tool_results = self._extract_tool_results(result, "save_generated_question")
             agent_steps = len(result.get("intermediate_steps", [])) or len(result.get("messages", []))
-            logger.info(f"도구 호출 {agent_steps}개 발견, save_generated_question {len(tool_results)}개")
+            logger.info(f"✓ 도구 호출 {agent_steps}개 발견, save_generated_question {len(tool_results)}개")
+
+            # DEBUG: 추출된 tool_results 상세 출력
+            if tool_results:
+                logger.info("\n📋 Extracted tool results:")
+                for i, (tool_name, tool_output_str) in enumerate(tool_results):
+                    logger.info(f"  [{i}] tool_name={tool_name}")
+                    logger.info(f"      output_type={type(tool_output_str).__name__}")
+                    output_preview = str(tool_output_str)[:300]
+                    logger.info(f"      output_preview={output_preview}...")
+            else:
+                logger.warning("⚠️  No tool results extracted!")
 
             # 2. save_generated_question 도구 결과 파싱
             items: list[GeneratedItem] = []

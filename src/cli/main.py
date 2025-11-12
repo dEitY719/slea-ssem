@@ -23,9 +23,9 @@ from src.cli.config.loader import load_config
 from src.cli.config.models import Command, CommandConfig
 from src.cli.context import CLIContext
 
-# Configure logging (WARNING level for user-friendly output)
-# Set to DEBUG for troubleshooting, INFO for important events, WARNING for errors only
-logging.basicConfig(level=logging.WARNING, stream=sys.stderr, format="%(levelname)s: %(message)s")
+# Configure logging (INFO level for detailed output during debugging)
+# Set to DEBUG for very detailed, WARNING for errors only, INFO for important events
+logging.basicConfig(level=logging.INFO, stream=sys.stderr, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Suppress asyncio debug logs
