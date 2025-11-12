@@ -3,6 +3,7 @@
 ## Tool Call Patterns
 
 ### Tool 1: Get User Profile
+
 ```python
 profile = get_user_profile(user_id="550e8400-e29b-41d4-a716-446655440000")
 
@@ -19,6 +20,7 @@ profile = get_user_profile(user_id="550e8400-e29b-41d4-a716-446655440000")
 ```
 
 ### Tool 2: Search Question Templates
+
 ```python
 templates = search_question_templates(
     interests=["LLM", "RAG", "Agent Architecture"],
@@ -30,6 +32,7 @@ templates = search_question_templates(
 ```
 
 ### Tool 3: Get Difficulty Keywords
+
 ```python
 keywords = get_difficulty_keywords(difficulty=7, category="technical")
 
@@ -44,6 +47,7 @@ keywords = get_difficulty_keywords(difficulty=7, category="technical")
 ```
 
 ### Tool 4: Validate Question Quality
+
 ```python
 # Single validation
 result = validate_question_quality(
@@ -66,6 +70,7 @@ results = validate_question_quality(
 ```
 
 ### Tool 5: Save Generated Question
+
 ```python
 result = save_generated_question(
     item_type="multiple_choice",
@@ -89,6 +94,7 @@ result = save_generated_question(
 ```
 
 ### Tool 6: Score & Explain Answer
+
 ```python
 # Multiple Choice
 result = score_and_explain(
@@ -131,24 +137,29 @@ result = score_and_explain(
 ## Input Validation Summary
 
 ### Tool 1
+
 - `user_id`: str, non-empty, valid UUID format ✓
 
 ### Tool 2
+
 - `interests`: list[str], 1-10 items, each 1-50 chars ✓
 - `difficulty`: int, 1-10 ✓
 - `category`: str, one of {technical, business, general} ✓
 
 ### Tool 3
+
 - `difficulty`: int, 1-10 ✓
 - `category`: str, one of {technical, business, general} ✓
 
 ### Tool 4
+
 - `stem`: str, max 250 chars, non-empty ✓
 - `question_type`: str, one of {multiple_choice, true_false, short_answer} ✓
 - `choices`: list[str], required for MC (4-5 items) ✓
 - `correct_answer`: str, required for MC/TF ✓
 
 ### Tool 5
+
 - `item_type`: str, one of {multiple_choice, true_false, short_answer} ✓
 - `stem`: str, max 2000 chars, non-empty ✓
 - `choices`: list[str], required for MC ✓
@@ -159,6 +170,7 @@ result = score_and_explain(
 - `round_id`: str, format: "session_id_round_number_timestamp" ✓
 
 ### Tool 6
+
 - `session_id`: str, non-empty ✓
 - `user_id`: str, non-empty ✓
 - `question_id`: str, non-empty ✓
@@ -172,18 +184,21 @@ result = score_and_explain(
 ## Scoring Rules (Tool 6)
 
 ### Multiple Choice
+
 ```
 is_correct = (user_answer.upper() == correct_answer.upper())
 score = 100 if is_correct else 0
 ```
 
 ### True/False
+
 ```
 is_correct = (user_answer.lower() == correct_answer.lower())
 score = 100 if is_correct else 0
 ```
 
 ### Short Answer
+
 ```
 is_correct = (llm_score >= 80)
 score = llm_score (0-100 from LLM)
@@ -201,6 +216,7 @@ Partial Credit: 70-79 → is_correct=False but score > 0
 ## Error Responses
 
 ### When Tool Call Fails
+
 All tools follow error handling patterns:
 
 1. **Input Validation Error**: Raise `ValueError` or `TypeError` immediately
@@ -209,6 +225,7 @@ All tools follow error handling patterns:
 4. **Timeout**: Return cached or fallback value
 
 ### Common Fallbacks
+
 - **Tool 1**: Return default profile with "beginner" level
 - **Tool 2**: Return empty list `[]`
 - **Tool 3**: Return default keywords (communication, teamwork, etc.)
@@ -234,6 +251,7 @@ All tools follow error handling patterns:
 ## Integration Points
 
 ### Mode 1 Pipeline (Question Generation)
+
 ```
 User Request
     ↓
@@ -253,6 +271,7 @@ Response: Generated Questions
 ```
 
 ### Mode 2 Pipeline (Auto-Scoring)
+
 ```
 User Answer Submission
     ↓
@@ -346,6 +365,7 @@ Timeout: 30 seconds
 ## Testing Patterns
 
 ### Unit Test Template (Tool 1)
+
 ```python
 def test_get_user_profile_valid():
     result = get_user_profile(user_id="550e8400-e29b-41d4-a716-446655440000")
@@ -360,6 +380,7 @@ def test_get_user_profile_invalid():
 ```
 
 ### Integration Test Template (Tool 4 → Tool 5)
+
 ```python
 def test_validate_then_save():
     # Tool 4: Validate
@@ -391,4 +412,3 @@ def test_validate_then_save():
 - [ ] Review fallback values on Tool failures
 - [ ] Check retry queue for Tool 5 failures (`get_retry_queue()`)
 - [ ] Verify round_id format: "session_id_round_number_timestamp"
-

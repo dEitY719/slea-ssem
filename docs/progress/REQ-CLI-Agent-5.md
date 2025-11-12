@@ -13,6 +13,7 @@
 ### 1.1 Requirement Summary
 
 Implement `agent tools` command suite that:
+
 - Provides direct CLI access to invoke individual Tools 1-6
 - Enables debugging and testing of tool functionality
 - Supports tool-specific parameters for each tool
@@ -22,6 +23,7 @@ Implement `agent tools` command suite that:
 ### 1.2 Feature Intent
 
 Enable developers and testers to:
+
 - Debug individual tool behavior in isolation
 - Test tool parameters without running full pipeline
 - Validate tool outputs during development
@@ -33,6 +35,7 @@ Enable developers and testers to:
 #### Location & Implementation
 
 **Files to Create/Modify**:
+
 - ✅ Modify: `src/cli/actions/agent.py` (replace 6 placeholders: t1-t6 functions)
 - ✅ New: Comprehensive test suite in `tests/cli/test_agent_tools.py`
 
@@ -53,18 +56,22 @@ Subcommands:
 #### Tool 1: Get User Profile
 
 **Command**:
+
 ```bash
 agent tools t1 --user-id USER_ID [--help]
 ```
 
 **Options**:
+
 - `--user-id TEXT` - User ID (required)
 - `--help` - Show help
 
 **Input**:
+
 - user_id: string (required)
 
 **Success Output**:
+
 ```
 🔍 Tool 1: Get User Profile
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -83,6 +90,7 @@ Category Expertise:
 ```
 
 **Error Cases**:
+
 - Missing --user-id
 - User not found
 - API/database error
@@ -92,22 +100,26 @@ Category Expertise:
 #### Tool 2: Search Question Templates
 
 **Command**:
+
 ```bash
 agent tools t2 --interests TEXT --difficulty INT [--category TEXT] [--help]
 ```
 
 **Options**:
+
 - `--interests TEXT` - Comma-separated interests (required)
 - `--difficulty INT` - Difficulty level 1-10 (required)
 - `--category TEXT` - Question category (optional)
 - `--help` - Show help
 
 **Input**:
+
 - interests: list[str] (required, comma-separated)
 - difficulty: int (1-10, required)
 - category: str (optional)
 
 **Success Output**:
+
 ```
 📚 Tool 2: Search Question Templates
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -128,6 +140,7 @@ Difficulty: 7 (±1.5 range: 5.5-8.5)
 ```
 
 **Error Cases**:
+
 - Missing required parameters
 - Invalid difficulty (not 1-10)
 - No templates found
@@ -138,20 +151,24 @@ Difficulty: 7 (±1.5 range: 5.5-8.5)
 #### Tool 3: Get Difficulty Keywords
 
 **Command**:
+
 ```bash
 agent tools t3 --difficulty INT [--category TEXT] [--help]
 ```
 
 **Options**:
+
 - `--difficulty INT` - Difficulty level 1-10 (required)
 - `--category TEXT` - Question category (optional)
 - `--help` - Show help
 
 **Input**:
+
 - difficulty: int (1-10, required)
 - category: str (optional)
 
 **Success Output**:
+
 ```
 📊 Tool 3: Get Difficulty Keywords
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -179,6 +196,7 @@ Categories:
 ```
 
 **Error Cases**:
+
 - Missing difficulty
 - Invalid difficulty (not 1-10)
 - Cache error (fallback to defaults)
@@ -188,20 +206,24 @@ Categories:
 #### Tool 4: Validate Question Quality
 
 **Command**:
+
 ```bash
 agent tools t4 --question TEXT --type TYPE [--help]
 ```
 
 **Options**:
+
 - `--question TEXT` - Question stem (required)
 - `--type TEXT` - Question type: multiple_choice, short_answer, true_false (required)
 - `--help` - Show help
 
 **Input**:
+
 - question_stem: str (required)
 - question_type: str (required, enum)
 
 **Success Output** (Pass):
+
 ```
 ✅ Tool 4: Validate Question Quality
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -222,6 +244,7 @@ Estimated Time: 3-5 minutes
 ```
 
 **Success Output** (Revise):
+
 ```
 ⚠️  Tool 4: Validate Question Quality
 Status: REVISE (Score: 0.75 / 1.0)
@@ -237,6 +260,7 @@ Suggested Revision:
 ```
 
 **Error Cases**:
+
 - Missing required parameters
 - Invalid question type
 - Invalid question (empty/null)
@@ -246,11 +270,13 @@ Suggested Revision:
 #### Tool 5: Save Generated Question
 
 **Command**:
+
 ```bash
 agent tools t5 --stem TEXT --type TYPE --difficulty INT --categories TEXT --round-id TEXT [--help]
 ```
 
 **Options**:
+
 - `--stem TEXT` - Question stem (required)
 - `--type TEXT` - Question type (required)
 - `--difficulty INT` - Difficulty 1-10 (required)
@@ -259,6 +285,7 @@ agent tools t5 --stem TEXT --type TYPE --difficulty INT --categories TEXT --roun
 - `--help` - Show help
 
 **Input**:
+
 - stem: str (required)
 - question_type: str (required, enum)
 - difficulty: int (1-10, required)
@@ -266,6 +293,7 @@ agent tools t5 --stem TEXT --type TYPE --difficulty INT --categories TEXT --roun
 - round_id: str (required)
 
 **Success Output**:
+
 ```
 💾 Tool 5: Save Generated Question
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -289,6 +317,7 @@ Database Record:
 ```
 
 **Error Cases**:
+
 - Missing required parameters
 - Invalid difficulty
 - Invalid question type
@@ -300,12 +329,14 @@ Database Record:
 #### Tool 6: Score & Generate Explanation
 
 **Command**:
+
 ```bash
 agent tools t6 --question-id ID --question TEXT --answer-type TYPE \
              --user-answer TEXT --correct-answer TEXT [--help]
 ```
 
 **Options**:
+
 - `--question-id TEXT` - Question ID (required)
 - `--question TEXT` - Question stem (required)
 - `--answer-type TEXT` - Question type (required)
@@ -314,6 +345,7 @@ agent tools t6 --question-id ID --question TEXT --answer-type TYPE \
 - `--help` - Show help
 
 **Input**:
+
 - item_id: str (question ID, required)
 - question_stem: str (required)
 - question_type: str (required, enum)
@@ -321,6 +353,7 @@ agent tools t6 --question-id ID --question TEXT --answer-type TYPE \
 - correct_answer: str (required)
 
 **Success Output** (Correct):
+
 ```
 🎯 Tool 6: Score & Generate Explanation
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -343,6 +376,7 @@ Confidence: 95% (Very High)
 ```
 
 **Success Output** (Partial):
+
 ```
 ⚠️  Tool 6: Score & Generate Explanation
 Status: PARTIAL (Score: 65/100)
@@ -361,6 +395,7 @@ Confidence: 78% (High)
 ```
 
 **Error Cases**:
+
 - Missing required parameters
 - Invalid question type
 - LLM API error
@@ -405,6 +440,7 @@ Confidence: 78% (High)
 ### 2.1 Test Execution Strategy
 
 Create `tests/cli/test_agent_tools.py` with:
+
 - Help and error handling tests (9 tests: 1 help + 8 error tests)
 - Success scenario tests for each tool (6 tests)
 - Mock tool responses and edge cases
@@ -415,13 +451,16 @@ Create `tests/cli/test_agent_tools.py` with:
 #### Tool 1 Tests (3 total: 1 help + 1 success + 1 error)
 
 **TC-1**: `agent tools t1 --help`
+
 - Verify help displays usage and options
 
 **TC-2**: `agent tools t1 --user-id user_123` (success)
+
 - Mock ItemGenAgent.get_user_profile()
 - Verify output contains user data
 
 **TC-3**: `agent tools t1` (missing --user-id)
+
 - Verify error message and usage hint
 
 ---
@@ -429,13 +468,16 @@ Create `tests/cli/test_agent_tools.py` with:
 #### Tool 2 Tests (3 total)
 
 **TC-4**: `agent tools t2 --help`
+
 - Verify help displays usage
 
 **TC-5**: `agent tools t2 --interests Python,Data --difficulty 7` (success)
+
 - Mock search_question_templates()
 - Verify table output with templates
 
 **TC-6**: `agent tools t2 --difficulty 15` (invalid difficulty)
+
 - Verify error for out-of-range difficulty
 
 ---
@@ -443,13 +485,16 @@ Create `tests/cli/test_agent_tools.py` with:
 #### Tool 3 Tests (3 total)
 
 **TC-7**: `agent tools t3 --help`
+
 - Verify help
 
 **TC-8**: `agent tools t3 --difficulty 7` (success)
+
 - Mock get_difficulty_keywords()
 - Verify keywords list output
 
 **TC-9**: `agent tools t3 --difficulty abc` (invalid type)
+
 - Verify error for non-integer difficulty
 
 ---
@@ -457,13 +502,16 @@ Create `tests/cli/test_agent_tools.py` with:
 #### Tool 4 Tests (3 total)
 
 **TC-10**: `agent tools t4 --help`
+
 - Verify help
 
 **TC-11**: `agent tools t4 --question "What is X?" --type multiple_choice` (success)
+
 - Mock validate_question_quality()
 - Verify scoring display
 
 **TC-12**: `agent tools t4 --question "What?" --type invalid_type` (invalid type)
+
 - Verify error for invalid question type
 
 ---
@@ -471,13 +519,16 @@ Create `tests/cli/test_agent_tools.py` with:
 #### Tool 5 Tests (3 total)
 
 **TC-13**: `agent tools t5 --help`
+
 - Verify help
 
 **TC-14**: `agent tools t5 --stem "Q?" --type mc --difficulty 5 --categories Python --round-id r1` (success)
+
 - Mock save_generated_question()
 - Verify success message with item ID
 
 **TC-15**: `agent tools t5 --stem "Q?" --difficulty 15` (invalid difficulty)
+
 - Verify error
 
 ---
@@ -485,13 +536,16 @@ Create `tests/cli/test_agent_tools.py` with:
 #### Tool 6 Tests (3 total)
 
 **TC-16**: `agent tools t6 --help`
+
 - Verify help
 
 **TC-17**: `agent tools t6 --question-id q1 --question "Q?" --answer-type mc --user-answer "A" --correct-answer "A"` (success)
+
 - Mock score_and_explain()
 - Verify scoring and explanation
 
 **TC-18**: `agent tools t6 --question-id q1 --question "Q?"` (missing answers)
+
 - Verify error for missing parameters
 
 ---
@@ -499,12 +553,15 @@ Create `tests/cli/test_agent_tools.py` with:
 #### Additional Tests (3 total)
 
 **TC-19**: Main `agent tools --help`
+
 - Verify tools menu displays all 6 tools
 
 **TC-20**: `agent tools invalid_tool`
+
 - Verify error for invalid subcommand
 
 **TC-21**: Agent initialization failure
+
 - Mock ItemGenAgent() to raise exception
 - Verify error handling
 
@@ -515,6 +572,7 @@ Create `tests/cli/test_agent_tools.py` with:
 **File**: `tests/cli/test_agent_tools.py` (~600 LOC)
 
 **Test Classes**:
+
 - `TestToolsHelp` (2 tests: main help + individual help)
 - `TestTool1GetUserProfile` (3 tests)
 - `TestTool2SearchTemplates` (3 tests)
@@ -525,6 +583,7 @@ Create `tests/cli/test_agent_tools.py` with:
 - `TestToolsErrors` (2 tests: invalid subcommand, agent init failure)
 
 **Mocking Strategy**:
+
 - Mock `src.cli.actions.agent.ItemGenAgent` constructor
 - Mock each tool method: get_user_profile(), search_question_templates(), etc.
 - Return realistic mock responses for each tool
@@ -541,6 +600,7 @@ Create `tests/cli/test_agent_tools.py` with:
 **Phase 2 Status**: ✅ COMPLETE
 
 Test Classes:
+
 - TestToolsHelp (1 test)
 - TestTool1GetUserProfile (3 tests)
 - TestTool2SearchTemplates (3 tests)
@@ -567,7 +627,7 @@ Implemented all 6 tool functions with complete functionality:
    - Replaced `t4_validate_question_quality()` (52 lines) with full implementation
    - Replaced `t5_save_generated_question()` (68 lines) with full implementation
    - Replaced `t6_score_and_explain()` (72 lines) with full implementation
-   - Added 6 help functions (_print_t1_help through _print_t6_help, ~52 lines total)
+   - Added 6 help functions (_print_t1_help through_print_t6_help, ~52 lines total)
 
 2. **tests/cli/test_agent_tools.py** ✅ ALL 21 TESTS PASSING:
    - TestToolsHelp (1 test)
@@ -582,6 +642,7 @@ Implemented all 6 tool functions with complete functionality:
 ### 3.2 Key Implementation Details
 
 **Argument Parsing Pattern**:
+
 ```python
 i = 0
 while i < len(args):
@@ -597,23 +658,27 @@ while i < len(args):
 ```
 
 **Parameter Validation**:
+
 - Type checking (str, int conversions)
 - Range validation (difficulty 1-10)
 - Enum validation (question types)
 - Required field checking with helpful error messages
 
 **Agent Initialization**:
+
 - Try-except wrapping for graceful error handling
 - asyncio.run() for executing async agent methods from sync context
 - Proper error messaging for missing GEMINI_API_KEY
 
 **Output Formatting**:
+
 - Rich console panels with emoji headers (📚 🔍 ✅ 💾 🎯)
 - Divider lines (━━━) for visual separation
 - Hasattr() checks for optional response fields
 - Color-coded error messages ([bold red]❌ Error:[/bold red])
 
 **Test Assertions**:
+
 - Uses strip_ansi() helper to remove ANSI color codes from output
 - Validates actual implementation output instead of placeholder messages
 - Checks for expected tool names, titles, and error messages

@@ -10,14 +10,17 @@
 ## 📋 요구사항
 
 ### 요약
+
 닉네임 중복 확인 결과가 "사용 가능"일 때, 성공 메시지를 표시하고 "다음" 버튼을 활성화하여 사용자가 다음 단계로 진행할 수 있도록 함
 
 ### 수용 기준
+
 - ✅ 중복 없음 → "사용 가능한 닉네임입니다" 메시지 표시
 - ✅ "다음" 버튼 활성화 (사용 가능 상태일 때만)
 - ✅ 닉네임 변경 시 → "다음" 버튼 비활성화 (재확인 필요)
 
 ### 관련 문서
+
 - `docs/feature_requirement_mvp1.md` - REQ-F-A2-6 (Line 110)
 
 ---
@@ -25,9 +28,11 @@
 ## 🎯 Phase 1: Specification
 
 ### Intent
+
 닉네임이 사용 가능함을 명확하게 사용자에게 알리고, "다음" 버튼을 통해 자기평가 입력 단계로 진행할 수 있는 UI/UX 제공
 
 ### Button State Logic
+
 ```
 "다음" 버튼 활성화 조건:
   checkStatus === 'available' AND NOT isSubmitting
@@ -39,6 +44,7 @@
 ```
 
 ### 구현 위치
+
 - `src/frontend/src/pages/NicknameSetupPage.tsx` - **IMPLEMENTED** - Button state & message display
 - `src/frontend/src/hooks/useNicknameCheck.ts` - **IMPLEMENTED** - State management
 - `src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx` - **IMPLEMENTED** - Tests
@@ -48,16 +54,19 @@
 ## 🧪 Phase 2: Test Design
 
 ### 테스트 파일
+
 **`src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx`**
 
 ### 테스트 커버리지
 
 #### Test: "keeps next button disabled initially"
+
 - Render NicknameSetupPage
 - Verify "다음" button is disabled
 - **Purpose**: 초기 상태 검증 ✅ REQ-F-A2-6
 
 #### Test: "shows available message when nickname is not taken"
+
 - Mock API response: `{ available: true }`
 - Click "중복 확인"
 - Verify "사용 가능한 닉네임입니다" message displayed
@@ -65,6 +74,7 @@
 - **Purpose**: 사용 가능 상태 검증 ✅ REQ-F-A2-6
 
 #### Test: "re-disables next button when nickname changes after success"
+
 - Mock successful check (available)
 - Verify "다음" button enabled
 - Change nickname input
@@ -78,6 +88,7 @@
 ### 1. `src/frontend/src/pages/NicknameSetupPage.tsx` (Lines 57-84)
 
 **Success Message Display**:
+
 ```typescript
 const getStatusMessage = () => {
   if (checkStatus === 'available') {
@@ -107,6 +118,7 @@ const isNextDisabled = !isNextEnabled || isInputDisabled
 ```
 
 **Button Rendering**:
+
 ```typescript
 <button
   type="button"
@@ -121,6 +133,7 @@ const isNextDisabled = !isNextEnabled || isInputDisabled
 ### 2. `src/frontend/src/hooks/useNicknameCheck.ts` (Lines 54-62)
 
 **State Reset on Input Change**:
+
 ```typescript
 const setNickname = useCallback(
   (value: string) => {
@@ -134,6 +147,7 @@ const setNickname = useCallback(
 ```
 
 **Key Behavior**:
+
 - Any change to nickname input → `checkStatus` reset to `'idle'`
 - `'idle'` status → "다음" button disabled
 - Forces user to re-check nickname after editing
@@ -168,6 +182,7 @@ const setNickname = useCallback(
 ## 📁 변경된 파일 목록
 
 ### 수정
+
 - `src/frontend/src/pages/NicknameSetupPage.tsx` (+15 lines) - Button logic & message
 - `src/frontend/src/hooks/useNicknameCheck.ts` (+5 lines) - State reset logic
 - `src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx` (+40 lines) - Tests
@@ -223,10 +238,12 @@ User edits nickname after success:
 ## 📝 관련 요구사항
 
 **의존성**:
+
 - **REQ-F-A2-2**: 닉네임 입력 필드 & 중복 확인 버튼
 - **REQ-F-A2-3**: 실시간 유효성 검사
 
 **관련 작업**:
+
 - **REQ-F-A2-7**: "다음" 버튼 클릭 시 닉네임 등록
 
 ---

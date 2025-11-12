@@ -10,14 +10,17 @@
 ## 📋 요구사항
 
 ### 요약
+
 사용자가 유효하지 않은 닉네임(너무 짧음, 특수문자 등)을 입력할 경우, 중복 확인 버튼 클릭 시 즉시 에러 메시지를 표시
 
 ### 수용 기준
+
 - ✅ 닉네임 길이 검증 (3-30자)
 - ✅ 허용된 문자만 사용 (영문자, 숫자, 언더스코어)
 - ✅ 에러 메시지 실시간 표시
 
 ### 관련 문서
+
 - `docs/feature_requirement_mvp1.md` - REQ-F-A2-3 (Line 107)
 
 ---
@@ -25,14 +28,17 @@
 ## 🎯 Phase 1: Specification
 
 ### Intent
+
 입력 검증을 통해 잘못된 닉네임이 백엔드로 전송되는 것을 방지하고, 사용자에게 명확한 피드백 제공
 
 ### Validation Rules
+
 1. **Length**: 3-30 characters
 2. **Characters**: Letters (a-z, A-Z), numbers (0-9), underscore (_) only
 3. **Pattern**: `/^[a-zA-Z0-9_]+$/`
 
 ### 구현 위치
+
 - `src/frontend/src/hooks/useNicknameCheck.ts` - **IMPLEMENTED** - Validation logic
 - `src/frontend/src/pages/NicknameSetupPage.tsx` - **IMPLEMENTED** - Error message display
 - `src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx` - **IMPLEMENTED** - Validation tests
@@ -42,17 +48,20 @@
 ## 🧪 Phase 2: Test Design
 
 ### 테스트 파일
+
 **`src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx`**
 
 ### 테스트 커버리지
 
 #### Test: "shows error for nickname shorter than 3 characters"
+
 - Input: "ab" (2 characters)
 - Click "중복 확인"
 - Verify error: "닉네임은 3자 이상이어야 합니다"
 - **Purpose**: 최소 길이 검증 ✅ REQ-F-A2-3
 
 #### Test: "shows error for invalid characters in nickname"
+
 - Input: "john@doe" (contains @)
 - Click "중복 확인"
 - Verify error: "닉네임은 영문자, 숫자, 언더스코어만 사용 가능합니다"
@@ -65,6 +74,7 @@
 ### 1. `src/frontend/src/hooks/useNicknameCheck.ts` (Lines 75-94)
 
 **Validation Logic**:
+
 ```typescript
 const checkNickname = useCallback(async (): Promise<void> => {
   setErrorMessage(null)
@@ -98,6 +108,7 @@ const checkNickname = useCallback(async (): Promise<void> => {
 ```
 
 **Key Features**:
+
 - **Early return** on validation failure (no API call)
 - **Clear error messages** in Korean
 - **State management** via `setCheckStatus('error')`
@@ -105,6 +116,7 @@ const checkNickname = useCallback(async (): Promise<void> => {
 ### 2. `src/frontend/src/pages/NicknameSetupPage.tsx` (Lines 57-77)
 
 **Error Message Display**:
+
 ```typescript
 const getStatusMessage = () => {
   if (checkStatus === 'available') {
@@ -163,6 +175,7 @@ const getStatusMessage = () => {
 ## 📁 변경된 파일 목록
 
 ### 수정
+
 - `src/frontend/src/hooks/useNicknameCheck.ts` (+20 lines) - Validation logic
 - `src/frontend/src/pages/NicknameSetupPage.tsx` (+10 lines) - Error display
 - `src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx` (+30 lines) - Tests
@@ -183,12 +196,14 @@ const getStatusMessage = () => {
 ## 🎓 검증 규칙
 
 ### ✅ Valid Nicknames
+
 - `john_doe` (letters + underscore)
 - `user123` (letters + numbers)
 - `abc` (minimum 3 characters)
 - `a_very_long_nickname_123` (up to 30 characters)
 
 ### ❌ Invalid Nicknames
+
 - `ab` (too short)
 - `john@doe` (contains @)
 - `user name` (contains space)
@@ -200,9 +215,11 @@ const getStatusMessage = () => {
 ## 📝 관련 요구사항
 
 **의존성**:
+
 - **REQ-F-A2-2**: 닉네임 입력 필드 (같은 커밋에 구현)
 
 **관련 작업**:
+
 - **REQ-F-A2-4**: 닉네임 대안 제안
 - **REQ-F-A2-6**: "사용 가능" 상태 표시
 

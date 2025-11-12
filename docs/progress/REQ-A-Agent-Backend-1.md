@@ -30,6 +30,7 @@ Successfully integrated Real Agent (ItemGenAgent with Google Gemini LLM) into `Q
 ## 🎯 Acceptance Criteria - ALL MET ✅
 
 ### Phase 1: Specification
+
 - [x] Method signature change: `def` → `async def`
 - [x] Imports added: `GenerateQuestionsRequest`, `create_agent`
 - [x] Agent integration steps documented
@@ -37,6 +38,7 @@ Successfully integrated Real Agent (ItemGenAgent with Google Gemini LLM) into `Q
 - [x] Backwards compatibility planned
 
 ### Phase 2: Test Design
+
 - [x] 12 test cases designed covering:
   - [x] TC-1: Async signature validation
   - [x] TC-2: Agent creation & invocation
@@ -52,6 +54,7 @@ Successfully integrated Real Agent (ItemGenAgent with Google Gemini LLM) into `Q
   - [x] TC-12: TestSession metadata tracking
 
 ### Phase 3: Implementation
+
 - [x] Method converted to `async def`
 - [x] Agent created via `await create_agent()`
 - [x] `GenerateQuestionsRequest` constructed with survey context
@@ -65,6 +68,7 @@ Successfully integrated Real Agent (ItemGenAgent with Google Gemini LLM) into `Q
 - [x] Docstrings comprehensive
 
 ### Phase 4: Testing & Documentation
+
 - [x] All 12 tests passing (6.19s)
 - [x] Code quality clean (ruff)
 - [x] Type hints verified
@@ -80,6 +84,7 @@ Successfully integrated Real Agent (ItemGenAgent with Google Gemini LLM) into `Q
 #### 1. `src/backend/services/question_gen_service.py`
 
 **Changes**:
+
 - Added imports: `logging`, `GenerateQuestionsRequest`, `create_agent`
 - Updated docstring with REQ traceability
 - Converted `generate_questions()` method to `async def`
@@ -94,6 +99,7 @@ Successfully integrated Real Agent (ItemGenAgent with Google Gemini LLM) into `Q
 - Error handling: graceful degradation with error response + empty items
 
 **Key Code**:
+
 ```python
 async def generate_questions(
     self,
@@ -144,11 +150,13 @@ async def generate_questions(
 **Purpose**: Comprehensive test suite for Agent backend integration
 
 **Test Cases** (12 total):
+
 - TC-1-6: Happy path + feature validation
 - TC-7-9: Error handling scenarios
 - TC-10-12: Field validation + metadata tracking
 
 **Key Features**:
+
 - AsyncMock for Agent simulation
 - Captured request validation
 - DB persistence verification
@@ -178,6 +186,7 @@ tests/backend/test_question_gen_service_agent.py::TestQuestionGenerationAgentInt
 ```
 
 **Code Quality**:
+
 ```
 ruff check ✅ All checks passed!
 ```
@@ -187,6 +196,7 @@ ruff check ✅ All checks passed!
 ## 🔄 Backwards Compatibility
 
 **Response Format** (unchanged):
+
 ```python
 {
     "session_id": str,
@@ -205,6 +215,7 @@ ruff check ✅ All checks passed!
 ```
 
 **Error Response** (graceful degradation):
+
 ```python
 {
     "session_id": "error_xxx",
@@ -220,6 +231,7 @@ ruff check ✅ All checks passed!
 ## 🚀 Data Contracts
 
 ### Input: `GenerateQuestionsRequest`
+
 ```python
 survey_id: str              # UserProfileSurvey ID
 round_idx: int              # Round number (1-based)
@@ -227,6 +239,7 @@ prev_answers: list[dict]    # Optional: previous round answers
 ```
 
 ### Output: `GenerateQuestionsResponse`
+
 ```python
 round_id: str               # Generated round ID
 items: list[GeneratedItem]  # List of generated questions
@@ -235,6 +248,7 @@ error_message: str | None   # Error details if any
 ```
 
 ### Database: `Question` Table
+
 - `id`: UUID (from Agent)
 - `session_id`: FK to TestSession
 - `item_type`: multiple_choice | true_false | short_answer
@@ -262,6 +276,7 @@ error_message: str | None   # Error details if any
 ## 📝 Logging
 
 Debug logging added at key steps:
+
 ```
 📝 Question generation started: survey_id=..., round=...
 ✓ Survey found: interests=[...]
@@ -279,18 +294,21 @@ Debug logging added at key steps:
 ## 🔗 Dependencies
 
 ### Imports Added
+
 ```python
 import logging
 from src.agent.llm_agent import GenerateQuestionsRequest, create_agent
 ```
 
 ### External Dependencies
+
 - `ItemGenAgent`: LangGraph-based agent orchestrator
 - `GenerateQuestionsRequest`: Pydantic data contract
 - `GenerateQuestionsResponse`: Pydantic data contract
 - `GeneratedItem`: Pydantic data contract
 
 ### Database Models
+
 - `TestSession`: Test session record
 - `Question`: Question record
 - `TestResult`: Test result (for adaptive)
@@ -335,10 +353,12 @@ from src.agent.llm_agent import GenerateQuestionsRequest, create_agent
 ### Objective: Make CLI → Backend Service call flow work end-to-end
 
 **Files Modified**:
+
 - `src/cli/actions/agent.py`: Replace Agent direct call with Backend Service call
 - `tests/cli/test_agent_generate_questions.py`: Update mocks for Backend Service
 
 **Implementation Steps**:
+
 1. ✅ Added SessionLocal import for DB session creation
 2. ✅ Added QuestionGenerationService import
 3. ✅ Added user_id validation from CLI context (context.session.user_id)
@@ -349,6 +369,7 @@ from src.agent.llm_agent import GenerateQuestionsRequest, create_agent
 8. ✅ All 12 CLI tests passing
 
 **Architecture Flow**:
+
 ```
 CLI generate-questions command
         ↓
@@ -371,6 +392,7 @@ CLI generate-questions command
 ```
 
 **Test Results**:
+
 ```
 tests/cli/test_agent_generate_questions.py::
   test_round1_generation_success PASSED
@@ -385,6 +407,7 @@ tests/cli/test_agent_generate_questions.py::
 ```
 
 **Code Quality**:
+
 - ✅ ruff checks: All passed
 - ✅ Type hints: Complete
 - ✅ Error handling: Graceful degradation
@@ -403,6 +426,7 @@ All acceptance criteria met. Backend Service integration complete. CLI integrati
 All tests passing (12 CLI tests + 12 service tests). Code quality verified. Ready for production.
 
 **Summary of Work**:
+
 - Phase 1-4: Backend Service integration with Real Agent (completed)
 - Phase 5: CLI → Backend Service integration for DB persistence (completed)
 - Total CLI tests: 12/12 passing

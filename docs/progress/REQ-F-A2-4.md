@@ -19,11 +19,13 @@
 ### 🎯 구현 스펙
 
 #### Location
+
 - **Component**: `src/frontend/src/pages/NicknameSetupPage.tsx:122-138`
 - **Hook**: `src/frontend/src/hooks/useNicknameCheck.ts:52,109`
 - **Backend**: `src/backend/services/profile_service.py:76-106`
 
 #### Signature
+
 ```typescript
 // Frontend Hook
 interface UseNicknameCheckResult {
@@ -39,16 +41,19 @@ interface NicknameCheckResponse {
 ```
 
 #### Behavior
+
 1. **Backend**: When nickname is taken, generate 3 alternatives in format `base_nickname_N`
 2. **Frontend**: Display suggestions only when `checkStatus === 'taken' && suggestions.length > 0`
 3. **UI**: Render as clickable buttons that auto-fill the input field
 4. **State Reset**: Clicking suggestion resets status to 'idle' and clears suggestions
 
 #### Dependencies
+
 - **Backend**: `ProfileService.generate_nickname_alternatives()` (REQ-B-A2-3)
 - **API**: `POST /profile/nickname/check` endpoint
 
 #### Non-functional
+
 - **Performance**: Suggestions generated in <100ms
 - **UX**: Visual separation between error message and suggestions
 - **Accessibility**: Suggestions are keyboard-navigable buttons
@@ -58,11 +63,13 @@ interface NicknameCheckResponse {
 ## Phase 2: TEST DESIGN
 
 ### 📍 Test File
+
 `src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx:254-348`
 
 ### ✅ Test Cases (3)
 
 #### Test 1: Shows 3 alternative suggestions when nickname is taken
+
 ```typescript
 test('shows 3 alternative suggestions when nickname is taken', async () => {
   // REQ: REQ-F-A2-4
@@ -71,11 +78,13 @@ test('shows 3 alternative suggestions when nickname is taken', async () => {
 ```
 
 **Coverage**:
+
 - ✓ "추천 닉네임:" label appears
 - ✓ All 3 suggestions rendered as text
 - ✓ Displayed only when nickname is taken
 
 #### Test 2: Fills input field when suggestion is clicked
+
 ```typescript
 test('fills input field when suggestion is clicked', async () => {
   // REQ: REQ-F-A2-4
@@ -84,11 +93,13 @@ test('fills input field when suggestion is clicked', async () => {
 ```
 
 **Coverage**:
+
 - ✓ Input field value updates to clicked suggestion
 - ✓ Error message disappears
 - ✓ Other suggestions disappear
 
 #### Test 3: Allows re-checking after selecting a suggestion
+
 ```typescript
 test('allows re-checking after selecting a suggestion', async () => {
   // REQ: REQ-F-A2-4
@@ -97,6 +108,7 @@ test('allows re-checking after selecting a suggestion', async () => {
 ```
 
 **Coverage**:
+
 - ✓ Check button re-enabled after selection
 - ✓ New API call with selected nickname
 - ✓ Transitions to 'available' status
@@ -108,6 +120,7 @@ test('allows re-checking after selecting a suggestion', async () => {
 ### 📂 Modified Files
 
 #### 1. `src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx`
+
 - **Lines**: 254-348 (95 lines added)
 - **Changes**: Added 3 test cases for REQ-F-A2-4
 - **Rationale**: Verify visual rendering and interaction of nickname suggestions
@@ -122,6 +135,7 @@ Test Files  1 passed (1)
 ```
 
 **New Tests**:
+
 - ✅ `shows 3 alternative suggestions when nickname is taken`
 - ✅ `fills input field when suggestion is clicked`
 - ✅ `allows re-checking after selecting a suggestion`
@@ -133,6 +147,7 @@ Test Files  1 passed (1)
 **Note**: UI implementation was already done in previous commits. This REQ focused on **adding comprehensive tests** for the existing suggestion feature.
 
 **Existing Implementation**:
+
 - `NicknameSetupPage.tsx:122-138` - Suggestions rendering
 - `useNicknameCheck.ts:109` - Suggestions state management
 - Backend `generate_nickname_alternatives()` - Already tested in `test_profile_service.py`

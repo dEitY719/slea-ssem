@@ -21,10 +21,17 @@ class UserProfileSurvey(Base):
     - Latest survey identified by submitted_at DESC order
     - Index on (user_id, submitted_at DESC) for efficient latest lookup
 
+    Self-level mapping:
+    - Beginner: 입문 - 기초 개념 학습 중
+    - Intermediate: 초급 - 기본 업무 수행 가능
+    - Intermediate-Advanced: 중급 - 독립적으로 업무 수행
+    - Advanced: 고급 - 복잡한 문제 해결 가능
+    - Elite: 전문가 - 다른 사람을 지도 가능
+
     Attributes:
         id: Primary key (UUID)
         user_id: Foreign key to users table
-        self_level: Self-assessed proficiency level (beginner/intermediate/advanced)
+        self_level: Self-assessed proficiency level (Beginner/Intermediate/Intermediate-Advanced/Advanced/Elite)
         years_experience: Years of experience (0-60)
         job_role: Job role/title
         duty: Main job duties/responsibilities
@@ -43,7 +50,14 @@ class UserProfileSurvey(Base):
         index=True,
     )
     self_level: Mapped[str | None] = mapped_column(
-        Enum("beginner", "intermediate", "advanced", name="self_level_enum"),
+        Enum(
+            "Beginner",
+            "Intermediate",
+            "Intermediate-Advanced",
+            "Advanced",
+            "Elite",
+            name="self_level_enum",
+        ),
         nullable=True,
     )
     years_experience: Mapped[int | None] = mapped_column(Integer, nullable=True)

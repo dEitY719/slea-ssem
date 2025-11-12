@@ -10,14 +10,17 @@
 ## 📋 요구사항
 
 ### 요약
+
 닉네임 설정 페이지에서 사용자가 닉네임을 입력할 수 있는 필드와 "중복 확인" 버튼을 제공하여, 백엔드 API를 호출해 닉네임 사용 가능 여부를 확인
 
 ### 수용 기준
+
 - ✅ "닉네임 입력 후 1초 내 '중복 확인' 결과가 표시된다"
 - ✅ 입력 필드 (3-30자 제한)
 - ✅ "중복 확인" 버튼 (클릭 시 API 호출)
 
 ### 관련 문서
+
 - `docs/feature_requirement_mvp1.md` - REQ-F-A2-2 (Line 106)
 
 ---
@@ -25,19 +28,24 @@
 ## 🎯 Phase 1: Specification
 
 ### Intent
+
 사용자가 원하는 닉네임을 입력하고, 중복 확인 버튼을 클릭하여 사용 가능 여부를 즉시 확인할 수 있는 UI 제공
 
 ### 구현 위치
+
 - `src/frontend/src/pages/NicknameSetupPage.tsx` - **IMPLEMENTED** - 닉네임 입력 UI
 - `src/frontend/src/hooks/useNicknameCheck.ts` - **IMPLEMENTED** - 닉네임 체크 로직
 - `src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx` - **IMPLEMENTED** - Test suite
 
 ### Backend API (이미 구현됨 ✅)
+
 **Endpoint**: `POST /profile/nickname/check`
+
 - **File**: `src/backend/api/profile.py:120-148`
 - **Authentication**: Not required (public endpoint)
 
 **Request**:
+
 ```json
 {
   "nickname": "john_doe"
@@ -45,6 +53,7 @@
 ```
 
 **Response**:
+
 ```json
 {
   "available": true,
@@ -57,21 +66,25 @@
 ## 🧪 Phase 2: Test Design
 
 ### 테스트 파일
+
 **`src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx`**
 
 ### 테스트 커버리지
 
 #### Test: "renders nickname input field, check button, and next button"
+
 - Verify input field, "중복 확인" button, "다음" button rendered
 - **Purpose**: UI 렌더링 검증 ✅ REQ-F-A2-2
 
 #### Test: "shows available message when nickname is not taken"
+
 - Mock API response: `{ available: true }`
 - Click "중복 확인" button
 - Verify "사용 가능한 닉네임입니다" message displayed
 - **Purpose**: 사용 가능 메시지 표시 검증 ✅ REQ-F-A2-2
 
 #### Test: "shows taken message when nickname is already used"
+
 - Mock API response: `{ available: false, suggestions: [...] }`
 - Click "중복 확인" button
 - Verify "이미 사용 중인 닉네임입니다" message displayed
@@ -84,6 +97,7 @@
 ### 1. `src/frontend/src/pages/NicknameSetupPage.tsx` (Lines 94-117)
 
 **UI Components**:
+
 ```typescript
 <div className="input-group">
   <input
@@ -107,6 +121,7 @@
 ```
 
 **Features**:
+
 - Input field with 30-character limit
 - "중복 확인" button with loading state
 - Disabled states during checking/submission
@@ -114,6 +129,7 @@
 ### 2. `src/frontend/src/hooks/useNicknameCheck.ts` (Lines 70-116)
 
 **checkNickname function**:
+
 ```typescript
 const checkNickname = useCallback(async (): Promise<void> => {
   // Validate length (3-30 characters)
@@ -182,11 +198,13 @@ const checkNickname = useCallback(async (): Promise<void> => {
 ## 📁 변경된 파일 목록
 
 ### 신규 생성
+
 - `src/frontend/src/pages/NicknameSetupPage.tsx` (166 lines)
 - `src/frontend/src/pages/NicknameSetupPage.css` (CSS styles)
 - `src/frontend/src/hooks/useNicknameCheck.ts` (128 lines)
 
 ### 수정
+
 - `src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx` (테스트 추가)
 
 ---
@@ -202,9 +220,11 @@ const checkNickname = useCallback(async (): Promise<void> => {
 ## 📝 관련 요구사항
 
 **의존성**:
+
 - **REQ-B-A2-Avail-1**: `POST /profile/nickname/check` 엔드포인트 - ✅ 완료
 
 **관련 작업**:
+
 - **REQ-F-A2-3**: 실시간 유효성 검사 (같은 커밋에 구현)
 - **REQ-F-A2-4**: 닉네임 대안 제안 (이후 구현)
 

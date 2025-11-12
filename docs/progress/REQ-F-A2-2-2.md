@@ -29,6 +29,7 @@
 ### Technical Specification
 
 **Frontend Implementation**:
+
 - User input: 1-5 (radio buttons)
 - Backend conversion:
   - Level 1 → "beginner"
@@ -37,6 +38,7 @@
 - API endpoint: `PUT /profile/survey`
 
 **Files Modified**:
+
 - `src/frontend/src/pages/SelfAssessmentPage.tsx` - Main component
 - `src/frontend/src/pages/SelfAssessmentPage.css` - Styles
 - `src/frontend/src/pages/__tests__/SelfAssessmentPage.test.tsx` - Tests
@@ -59,6 +61,7 @@
 10. ✓ Disables complete button while submitting
 
 **Test Coverage**:
+
 - Happy path: 5 tests
 - Edge cases: 3 tests (level conversion)
 - Error handling: 1 test
@@ -137,6 +140,7 @@ Test Files  1 passed (1)
 **Endpoint**: `PUT /profile/survey`
 
 **Request Body**:
+
 ```json
 {
   "level": "beginner" | "intermediate" | "advanced"
@@ -144,6 +148,7 @@ Test Files  1 passed (1)
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -169,6 +174,7 @@ NicknameSetupPage (완료 버튼)
 ## Git Commit
 
 **Message**:
+
 ```
 feat: Implement REQ-F-A2-2-2 level field in self-assessment page
 

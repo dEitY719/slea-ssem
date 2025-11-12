@@ -12,6 +12,7 @@
 ### 1.1 Requirement Summary
 
 Implement `agent batch-score` CLI command that:
+
 - Scores multiple answers in parallel using Tool 6
 - Processes answers concurrently for improved performance
 - Supports batch JSON file input with array of questions
@@ -20,6 +21,7 @@ Implement `agent batch-score` CLI command that:
 ### 1.2 Feature Intent
 
 Enable CLI users to score multiple answers efficiently using parallel execution, supporting:
+
 - REQ-A-Mode2-Tool6: Parallel answer scoring with LLM-based explanation
 - Batch processing from JSON files (array format)
 - Concurrent execution via asyncio.gather()
@@ -31,6 +33,7 @@ Enable CLI users to score multiple answers efficiently using parallel execution,
 #### Location & Implementation
 
 **Files to Create/Modify**:
+
 - ✅ Modify: `src/cli/actions/agent.py` (replace placeholder in `batch_score()`)
 - ✅ New: Comprehensive test suite in `tests/cli/test_agent_batch_score.py`
 
@@ -73,12 +76,14 @@ Options:
 **Success Flow**:
 
 1. **Initialize Phase**:
+
    ```
    🚀 Initializing Agent... (GEMINI_API_KEY required)
    ✅ Agent initialized
    ```
 
 2. **Loading Phase**:
+
    ```
    📂 Loading batch file...
       File: /path/to/batch.json
@@ -87,6 +92,7 @@ Options:
    ```
 
 3. **Scoring Phase**:
+
    ```
    🔄 Scoring answers in parallel...
       Workers: 3
@@ -94,6 +100,7 @@ Options:
    ```
 
 4. **Progress Display**:
+
    ```
    ⏳ Scoring progress: [████████░░] 8/10 (80%)
    ✅ q_001: 100 (correct)
@@ -102,6 +109,7 @@ Options:
    ```
 
 5. **Results Summary**:
+
    ```
    ✅ Batch Scoring Complete
       Total: 5 items
@@ -113,6 +121,7 @@ Options:
    ```
 
 6. **Results Table** (Rich Table):
+
    ```
    📊 Batch Results:
    ┏━━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━┓
@@ -125,6 +134,7 @@ Options:
    ```
 
 7. **Optional Output File**:
+
    ```
    📁 Results saved to: /path/to/results.json
    ```
@@ -132,40 +142,47 @@ Options:
 #### Error Handling
 
 **Missing batch file**:
+
 ```
 ❌ Error: --batch-file is required
 Usage: agent batch-score --batch-file FILE [--parallel N] [--output FILE]
 ```
 
 **File not found**:
+
 ```
 ❌ Error: Batch file not found: /path/to/batch.json
 ```
 
 **Invalid JSON format**:
+
 ```
 ❌ Error: Invalid JSON in batch file
 Reason: [JSON parse error details]
 ```
 
 **Empty batch**:
+
 ```
 ❌ Error: Batch file contains no items (empty array)
 ```
 
 **Invalid item in batch**:
+
 ```
 ❌ Error: Item at index 2 missing required fields
 Required: question_id, question, answer_type, user_answer, correct_answer
 ```
 
 **Agent initialization failure**:
+
 ```
 ❌ Error: Agent initialization failed
 Reason: GEMINI_API_KEY not found
 ```
 
 **Parallel execution failure**:
+
 ```
 ❌ Error: Batch scoring failed
 Items completed: 3/5
@@ -214,6 +231,7 @@ Failed items: q_004 (timeout), q_005 (API error)
 ### 2.1 Test Execution Strategy
 
 Create `tests/cli/test_agent_batch_score.py` with:
+
 - Unit tests for file parsing and validation
 - Integration tests with mock ItemGenAgent
 - Parallel execution tests
@@ -223,7 +241,9 @@ Create `tests/cli/test_agent_batch_score.py` with:
 ### 2.2 Test Cases
 
 #### TC-1: Help Command Display
+
 **Test**: `agent batch-score --help` shows usage
+
 ```python
 def test_batch_score_help(mock_context: CLIContext) -> None:
     """TC-1: Verify --help displays command usage"""
@@ -231,42 +251,54 @@ def test_batch_score_help(mock_context: CLIContext) -> None:
 ```
 
 #### TC-2: Missing Batch File Parameter
+
 **Test**: Command without --batch-file returns error
+
 ```python
 def test_missing_batch_file(mock_context: CLIContext) -> None:
     """TC-2: Verify error when --batch-file missing"""
 ```
 
 #### TC-3: Batch File Not Found
+
 **Test**: File path doesn't exist
+
 ```python
 def test_batch_file_not_found(mock_context: CLIContext) -> None:
     """TC-3: Verify error for non-existent file"""
 ```
 
 #### TC-4: Invalid JSON in Batch File
+
 **Test**: Malformed JSON
+
 ```python
 def test_invalid_json_format(mock_context: CLIContext) -> None:
     """TC-4: Verify error for invalid JSON"""
 ```
 
 #### TC-5: Empty Batch Array
+
 **Test**: JSON array with no items
+
 ```python
 def test_empty_batch_array(mock_context: CLIContext) -> None:
     """TC-5: Verify error for empty batch"""
 ```
 
 #### TC-6: Missing Required Fields in Item
+
 **Test**: Item missing question_id or other required fields
+
 ```python
 def test_missing_required_fields(mock_context: CLIContext) -> None:
     """TC-6: Verify error for incomplete item"""
 ```
 
 #### TC-7: Successful Batch Scoring
+
 **Test**: Complete batch with multiple items scored correctly
+
 ```python
 def test_successful_batch_scoring(mock_context, mock_agent) -> None:
     """TC-7: Verify successful batch scoring"""
@@ -274,7 +306,9 @@ def test_successful_batch_scoring(mock_context, mock_agent) -> None:
 ```
 
 #### TC-8: Partial Success (Some Failures)
+
 **Test**: Batch with some items failing to score
+
 ```python
 def test_partial_success_batch(mock_context, mock_agent) -> None:
     """TC-8: Verify handling of partial failures"""
@@ -282,7 +316,9 @@ def test_partial_success_batch(mock_context, mock_agent) -> None:
 ```
 
 #### TC-9: Parallel Execution Performance
+
 **Test**: Verify concurrent execution improves performance
+
 ```python
 def test_parallel_execution_performance(mock_context, mock_agent) -> None:
     """TC-9: Verify parallel execution reduces time"""
@@ -290,7 +326,9 @@ def test_parallel_execution_performance(mock_context, mock_agent) -> None:
 ```
 
 #### TC-10: Output File Export
+
 **Test**: Results exported to JSON file
+
 ```python
 def test_output_file_export(mock_context, mock_agent) -> None:
     """TC-10: Verify results saved to file"""
@@ -298,7 +336,9 @@ def test_output_file_export(mock_context, mock_agent) -> None:
 ```
 
 #### TC-11: Custom Parallel Workers
+
 **Test**: --parallel flag with custom worker count
+
 ```python
 def test_custom_parallel_workers(mock_context, mock_agent) -> None:
     """TC-11: Verify custom worker count"""
@@ -306,7 +346,9 @@ def test_custom_parallel_workers(mock_context, mock_agent) -> None:
 ```
 
 #### TC-12: Agent Initialization Failure
+
 **Test**: GEMINI_API_KEY not found
+
 ```python
 def test_agent_init_failure(mock_context) -> None:
     """TC-12: Verify error when API key missing"""
@@ -317,16 +359,19 @@ def test_agent_init_failure(mock_context) -> None:
 **File**: `tests/cli/test_agent_batch_score.py` (~500 LOC)
 
 **Fixtures**:
+
 - `mock_context`: CLIContext with buffered console
 - `mock_agent`: Mock ItemGenAgent with score_answer method
 - `batch_file`: Temporary JSON batch file
 - `mock_score_responses`: Multiple ScoreAnswerResponse objects
 
 **Test Classes**:
+
 - `TestBatchScoreHelpAndErrors` (TC-1 through TC-6, TC-12)
 - `TestBatchScoreSuccess` (TC-7 through TC-11)
 
 **Mocking Strategy**:
+
 - Mock `src.cli.actions.agent.ItemGenAgent` constructor
 - Mock `agent.score_answer()` with AsyncMock
 - Return different scores for different items
@@ -380,6 +425,7 @@ Implemented `batch_score` command with complete functionality:
 ### 3.2 Key Implementation Details
 
 **Parallel Execution Pattern**:
+
 ```python
 async def score_batch_parallel():
     tasks = [score_single_item(item) for item in batch_data]
@@ -392,11 +438,13 @@ async def score_batch_parallel():
 ```
 
 **Error Handling**:
+
 - Comprehensive validation at each stage (parse, load, validate, score)
 - Partial success: Continue scoring despite individual item failures
 - Results aggregation with per-item error tracking
 
 **Output Format**:
+
 - Progress bar during scoring (transient Rich output)
 - Summary statistics (total, passed, partial, failed, average score, execution time)
 - Rich Table with ID, Type, Score, Status columns
@@ -453,12 +501,14 @@ async def score_batch_parallel():
 **Message**: `feat(cli-agent): Implement REQ-CLI-Agent-4 - agent batch-score command`
 
 **Changes**:
+
 - Modified: src/cli/actions/agent.py (340 lines total: 288 + 52)
 - Created: tests/cli/test_agent_batch_score.py (486 lines)
 - Created: docs/progress/REQ-CLI-Agent-4.md (449 lines)
 - Modified: docs/DEV-PROGRESS.md (updated status and commit)
 
 **Statistics**:
+
 - Total insertions: 1266 lines
 - Test coverage: 15 tests (100% passing)
 - Execution time: 2.43s

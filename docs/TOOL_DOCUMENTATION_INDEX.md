@@ -5,7 +5,9 @@ Complete documentation of the 6-tool agent system for AI-driven adaptive testing
 ## Quick Navigation
 
 ### For Quick Reference (5 minutes)
+
 Start here: **[TOOL_QUICK_REFERENCE.md](TOOL_QUICK_REFERENCE.md)**
+
 - Tool call examples with real inputs/outputs
 - Input validation checklist
 - Scoring rules by question type
@@ -15,7 +17,9 @@ Start here: **[TOOL_QUICK_REFERENCE.md](TOOL_QUICK_REFERENCE.md)**
 - Constants and debugging checklist
 
 ### For Detailed Understanding (30 minutes)
+
 Start here: **[TOOL_DEFINITIONS_SUMMARY.md](TOOL_DEFINITIONS_SUMMARY.md)**
+
 - Complete signature and type information
 - Comprehensive input/output documentation
 - Database query details and caching strategies
@@ -42,6 +46,7 @@ Start here: **[TOOL_DEFINITIONS_SUMMARY.md](TOOL_DEFINITIONS_SUMMARY.md)**
 ## Implementation Files
 
 ### Tool Implementation Files
+
 ```
 src/agent/tools/
 ├── user_profile_tool.py          # Tool 1 (REQ-A-Mode1-Tool1)
@@ -54,6 +59,7 @@ src/agent/tools/
 ```
 
 ### Integration Files
+
 ```
 src/agent/
 ├── fastmcp_server.py             # FastMCP wrappers for all 6 tools
@@ -71,6 +77,7 @@ src/agent/
 ### Two-Mode Architecture
 
 #### Mode 1: Question Generation (Tools 1-5)
+
 ```
 User Profile → Template Search → Keywords → LLM Generation → Validation → Save
      [1]           [2]              [3]          LLM          [4]         [5]
@@ -79,6 +86,7 @@ User Profile → Template Search → Keywords → LLM Generation → Validation 
 **Use Case**: Generate adaptive test questions tailored to user profile and difficulty
 
 #### Mode 2: Auto-Scoring (Tool 6)
+
 ```
 User Answer → Question Metadata → LLM Score & Explain → Explanation + References
     [input]       [metadata]              [6]                  [output]
@@ -91,31 +99,37 @@ User Answer → Question Metadata → LLM Score & Explain → Explanation + Refe
 ## Required Knowledge
 
 ### Understanding Tool 1
+
 - User profile schema (self_level, years_experience, job_role, interests)
 - Fallback mechanism for database failures
 - UUID validation for user_id parameter
 
 ### Understanding Tool 2
+
 - Difficulty range scaling (±1.5 from input)
 - Template filtering by category and interests
 - Graceful empty result handling
 
 ### Understanding Tool 3
+
 - In-memory caching with TTL (1 hour)
 - Thread-safe cache access with locks
 - Concept structures with acronyms and key points
 
 ### Understanding Tool 4
+
 - 2-stage validation: LLM semantic + rule-based
 - Scoring thresholds: Pass (>=0.85), Revise (0.70-0.85), Reject (<0.70)
 - Batch processing support for multiple questions
 
 ### Understanding Tool 5
+
 - Round ID parsing (format: session_id_round_number_timestamp)
 - Answer schema construction for all question types
 - Retry queue mechanism for failed saves
 
 ### Understanding Tool 6
+
 - Question-type-specific scoring (MC: exact match, SA: LLM-based)
 - Partial credit range (70-79 points)
 - Keyword matching for short answers (case-insensitive substring)
@@ -125,6 +139,7 @@ User Answer → Question Metadata → LLM Score & Explain → Explanation + Refe
 ## Workflows & Pipelines
 
 ### Mode 1 Workflow: Question Generation
+
 1. **Tool 1**: Retrieve user profile (self_level, interests, previous_score)
 2. **Tool 2**: Search templates for few-shot examples (optional)
 3. **Tool 3**: Get difficulty-specific keywords and concepts
@@ -134,11 +149,13 @@ User Answer → Question Metadata → LLM Score & Explain → Explanation + Refe
 7. **Return**: List of validated, saved questions with metadata
 
 **Key Files**:
+
 - Agent: `src/agent/llm_agent.py` (method: `generate_questions()`)
 - Prompt: `src/agent/prompts/react_prompt.py`
 - Config: `src/agent/config.py` (AGENT_CONFIG, TOOL_CONFIG)
 
 ### Mode 2 Workflow: Auto-Scoring
+
 1. **Input**: User answer + question metadata (question_id, question_type, etc.)
 2. **Tool 6 - Scoring Logic**:
    - MC: Exact string match (case-insensitive) → 0 or 100
@@ -149,6 +166,7 @@ User Answer → Question Metadata → LLM Score & Explain → Explanation + Refe
 5. **Return**: Attempt result with is_correct, score, explanation, feedback
 
 **Key Files**:
+
 - Agent: `src/agent/llm_agent.py` (method: `score_and_explain()`)
 - Batch: `src/agent/llm_agent.py` (method: `submit_answers()`)
 
@@ -169,6 +187,7 @@ User Answer → Question Metadata → LLM Score & Explain → Explanation + Refe
 ### Fallback Values
 
 **Tool 1 (User Profile)**:
+
 ```python
 {
     "self_level": "beginner",
@@ -195,11 +214,13 @@ User Answer → Question Metadata → LLM Score & Explain → Explanation + Refe
 ## Data Validation Rules
 
 ### Tool 1: get_user_profile
+
 ```
 user_id: UUID string (36 chars, format: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
 ```
 
 ### Tool 2: search_question_templates
+
 ```
 interests: list[str]
   - Length: 1-10 items
@@ -209,12 +230,14 @@ category: str (one of: "technical", "business", "general")
 ```
 
 ### Tool 3: get_difficulty_keywords
+
 ```
 difficulty: int (1-10)
 category: str (one of: "technical", "business", "general")
 ```
 
 ### Tool 4: validate_question_quality
+
 ```
 stem: str (1-250 chars)
 question_type: str (one of: "multiple_choice", "true_false", "short_answer")
@@ -224,6 +247,7 @@ batch: bool (default: False)
 ```
 
 ### Tool 5: save_generated_question
+
 ```
 item_type: str (one of: "multiple_choice", "true_false", "short_answer")
 stem: str (1-2000 chars)
@@ -238,6 +262,7 @@ explanation: str | None
 ```
 
 ### Tool 6: score_and_explain
+
 ```
 session_id: str (non-empty)
 user_id: str (non-empty)
@@ -255,6 +280,7 @@ category: str | None
 ## Performance Characteristics
 
 ### Timeouts (Configurable)
+
 ```
 Tool 1: 3 seconds
 Tool 2: 5 seconds
@@ -265,6 +291,7 @@ Tool 6: 15 seconds
 ```
 
 ### Caching
+
 - **Tool 1**: No caching (single user lookup)
 - **Tool 2**: Query optimization only
 - **Tool 3**: In-memory cache, 1-hour TTL
@@ -273,6 +300,7 @@ Tool 6: 15 seconds
 - **Tool 6**: No caching (real-time scoring)
 
 ### Retries
+
 - **Tool 1**: 3 retries with exponential backoff
 - **Tool 2**: 1 retry
 - **Tool 3**: 1 retry
@@ -285,6 +313,7 @@ Tool 6: 15 seconds
 ## Testing & Development
 
 ### Test Locations
+
 ```
 tests/
 ├── test_agent/
@@ -299,6 +328,7 @@ tests/
 ```
 
 ### Unit Test Pattern
+
 ```python
 def test_tool_valid_input():
     result = tool_func(valid_input)
@@ -314,6 +344,7 @@ def test_tool_fallback():
 ```
 
 ### Integration Test Pattern
+
 ```python
 async def test_mode1_pipeline():
     # Tool 1 → Tool 2 → Tool 3 → LLM → Tool 4 → Tool 5
@@ -330,21 +361,25 @@ async def test_mode1_pipeline():
 ### Common Issues
 
 **Tool 1 Returns Default Profile**
+
 - Check: User exists in database
 - Check: Database connectivity
 - Check: user_id format is valid UUID
 
 **Tool 2 Returns Empty List**
+
 - Check: Templates exist in database with matching interests
 - Check: Difficulty range: ±1.5 from input
 - Check: Category is one of {technical, business, general}
 
 **Tool 3 Returns Fallback Keywords**
+
 - Check: Database has DifficultyKeyword records
 - Check: In-memory cache was cleared
 - Check: Difficulty (1-10) and category are valid
 
 **Tool 4 Returns is_valid=False**
+
 - Check: Question stem > 250 chars (trim required)
 - Check: MC questions have 4-5 choices
 - Check: Correct answer is in choices list
@@ -352,12 +387,14 @@ async def test_mode1_pipeline():
 - Check: LLM API key is set (GEMINI_API_KEY)
 
 **Tool 5 Returns success=False**
+
 - Check: Database is running
 - Check: Question model is defined in SQLAlchemy
 - Check: round_id format is correct
 - Check: Retry queue via `get_retry_queue()`
 
 **Tool 6 Returns score=50**
+
 - Check: LLM API key is set (GEMINI_API_KEY)
 - Check: LLM response is valid JSON
 - Check: correct_keywords are provided for short answers
@@ -378,12 +415,13 @@ async def test_mode1_pipeline():
 ## Support & Questions
 
 For specific tool issues, refer to:
+
 1. Tool implementation file in `src/agent/tools/`
 2. FastMCP wrapper in `src/agent/fastmcp_server.py`
 3. Test file in `tests/test_agent/test_tools/`
 4. This documentation (TOOL_DEFINITIONS_SUMMARY.md or TOOL_QUICK_REFERENCE.md)
 
 For REQ-related questions, check:
+
 - REQ ID in tool docstring (e.g., "REQ: REQ-A-Mode1-Tool1")
 - Corresponding requirement in `docs/feature_requirement_mvp1.md`
-
