@@ -769,18 +769,18 @@ def score_answer(context: CLIContext, *args: str) -> None:
 
         for i, answer_data in enumerate(unscored_answers, 1):
             question_id = answer_data["question_id"]
-            user_answer = answer_data["user_answer"]
 
             context.console.print(f"[dim][{i}/{len(unscored_answers)}] Scoring question {question_id[:12]}...[/dim]")
 
             # Call agent.score_and_explain (Tool 6) via backend
             # POST /questions/answer/score endpoint
+            # Note: answer is already in DB from autosave, only need session_id + question_id
             status_code, response, error = context.client.make_request(
                 "POST",
                 "/questions/answer/score",
                 json_data={
+                    "session_id": session_id,
                     "question_id": question_id,
-                    "answer": user_answer,
                 },
             )
 
@@ -808,21 +808,40 @@ def score_answer(context: CLIContext, *args: str) -> None:
         # Calculate round score
         context.console.print()
         context.console.print("[dim]Calculating round score...[/dim]")
-        calculate_round_score(context)
+        calculate_round_score(context, session_id)
 
 
 def calculate_round_score(context: CLIContext, *args: str) -> None:
-    """라운드 점수를 계산하고 저장합니다."""
+    """
+    Calculate and save test result for completed round.
+
+    Args:
+        context: CLI context
+        args: Optional session_id as first arg; if not provided, uses latest session
+
+    """
     if not context.session.token:
         context.console.print("[bold red]✗ Not authenticated[/bold red]")
         return
 
+    # Get session_id: either from args or from latest session
+    session_id = None
+    if args:
+        session_id = args[0]
+    else:
+        session_id, _ = _get_latest_session(context.session.user_id)
+
+    if not session_id:
+        context.console.print("[bold yellow]⚠️  No session found[/bold yellow]")
+        return
+
     context.console.print("[dim]Calculating round score...[/dim]")
 
-    # API 호출
+    # API call: session_id is passed as query parameter
     status_code, response, error = context.client.make_request(
         "POST",
         "/questions/score",
+        params={"session_id": session_id},
     )
 
     if error:
@@ -834,12 +853,13 @@ def calculate_round_score(context: CLIContext, *args: str) -> None:
         context.console.print(f"[bold red]✗ Calculation failed (HTTP {status_code})[/bold red]")
         return
 
-    total_score = response.get("total_score", 0)
+    # Response keys from API: score, correct_count, total_count
+    score = response.get("score", 0)
     correct_count = response.get("correct_count", 0)
     total_count = response.get("total_count", 0)
 
     context.console.print("[bold green]✓ Round score calculated[/bold green]")
-    context.console.print(f"[dim]  Total: {total_score}/100[/dim]")
+    context.console.print(f"[dim]  Total: {score}/100[/dim]")
     context.console.print(f"[dim]  Correct: {correct_count}/{total_count}[/dim]")
     context.logger.info("Round score calculated and saved.")
 
