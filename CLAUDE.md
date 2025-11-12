@@ -332,3 +332,66 @@ Phase 4: Commit + Progress tracking
 ---
 
 **Forcing Function Principle**: 3-4 intuitive commands (dev.sh, commit.sh, tox) reduce learning curve & execution variance. See `docs/PROJECT_SETUP_PROMPT.md` for details.
+
+---
+
+## 🎯 NEXT TASKS (Priority Order)
+
+**Current Status**: REQ-CLI-Agent-5 ✅ COMPLETE (Commit: 2535036)
+
+**Next High-Priority Tasks** (Ready to implement immediately after, ~10 hours total):
+
+### Task 1: REQ-A-Agent-Sanity-0 (Agent 기본 동작 검증)
+- **File**: `scripts/test_agent_sanity_check.py` (새로 생성)
+- **Objective**: Real Google Gemini LLM으로 Agent 기본 동작 검증
+- **Duration**: ~30분
+- **What to do**:
+  1. Agent 초기화 (create_agent())
+  2. GenerateQuestionsRequest 생성
+  3. agent.generate_questions() 실행
+  4. Tool 1, 3, 5 호출 추적 (LANGCHAIN_DEBUG=1)
+  5. 문항 3개 이상 생성 확인
+- **Acceptance**: Phase 1-4 documentation in `docs/progress/REQ-A-Agent-Sanity-0.md`
+- **Dependencies**: GEMINI_API_KEY 환경변수 필요
+- **Spec Location**: `docs/AGENT-TEST-SCENARIO.md` lines 106-135
+
+### Task 2: REQ-A-Agent-Backend-1 (Mock → Real Agent 통합)
+- **File**: `src/backend/services/question_gen_service.py` (수정)
+- **Objective**: QuestionGenerationService가 Mock 대신 Real Agent 호출
+- **Duration**: ~1.5시간
+- **What to do**:
+  1. generate_questions() 메서드를 async로 변경
+  2. create_agent() 호출 추가
+  3. GenerateQuestionsRequest 생성 및 전달
+  4. 이전 라운드 답변 (prev_answers) 조회
+  5. Agent 응답을 DB에 저장
+- **Acceptance**: Phase 1-4 documentation + 모든 테스트 통과
+- **Test Location**: `tests/backend/test_question_gen_service_agent.py`
+- **Spec Location**: `docs/AGENT-TEST-SCENARIO.md` lines 471-555
+
+### Task 3 (Optional): REQ-A-Agent-Backend-2 (ScoringService 통합)
+- **File**: `src/backend/services/scoring_service.py`
+- **Objective**: ScoringService가 Tool 6 호출
+- **Duration**: ~1시간 (선택사항)
+- **Spec Location**: `docs/AGENT-TEST-SCENARIO.md` lines 517-555
+
+---
+
+## 📚 Documentation References (Already Exist)
+**Do NOT regenerate these** - they are already complete:
+- `docs/TOOL_DEFINITIONS_SUMMARY.md` - Complete tool signatures & details
+- `docs/TOOL_QUICK_REFERENCE.md` - Quick examples & validation rules
+- `docs/TOOL_DOCUMENTATION_INDEX.md` - Navigation & troubleshooting
+- `docs/AGENT-TEST-SCENARIO.md` - Full phase planning (REQ-A-Agent-*)
+
+**Just reference them when implementing!**
+
+---
+
+## 🚀 Quick Start After Context Gap (10+ hours later)
+
+1. Read this section first (2 min)
+2. Run: `git log --oneline -10` to see recent commits
+3. Start with Task 1 (REQ-A-Agent-Sanity-0) in `docs/AGENT-TEST-SCENARIO.md` lines 106-135
+4. Use TOOL documentation (don't regenerate - it already exists)
+5. Create progress file in `docs/progress/REQ-A-Agent-Sanity-0.md` after Phase 4
