@@ -54,17 +54,13 @@ def sample_pydantic_schemas() -> dict[str, Any]:
 
     return {
         "valid_generate_request": GenerateQuestionsRequest(
-            user_id="test_user",
-            difficulty=5,
-            interests=["AI", "ML"],
-            num_questions=3,
+            session_id="session_test",
+            survey_id="survey_test",
+            round_idx=1,
         ),
         "valid_score_request": ScoreAnswerRequest(
-            session_id="sess_test",
-            user_id="user_test",
-            question_id="q_test",
-            question_type="short_answer",
+            round_id="round_test",
+            item_id="item_test",
             user_answer="Test answer",
-            correct_keywords=["test", "answer"],
         ),
     }

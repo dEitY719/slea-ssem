@@ -51,7 +51,7 @@ class TestQuestionGenerationAgentIntegration:
 
     @pytest.mark.asyncio
     async def test_generate_questions_is_async(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """TC-1: Verify generate_questions is async (awaitable)."""
         service = QuestionGenerationService(db_session)
@@ -69,7 +69,7 @@ class TestQuestionGenerationAgentIntegration:
         with patch("src.backend.services.question_gen_service.create_agent", return_value=mock_agent):
             # Should be awaitable (no synchronous call)
             result = await service.generate_questions(
-                user_id=user_fixture.id,
+                user_id=authenticated_user.id,
                 survey_id=user_profile_survey_fixture.id,
                 round_num=1,
             )
@@ -83,7 +83,7 @@ class TestQuestionGenerationAgentIntegration:
 
     @pytest.mark.asyncio
     async def test_agent_is_created_and_called(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """TC-2: Verify create_agent() is called and Agent.generate_questions() is invoked."""
         service = QuestionGenerationService(db_session)
@@ -100,7 +100,7 @@ class TestQuestionGenerationAgentIntegration:
 
         with patch("src.backend.services.question_gen_service.create_agent", return_value=mock_agent) as mock_create:
             await service.generate_questions(
-                user_id=user_fixture.id,
+                user_id=authenticated_user.id,
                 survey_id=user_profile_survey_fixture.id,
                 round_num=1,
             )
@@ -117,7 +117,7 @@ class TestQuestionGenerationAgentIntegration:
 
     @pytest.mark.asyncio
     async def test_generate_questions_request_construction(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """TC-3: Verify GenerateQuestionsRequest is constructed with correct fields."""
         service = QuestionGenerationService(db_session)
@@ -140,7 +140,7 @@ class TestQuestionGenerationAgentIntegration:
 
         with patch("src.backend.services.question_gen_service.create_agent", return_value=mock_agent):
             await service.generate_questions(
-                user_id=user_fixture.id,
+                user_id=authenticated_user.id,
                 survey_id=user_profile_survey_fixture.id,
                 round_num=1,
             )
@@ -159,7 +159,7 @@ class TestQuestionGenerationAgentIntegration:
     async def test_previous_answers_retrieved_for_round2(
         self,
         db_session: Session,
-        user_fixture: User,
+        authenticated_user: User,
         user_profile_survey_fixture: UserProfileSurvey,
         test_session_round1_fixture: TestSession,
     ) -> None:
@@ -199,7 +199,7 @@ class TestQuestionGenerationAgentIntegration:
 
         with patch("src.backend.services.question_gen_service.create_agent", return_value=mock_agent):
             await service.generate_questions(
-                user_id=user_fixture.id,
+                user_id=authenticated_user.id,
                 survey_id=user_profile_survey_fixture.id,
                 round_num=2,  # Round 2
             )
@@ -215,7 +215,7 @@ class TestQuestionGenerationAgentIntegration:
 
     @pytest.mark.asyncio
     async def test_agent_response_items_saved_to_database(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """TC-5: Generated items from Agent response are persisted to DB as Question records."""
         service = QuestionGenerationService(db_session)
@@ -252,7 +252,7 @@ class TestQuestionGenerationAgentIntegration:
 
         with patch("src.backend.services.question_gen_service.create_agent", return_value=mock_agent):
             result = await service.generate_questions(
-                user_id=user_fixture.id,
+                user_id=authenticated_user.id,
                 survey_id=user_profile_survey_fixture.id,
                 round_num=1,
             )
@@ -275,7 +275,7 @@ class TestQuestionGenerationAgentIntegration:
 
     @pytest.mark.asyncio
     async def test_response_format_backwards_compatible(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """TC-6: Response format remains dict with session_id and questions keys."""
         service = QuestionGenerationService(db_session)
@@ -302,7 +302,7 @@ class TestQuestionGenerationAgentIntegration:
 
         with patch("src.backend.services.question_gen_service.create_agent", return_value=mock_agent):
             result = await service.generate_questions(
-                user_id=user_fixture.id,
+                user_id=authenticated_user.id,
                 survey_id=user_profile_survey_fixture.id,
                 round_num=1,
             )
@@ -349,7 +349,7 @@ class TestQuestionGenerationAgentIntegration:
 
     @pytest.mark.asyncio
     async def test_error_agent_generation_failure(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """TC-8: Handle Agent timeout or LLM failure gracefully."""
         service = QuestionGenerationService(db_session)
@@ -360,7 +360,7 @@ class TestQuestionGenerationAgentIntegration:
 
         with patch("src.backend.services.question_gen_service.create_agent", return_value=mock_agent):
             result = await service.generate_questions(
-                user_id=user_fixture.id,
+                user_id=authenticated_user.id,
                 survey_id=user_profile_survey_fixture.id,
                 round_num=1,
             )
@@ -375,7 +375,7 @@ class TestQuestionGenerationAgentIntegration:
 
     @pytest.mark.asyncio
     async def test_error_db_save_failure(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """TC-9: Handle database save errors and return partial results."""
         service = QuestionGenerationService(db_session)
@@ -405,7 +405,7 @@ class TestQuestionGenerationAgentIntegration:
             "src.backend.services.question_gen_service.create_agent", return_value=mock_agent
         ), patch.object(db_session, "add", side_effect=Exception("DB connection error")):
             result = await service.generate_questions(
-                user_id=user_fixture.id,
+                user_id=authenticated_user.id,
                 survey_id=user_profile_survey_fixture.id,
                 round_num=1,
             )
@@ -419,7 +419,7 @@ class TestQuestionGenerationAgentIntegration:
 
     @pytest.mark.asyncio
     async def test_generated_questions_have_required_fields(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """TC-10: All generated questions have required fields (id, type, stem, answer_schema, etc.)."""
         service = QuestionGenerationService(db_session)
@@ -467,7 +467,7 @@ class TestQuestionGenerationAgentIntegration:
 
         with patch("src.backend.services.question_gen_service.create_agent", return_value=mock_agent):
             result = await service.generate_questions(
-                user_id=user_fixture.id,
+                user_id=authenticated_user.id,
                 survey_id=user_profile_survey_fixture.id,
                 round_num=1,
             )
@@ -501,7 +501,7 @@ class TestQuestionGenerationAgentIntegration:
     async def test_round2_with_weak_categories(
         self,
         db_session: Session,
-        user_fixture: User,
+        authenticated_user: User,
         user_profile_survey_fixture: UserProfileSurvey,
         test_session_round1_fixture: TestSession,
         test_result_low_score: TestResult,
@@ -543,7 +543,7 @@ class TestQuestionGenerationAgentIntegration:
 
         with patch("src.backend.services.question_gen_service.create_agent", return_value=mock_agent):
             await service.generate_questions(
-                user_id=user_fixture.id,
+                user_id=authenticated_user.id,
                 survey_id=user_profile_survey_fixture.id,
                 round_num=2,
             )
@@ -558,7 +558,7 @@ class TestQuestionGenerationAgentIntegration:
 
     @pytest.mark.asyncio
     async def test_test_session_created_with_metadata(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """TC-12: TestSession record is created with correct user, survey, round, and status."""
         service = QuestionGenerationService(db_session)
@@ -574,7 +574,7 @@ class TestQuestionGenerationAgentIntegration:
 
         with patch("src.backend.services.question_gen_service.create_agent", return_value=mock_agent):
             result = await service.generate_questions(
-                user_id=user_fixture.id,
+                user_id=authenticated_user.id,
                 survey_id=user_profile_survey_fixture.id,
                 round_num=1,
             )
@@ -584,7 +584,7 @@ class TestQuestionGenerationAgentIntegration:
             # Verify TestSession was created
             test_session = db_session.query(TestSession).filter_by(id=session_id).first()
             assert test_session is not None
-            assert test_session.user_id == user_fixture.id
+            assert test_session.user_id == authenticated_user.id
             assert test_session.survey_id == user_profile_survey_fixture.id
             assert test_session.round == 1
             assert test_session.status == "in_progress"

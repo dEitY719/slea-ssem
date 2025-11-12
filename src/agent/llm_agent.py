@@ -46,6 +46,7 @@ _round_id_gen = RoundIDGenerator()
 class GenerateQuestionsRequest(BaseModel):
     """문항 생성 요청 (REQ: POST /api/v1/items/generate)."""
 
+    session_id: str = Field(..., description="테스트 세션 ID (Backend Service가 생성)")
     survey_id: str = Field(..., description="설문 ID")
     round_idx: int = Field(..., ge=1, description="라운드 번호 (1-based)")
     prev_answers: list[dict] | None = Field(default=None, description="이전 라운드 답변 (적응형 테스트용)")
@@ -419,6 +420,7 @@ class ItemGenAgent:
             )
             agent_input = f"""
 Generate high-quality exam questions for the following survey.
+Session ID: {request.session_id}
 Survey ID: {request.survey_id}
 Round: {request.round_idx}
 Previous Answers: {json.dumps(request.prev_answers) if request.prev_answers else "None (First round)"}
@@ -431,13 +433,14 @@ Follow these steps:
 3. Get keywords for adaptive difficulty (Tool 3)
 4. Generate new questions with appropriate difficulty
 5. Validate each question (Tool 4)
-6. Save validated questions (Tool 5) with round_id={round_id}
+6. Save validated questions (Tool 5) with session_id={request.session_id} and round_id={round_id}
 
 Important:
 - Generate EXACTLY {request.question_count} questions with the specified types
 - Generate questions with appropriate answer_schema (exact_match, keyword_match, or semantic_match)
 - Each question must include: id, type, stem, choices (if MC), answer_schema, difficulty, category
 - Return all saved questions with validation scores
+- When calling Tool 5, ALWAYS pass session_id={request.session_id} to save questions with correct session reference
 """
 
             # 에이전트 실행 (Tool Calling 루프)
@@ -763,12 +766,22 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
 
                 # GeneratedItem 객체 생성
                 try:
-                    # answer_schema 구성
-                    answer_schema = AnswerSchema(
-                        type=tool_output.get("answer_type", "exact_match"),
-                        keywords=tool_output.get("correct_keywords"),
-                        correct_answer=tool_output.get("correct_answer"),
-                    )
+                    # answer_schema 구성 (Tool 5가 제공하거나 기본값 사용)
+                    schema_from_tool = tool_output.get("answer_schema", {})
+                    if isinstance(schema_from_tool, dict):
+                        # Tool 5에서 반환한 answer_schema 사용
+                        answer_schema = AnswerSchema(
+                            type=schema_from_tool.get("type", schema_from_tool.get("correct_key") and "exact_match" or "keyword_match"),
+                            keywords=schema_from_tool.get("correct_keywords") or schema_from_tool.get("keywords"),
+                            correct_answer=schema_from_tool.get("correct_key") or schema_from_tool.get("correct_answer"),
+                        )
+                    else:
+                        # Fallback to tool_output fields
+                        answer_schema = AnswerSchema(
+                            type=tool_output.get("answer_type", "exact_match"),
+                            keywords=tool_output.get("correct_keywords"),
+                            correct_answer=tool_output.get("correct_answer"),
+                        )
 
                     item = GeneratedItem(
                         id=tool_output.get("question_id", f"q_{uuid.uuid4().hex[:8]}"),
@@ -782,7 +795,7 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
                         saved_at=tool_output.get("saved_at", datetime.now(UTC).isoformat()),
                     )
                     items.append(item)
-                    logger.info(f"✓ 문항 파싱 성공: {item.id}")
+                    logger.info(f"✓ 문항 파싱 성공: {item.id}, stem={item.stem[:50] if item.stem else 'N/A'}")
 
                 except Exception as e:
                     logger.error(f"GeneratedItem 생성 실패: {e}")

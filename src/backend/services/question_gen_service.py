@@ -288,9 +288,9 @@ class QuestionGenerationService:
 
         try:
             # Step 1: Validate survey and get context
-            survey = self.session.query(UserProfileSurvey).filter_by(id=survey_id).first()
+            survey = self.session.query(UserProfileSurvey).filter_by(user_id=user_id, id=survey_id).first()
             if not survey:
-                raise Exception(f"Survey with id {survey_id} not found.")
+                raise Exception(f"Survey with id {survey_id} not found for user {user_id}.")
 
             logger.debug(f"✓ Survey found: interests={survey.interests}")
 
@@ -319,13 +319,14 @@ class QuestionGenerationService:
             logger.debug("✓ Agent created successfully")
 
             agent_request = GenerateQuestionsRequest(
+                session_id=session_id,
                 survey_id=survey_id,
                 round_idx=round_num,
                 prev_answers=prev_answers,
                 question_count=question_count,
                 question_types=question_types,
             )
-            logger.debug(f"✓ GenerateQuestionsRequest created: count={question_count}, types={question_types}")
+            logger.debug(f"✓ GenerateQuestionsRequest created: session_id={session_id}, count={question_count}, types={question_types}")
 
             agent_response = await agent.generate_questions(agent_request)
             logger.info(f"✅ Agent response received: {len(agent_response.items)} items generated")

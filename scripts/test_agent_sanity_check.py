@@ -169,12 +169,14 @@ class AgentSanityCheck:
 
         try:
             self.request = GenerateQuestionsRequest(
+                session_id="test_session",
                 survey_id="test_survey",
                 round_idx=1,
                 prev_answers=None,
             )
 
             console.print("  ✅ Request created")
+            console.print(f"     session_id: {self.request.session_id}")
             console.print(f"     survey_id: {self.request.survey_id}")
             console.print(f"     round_idx: {self.request.round_idx}")
             console.print(f"     prev_answers: {self.request.prev_answers}")

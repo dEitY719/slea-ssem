@@ -4,6 +4,7 @@ Tests for question generation service.
 REQ: REQ-B-B2-Gen-1, REQ-B-B2-Gen-2, REQ-B-B2-Gen-3
 """
 
+import pytest
 from sqlalchemy.orm import Session
 
 from src.backend.models.question import Question
@@ -16,14 +17,15 @@ from src.backend.services.question_gen_service import QuestionGenerationService
 class TestQuestionGeneration:
     """REQ-B-B2-Gen: Question generation tests."""
 
-    def test_generate_questions_creates_session(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+    @pytest.mark.asyncio
+    async def test_generate_questions_creates_session(
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """Happy path: Generate questions creates test session."""
         service = QuestionGenerationService(db_session)
 
-        result = service.generate_questions(
-            user_id=user_fixture.id,
+        result = await service.generate_questions(
+            user_id=authenticated_user.id,
             survey_id=user_profile_survey_fixture.id,
             round_num=1,
         )
@@ -34,33 +36,35 @@ class TestQuestionGeneration:
         # Verify session was created in DB
         session = db_session.query(TestSession).filter_by(id=result["session_id"]).first()
         assert session is not None
-        assert session.user_id == user_fixture.id
+        assert session.user_id == authenticated_user.id
         assert session.survey_id == user_profile_survey_fixture.id
         assert session.round == 1
         assert session.status == "in_progress"
 
-    def test_generate_questions_returns_five_questions(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+    @pytest.mark.asyncio
+    async def test_generate_questions_returns_five_questions(
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """Happy path: Generate questions returns exactly 5 questions."""
         service = QuestionGenerationService(db_session)
 
-        result = service.generate_questions(
-            user_id=user_fixture.id,
+        result = await service.generate_questions(
+            user_id=authenticated_user.id,
             survey_id=user_profile_survey_fixture.id,
             round_num=1,
         )
 
         assert len(result["questions"]) == 5
 
-    def test_generated_questions_have_required_fields(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+    @pytest.mark.asyncio
+    async def test_generated_questions_have_required_fields(
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """Happy path: Each question has all required fields."""
         service = QuestionGenerationService(db_session)
 
-        result = service.generate_questions(
-            user_id=user_fixture.id,
+        result = await service.generate_questions(
+            user_id=authenticated_user.id,
             survey_id=user_profile_survey_fixture.id,
             round_num=1,
         )
@@ -73,15 +77,16 @@ class TestQuestionGeneration:
             assert "difficulty" in question
             assert "category" in question
 
-    def test_generated_questions_match_user_interests(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+    @pytest.mark.asyncio
+    async def test_generated_questions_match_user_interests(
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """REQ-B-B2-Gen-2: Questions match user interests from survey."""
         service = QuestionGenerationService(db_session)
 
         # User interests are ["LLM", "RAG"]
-        result = service.generate_questions(
-            user_id=user_fixture.id,
+        result = await service.generate_questions(
+            user_id=authenticated_user.id,
             survey_id=user_profile_survey_fixture.id,
             round_num=1,
         )
@@ -90,12 +95,13 @@ class TestQuestionGeneration:
         categories = [q["category"] for q in result["questions"]]
         assert all(c in ["LLM", "RAG"] for c in categories)
 
-    def test_generate_questions_invalid_survey_raises_error(self, db_session: Session, user_fixture: User) -> None:
+    @pytest.mark.asyncio
+    async def test_generate_questions_invalid_survey_raises_error(self, db_session: Session, user_fixture: User) -> None:
         """Input validation: Invalid survey ID raises exception."""
         service = QuestionGenerationService(db_session)
 
         try:
-            service.generate_questions(
+            await service.generate_questions(
                 user_id=user_fixture.id,
                 survey_id="invalid_survey_id",
                 round_num=1,
@@ -104,14 +110,15 @@ class TestQuestionGeneration:
         except Exception as e:
             assert "not found" in str(e).lower()
 
-    def test_question_records_created_in_database(
-        self, db_session: Session, user_fixture: User, user_profile_survey_fixture: UserProfileSurvey
+    @pytest.mark.asyncio
+    async def test_question_records_created_in_database(
+        self, db_session: Session, authenticated_user: User, user_profile_survey_fixture: UserProfileSurvey
     ) -> None:
         """REQ-B-B2-Gen-1: Question records are persisted in database."""
         service = QuestionGenerationService(db_session)
 
-        result = service.generate_questions(
-            user_id=user_fixture.id,
+        result = await service.generate_questions(
+            user_id=authenticated_user.id,
             survey_id=user_profile_survey_fixture.id,
             round_num=1,
         )

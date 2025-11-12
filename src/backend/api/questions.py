@@ -273,7 +273,7 @@ class ExplanationResponse(BaseModel):
     summary="Generate Test Questions",
     description="Generate 5 test questions based on user survey and interests",
 )
-def generate_questions(
+async def generate_questions(
     request: GenerateQuestionsRequest,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -301,7 +301,7 @@ def generate_questions(
 
     try:
         question_service = QuestionGenerationService(db)
-        result = question_service.generate_questions(
+        result = await question_service.generate_questions(
             user_id=user_id,
             survey_id=request.survey_id,
             round_num=request.round,

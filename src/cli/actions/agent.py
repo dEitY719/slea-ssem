@@ -116,11 +116,26 @@ def generate_questions(context: CLIContext, *args: str) -> None:
         else:
             i += 1
 
-    # Validate required survey-id
+    # If survey_id not provided, use latest survey for the user
     if not survey_id:
-        context.console.print("[bold red]❌ Error:[/bold red] --survey-id is required")
-        _print_generate_questions_help(context)
-        return
+        from src.backend.models.user_profile import UserProfileSurvey
+
+        db_check_session = SessionLocal()
+        try:
+            latest_survey = db_check_session.query(UserProfileSurvey).filter_by(
+                user_id=context.session.user_id
+            ).order_by(UserProfileSurvey.submitted_at.desc()).first()
+
+            if not latest_survey:
+                context.console.print("[bold red]❌ Error:[/bold red] No surveys found")
+                context.console.print("[dim]Please run 'profile update_survey' first to create a survey[/dim]")
+                db_check_session.close()
+                return
+
+            survey_id = latest_survey.id
+            context.console.print(f"[dim]Using latest survey: {survey_id[:8]}...[/dim]")
+        finally:
+            db_check_session.close()
 
     # Validate round
     if round_idx not in (1, 2):
@@ -1170,22 +1185,25 @@ def _print_generate_questions_help(context: CLIContext) -> None:
     )
     context.console.print()
     context.console.print("[bold white]Usage:[/bold white]")
-    context.console.print("  agent generate-questions --survey-id SURVEY_ID [--round 1|2] [--prev-answers JSON]")
+    context.console.print("  agent generate-questions [--survey-id SURVEY_ID] [--round 1|2] [--prev-answers JSON]")
     context.console.print()
     context.console.print("[bold white]Options:[/bold white]")
-    context.console.print("  --survey-id TEXT         Survey ID (required)")
+    context.console.print("  --survey-id TEXT         Survey ID [optional: uses latest if not provided]")
     context.console.print("  --round INTEGER          Round number: 1 (initial) or 2 (adaptive) [default: 1]")
     context.console.print("  --prev-answers TEXT      JSON array of previous answers (Round 2 only)")
     context.console.print('                           Format: \'[{"item_id":"q1","score":85}]\'')
     context.console.print("  --help                   Show this help message")
     context.console.print()
     context.console.print("[bold white]Examples:[/bold white]")
-    context.console.print("  # Generate Round 1 questions")
+    context.console.print("  # Generate Round 1 using latest survey")
+    context.console.print("  agent generate-questions")
+    context.console.print()
+    context.console.print("  # Generate with specific survey")
     context.console.print("  agent generate-questions --survey-id survey_123")
     context.console.print()
     context.console.print("  # Generate Round 2 with adaptive difficulty")
     context.console.print(
-        '  agent generate-questions --survey-id survey_123 --round 2 \'--prev-answers [{"item_id":"q1","score":85}]\''
+        '  agent generate-questions --round 2 --prev-answers \'[{"item_id":"q1","score":85}]\''
     )
     context.console.print()
 

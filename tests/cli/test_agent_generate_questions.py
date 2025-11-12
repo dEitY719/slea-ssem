@@ -46,12 +46,12 @@ class TestGenerateQuestionsHelpAndErrors:
         assert "Usage:" in output
 
     def test_missing_survey_id(self, mock_context: CLIContext) -> None:
-        """TC-2: Verify error when --survey-id missing."""
+        """TC-2: Verify error when no surveys exist (survey_id is optional, uses latest)."""
         agent.generate_questions(mock_context, "--round", "1")
         output = mock_context._buffer.getvalue()
 
         assert "Error" in output or "error" in output
-        assert "survey-id" in output or "required" in output
+        assert "No surveys found" in output or "profile update_survey" in output
 
     def test_invalid_round_number(self, mock_context: CLIContext) -> None:
         """TC-5: Verify error for invalid round number."""
