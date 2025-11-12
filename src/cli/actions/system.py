@@ -74,8 +74,14 @@ def help(context: CLIContext, *args: str) -> None:
         else:
             api_commands.append((cmd, usage, description))
 
+    # Calculate max command width for proper alignment
+    all_usages = [usage for _cmd, usage, _desc in api_commands + system_commands if usage]
+    max_width = max(len(usage) for usage in all_usages) if all_usages else 20
+
     # Create rich table
-    table = Table(show_header=False, box=None, padding=(0, 2))
+    table = Table(show_header=False, box=None, padding=(0, 1))
+    table.add_column(width=max_width)  # Column for command usage
+    table.add_column()  # Column for description
 
     # Display API commands
     for _cmd, usage, description in api_commands:
@@ -83,7 +89,7 @@ def help(context: CLIContext, *args: str) -> None:
         table.add_row(usage, f"[dim]{description}[/dim]")
 
     # Add separator line
-    table.add_row(f"[dim]{'─' * 70}[/dim]", "")
+    table.add_section()
 
     # Display system commands
     for _cmd, usage, description in system_commands:
