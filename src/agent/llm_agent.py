@@ -857,14 +857,35 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
                                 json_str = json_str.split("```")[1].split("```")[0].strip()
 
                             # Unescape 처리: Agent가 escaped quotes를 사용할 수 있음
-                            # Final Answer: [{\"question_id\": ... → [{\"question_id\": ...
-                            # Replace escaped quotes with regular quotes for JSON parsing
+                            # Replace escaped quotes (order matters: handle single quotes first)
+                            # Remove backslash before single quotes (not valid in JSON strings)
+                            json_str = json_str.replace("\\'", "'")
+                            # Replace escaped double quotes with regular quotes
                             json_str = json_str.replace('\\"', '"')
+
+                            # Convert Python None to JSON null
+                            import re
+                            json_str = re.sub(r'\bNone\b', 'null', json_str)
 
                             logger.info(f"📋 Extracted JSON (first 300 chars): {json_str[:300]}...")
 
                             # JSON 파싱
-                            questions_data = json.loads(json_str)
+                            try:
+                                questions_data = json.loads(json_str)
+                            except json.JSONDecodeError as e:
+                                # Additional cleaning if initial parse fails
+                                logger.warning(f"⚠️  Initial JSON parse failed at char {e.pos}, applying additional cleanup")
+                                # More aggressive cleanup for edge cases
+                                json_str = re.sub(r"\\\'", "'", json_str)
+                                json_str = re.sub(r'\\\\"', '"', json_str)
+                                json_str = re.sub(r"\\(?![ubnftr/])", "", json_str)  # Remove backslashes not part of valid escape sequences
+                                # Convert Python True/False to JSON true/false
+                                json_str = re.sub(r'\bTrue\b', 'true', json_str)
+                                json_str = re.sub(r'\bFalse\b', 'false', json_str)
+                                # Convert Python None to JSON null (redundant but safe)
+                                json_str = re.sub(r'\bNone\b', 'null', json_str)
+                                logger.info(f"📋 Cleaned JSON (first 300 chars): {json_str[:300]}...")
+                                questions_data = json.loads(json_str)
 
                             if not isinstance(questions_data, list):
                                 questions_data = [questions_data]

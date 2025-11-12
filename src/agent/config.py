@@ -28,7 +28,7 @@ def create_llm() -> ChatGoogleGenerativeAI:
         api_key=api_key,
         model="gemini-2.0-flash",
         temperature=0.7,  # 창의성과 정확성의 균형 (0~1)
-        max_tokens=4096,  # 응답 최대 길이 (2024년 증가: 1024 → 4096, 전체 ReAct 대화 지원)
+        max_tokens=8192,  # 응답 최대 길이 (2024년 증가: 1024 → 4096 → 8192, 전체 ReAct 대화 및 다중 문항 생성 지원)
         top_p=0.95,  # Nucleus sampling (다양성 제어)
         timeout=30,  # API 타임아웃 (초)
     )
