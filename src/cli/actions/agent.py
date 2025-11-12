@@ -3,6 +3,12 @@ Agent-based question generation and scoring CLI actions.
 
 REQ: REQ-CLI-Agent-1, REQ-CLI-Agent-2
 REQ: REQ-A-Agent-Backend-1 (CLI → Backend Service → DB integration)
+
+TEST CONFIGURATION:
+  Current: 2 multiple-choice questions (fast testing)
+  To revert to production: Change lines 164-165 to:
+    question_count=5,
+    question_types=None,
 """
 
 import asyncio
