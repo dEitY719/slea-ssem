@@ -21,12 +21,12 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-A2-4 | 닉네임 중복 시 대안 3개 시각적 제안 | 4 | ✅ Done | 3 tests (100%), Commit: 8a43119, Progress: docs/progress/REQ-F-A2-4.md |
 | REQ-F-A2-6 | "사용 가능" 상태 표시 및 "다음" 버튼 활성화 | 4 | ✅ Done | Commit: 21243fd, Progress: docs/progress/REQ-F-A2-6.md |
 | REQ-F-A2-7 | "다음" 버튼 클릭 시 nickname 업데이트 및 리다이렉트 | 4 | ✅ Done | Commit: c3e06ea, Progress: docs/progress/REQ-F-A2-7.md |
-| REQ-F-A2-2 | 자기평가 입력 화면 | 0 | ⏳ Backlog | 4개 sub-tasks |
+| REQ-F-A2-2 | 자기평가 입력 화면 (프로필 설정) | 0 | ⏳ Backlog | 5개 sub-tasks (REQ-F-B1 통합) |
 | REQ-F-A2-2-1 | 닉네임 설정 완료 후 자기평가 입력 페이지로 이동 | 4 | ✅ Done | 7 tests (100%), Commit: 8034886, Progress: docs/progress/REQ-F-A2-2-1.md |
 | REQ-F-A2-2-2 | 자기평가 정보(수준) 입력 | 4 | ✅ Done | 10 tests (100%), Commit: bd3c7ec, Progress: docs/progress/REQ-F-A2-2-2.md |
 | REQ-F-A2-Edit | 프로필 수정 화면 | 0 | ⏳ Backlog | 6개 sub-tasks |
-| REQ-F-A3 | 온보딩 모달 | 0 | ⏳ Backlog | 2개 sub-tasks |
-| REQ-F-B1 | 자기평가 입력 화면 | 0 | ⏳ Backlog | 3개 sub-tasks |
+| REQ-F-A3 | 개인정보 수집 및 이용 동의 | 0 | ⏳ Backlog | 5개 sub-tasks |
+| REQ-F-B1 | ⚠️ Deprecated - REQ-F-A2-2 참조 | N/A | ⚠️ Merged | REQ-F-A2-2로 통합됨 |
 | REQ-F-B2 | 문항 풀이 화면 | 0 | ⏳ Backlog | 7개 sub-tasks |
 | REQ-F-B3 | 해설 화면 | 0 | ⏳ Backlog | 2개 sub-tasks |
 | REQ-F-B4 | 최종 결과 페이지 | 0 | ⏳ Backlog | 3개 sub-tasks |
@@ -38,6 +38,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ ID | Feature | Phase | Status | Notes |
 |--------|---------|-------|--------|-------|
 | REQ-B-A1 | Samsung AD 인증 & 세션 관리 | 4 | ✅ Done | Commit: f5412e9 |
+| REQ-B-A3 | 개인정보 동의 관리 | 0 | ⏳ Backlog | 2개 sub-tasks |
 | REQ-B-A2 | 닉네임 등록 | 4 | ✅ Done | 23 tests (100%), Commit: 5e6c373 |
 | REQ-B-A2-Edit | 프로필 수정 | 4 | ✅ Done | 28 tests (100%), Commit: fdb3896 |
 | REQ-B-B1 | 자기평가 데이터 수집 & 저장 | 4 | ✅ Done | 14 tests (100%), Commit: (pending) |
