@@ -2,6 +2,7 @@
 Agent-based question generation and scoring CLI actions.
 
 REQ: REQ-CLI-Agent-1, REQ-CLI-Agent-2
+REQ: REQ-A-Agent-Backend-1 (CLI → Backend Service → DB integration)
 """
 
 import asyncio
@@ -10,7 +11,9 @@ import logging
 
 from rich.table import Table
 
-from src.agent.llm_agent import GenerateQuestionsRequest, ItemGenAgent
+from src.agent.llm_agent import ItemGenAgent
+from src.backend.database import SessionLocal
+from src.backend.services.question_gen_service import QuestionGenerationService
 from src.cli.context import CLIContext
 
 logger = logging.getLogger(__name__)
@@ -132,70 +135,79 @@ def generate_questions(context: CLIContext, *args: str) -> None:
             context.console.print(f"[bold red]❌ Error:[/bold red] Invalid JSON in --prev-answers: {e}")
             return
 
-    # Initialize agent
-    context.console.print("🚀 Initializing Agent... (GEMINI_API_KEY required)")
-    try:
-        agent = ItemGenAgent()
-    except Exception as e:
-        context.console.print("[bold red]❌ Error:[/bold red] Agent initialization failed")
-        context.console.print(f"[dim]Reason: {e}[/dim]")
+    # Validate user context
+    if not context.session.user_id:
+        context.console.print("[bold red]❌ Error:[/bold red] No user logged in")
+        context.console.print("[dim]Please run 'auth login' first[/dim]")
         return
 
-    context.console.print("✅ Agent initialized")
+    try:
+        user_id = int(context.session.user_id)
+    except (ValueError, TypeError):
+        context.console.print(f"[bold red]❌ Error:[/bold red] Invalid user_id: {context.session.user_id}")
+        return
 
-    # Create request
+    # Generate questions via Backend Service (saves to DB)
     context.console.print()
     context.console.print("📝 Generating questions...")
     context.console.print(f"   survey_id={survey_id}, round={round_idx}")
 
-    request = GenerateQuestionsRequest(survey_id=survey_id, round_idx=round_idx, prev_answers=prev_answers)
-
-    # Execute agent (async)
+    # REQ-A-Agent-Backend-1: CLI → Backend Service → DB integration
+    db_session = SessionLocal()
     try:
-        response = asyncio.run(agent.generate_questions(request))
+        service = QuestionGenerationService(db_session)
+        response = asyncio.run(service.generate_questions(
+            user_id=user_id,
+            survey_id=survey_id,
+            round_num=round_idx
+        ))
     except Exception as e:
         context.console.print()
         context.console.print("[bold red]❌ Error:[/bold red] Question generation failed")
         context.console.print(f"[dim]Reason: {e}[/dim]")
         return
+    finally:
+        db_session.close()
 
     # Display results
     context.console.print()
     context.console.print("✅ Generation Complete")
-    context.console.print(f"   round_id: {response.round_id}")
-    context.console.print(f"   items generated: {len(response.items)}, failed: {response.failed_count}")
-    context.console.print(f"   agent_steps: {response.agent_steps}")
+    context.console.print(f"   session_id: {response['session_id']}")
+    questions_list = response.get("questions", [])
+    context.console.print(f"   items generated: {len(questions_list)}")
+    if "error" in response:
+        context.console.print(f"   error: {response['error']}")
     context.console.print()
 
     # Display table
-    table = Table(title="Generated Items", show_header=True, header_style="bold cyan")
-    table.add_column("ID", style="dim")
-    table.add_column("Type")
-    table.add_column("Difficulty", justify="right")
-    table.add_column("Validation", justify="right")
+    if questions_list:
+        table = Table(title="Generated Items", show_header=True, header_style="bold cyan")
+        table.add_column("ID", style="dim")
+        table.add_column("Type")
+        table.add_column("Difficulty", justify="right")
+        table.add_column("Category")
 
-    for item in response.items:
-        item_id_short = item.id[:12] + "..." if len(item.id) > 12 else item.id
-        table.add_row(
-            item_id_short,
-            item.type,
-            str(item.difficulty),
-            f"{item.validation_score:.2f}",
-        )
+        for item in questions_list:
+            item_id_short = item["id"][:12] + "..." if len(item["id"]) > 12 else item["id"]
+            table.add_row(
+                item_id_short,
+                item["item_type"],
+                str(item["difficulty"]),
+                item["category"],
+            )
 
-    context.console.print("📋 Generated Items:")
-    context.console.print(table)
-    context.console.print()
+        context.console.print("📋 Generated Items:")
+        context.console.print(table)
+        context.console.print()
 
-    # Display first item details
-    if response.items:
-        first_item = response.items[0]
+        # Display first item details
+        first_item = questions_list[0]
         context.console.print("📄 First Item Details:")
-        context.console.print(f"   Stem: {first_item.stem}")
-        context.console.print(f"   Answer Schema: {first_item.answer_schema.type}")
-        if first_item.answer_schema.keywords:
-            keywords_str = ", ".join(first_item.answer_schema.keywords)
-            context.console.print(f"   Keywords: [{keywords_str}]")
+        context.console.print(f"   Stem: {first_item['stem']}")
+        context.console.print(f"   Answer Schema: {first_item['answer_schema']}")
+        context.console.print()
+    else:
+        context.console.print("[dim]No questions were generated[/dim]")
         context.console.print()
 
 
@@ -495,8 +507,6 @@ def batch_score(context: CLIContext, *args: str) -> None:
     context.console.print()
 
     start_time = time()
-    results = []
-    failed_items = []
 
     async def score_single_item(item: dict) -> tuple:
         """Score a single item and return result tuple."""
@@ -596,7 +606,7 @@ def batch_score(context: CLIContext, *args: str) -> None:
         )
 
     # Add failed items to table
-    for item, error in failed:
+    for item, _error in failed:
         question_id = item["question_id"]
         question_id_short = question_id[:12] + "..." if len(question_id) > 12 else question_id
         table.add_row(question_id_short, item["answer_type"][:5], "ERROR", "❌")
