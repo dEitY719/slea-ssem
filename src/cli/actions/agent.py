@@ -153,13 +153,16 @@ def generate_questions(context: CLIContext, *args: str) -> None:
     context.console.print(f"   survey_id={survey_id}, round={round_idx}")
 
     # REQ-A-Agent-Backend-1: CLI → Backend Service → DB integration
+    # TEST DEFAULT: 2 multiple-choice questions (will be 5 mixed after testing)
     db_session = SessionLocal()
     try:
         service = QuestionGenerationService(db_session)
         response = asyncio.run(service.generate_questions(
             user_id=user_id,
             survey_id=survey_id,
-            round_num=round_idx
+            round_num=round_idx,
+            question_count=2,  # TEST: 2 questions for quick testing
+            question_types=["multiple_choice"],  # TEST: only MC for now
         ))
     except Exception as e:
         context.console.print()

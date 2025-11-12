@@ -49,6 +49,11 @@ class GenerateQuestionsRequest(BaseModel):
     survey_id: str = Field(..., description="설문 ID")
     round_idx: int = Field(..., ge=1, description="라운드 번호 (1-based)")
     prev_answers: list[dict] | None = Field(default=None, description="이전 라운드 답변 (적응형 테스트용)")
+    question_count: int = Field(default=5, ge=1, le=20, description="생성할 문항 개수 (기본값: 5, 테스트: 2)")
+    question_types: list[str] | None = Field(
+        default=None,
+        description="생성할 문항 유형 (multiple_choice | true_false | short_answer), None이면 모두 생성"
+    )
 
 
 class AnswerSchema(BaseModel):
@@ -407,11 +412,18 @@ class ItemGenAgent:
             round_id = _round_id_gen.generate(session_id=request.survey_id, round_number=request.round_idx)
 
             # 에이전트 입력 구성
+            question_types_str = (
+                ", ".join(request.question_types)
+                if request.question_types
+                else "multiple_choice, true_false, short_answer"
+            )
             agent_input = f"""
 Generate high-quality exam questions for the following survey.
 Survey ID: {request.survey_id}
 Round: {request.round_idx}
 Previous Answers: {json.dumps(request.prev_answers) if request.prev_answers else "None (First round)"}
+Question Count: {request.question_count}
+Question Types: {question_types_str}
 
 Follow these steps:
 1. Get survey context and user profile (Tool 1)
@@ -422,6 +434,7 @@ Follow these steps:
 6. Save validated questions (Tool 5) with round_id={round_id}
 
 Important:
+- Generate EXACTLY {request.question_count} questions with the specified types
 - Generate questions with appropriate answer_schema (exact_match, keyword_match, or semantic_match)
 - Each question must include: id, type, stem, choices (if MC), answer_schema, difficulty, category
 - Return all saved questions with validation scores

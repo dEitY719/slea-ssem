@@ -251,9 +251,11 @@ class QuestionGenerationService:
         user_id: int,
         survey_id: str,
         round_num: int = 1,
+        question_count: int = 5,
+        question_types: list[str] | None = None,
     ) -> dict[str, Any]:
         """
-        Generate 5 questions using Real Agent (async).
+        Generate questions using Real Agent (async).
 
         REQ: REQ-B-B2-Gen-1, REQ-B-B2-Gen-2, REQ-B-B2-Gen-3
         REQ: REQ-A-Agent-Backend-1 (Real Agent Integration)
@@ -270,6 +272,8 @@ class QuestionGenerationService:
             user_id: User ID
             survey_id: UserProfileSurvey ID to get interests
             round_num: Round number (1 or 2, default 1)
+            question_count: Number of questions to generate (default 5, test 2)
+            question_types: List of question types to generate (e.g., ["multiple_choice"])
 
         Returns:
             Dictionary with:
@@ -318,8 +322,10 @@ class QuestionGenerationService:
                 survey_id=survey_id,
                 round_idx=round_num,
                 prev_answers=prev_answers,
+                question_count=question_count,
+                question_types=question_types,
             )
-            logger.debug(f"✓ GenerateQuestionsRequest created: {agent_request}")
+            logger.debug(f"✓ GenerateQuestionsRequest created: count={question_count}, types={question_types}")
 
             agent_response = await agent.generate_questions(agent_request)
             logger.info(f"✅ Agent response received: {len(agent_response.items)} items generated")
