@@ -331,13 +331,18 @@ def autosave_answer(context: CLIContext, *args: str) -> None:
         context.console.print("[bold red]✗ Not authenticated[/bold red]")
         return
 
-    if not args:
+    if not context.session.current_session_id:
+        context.console.print("[bold red]✗ No active session[/bold red]")
+        context.console.print("[yellow]Please run 'questions generate' first to create a session[/yellow]")
+        return
+
+    if len(args) < 2:
         context.console.print("[bold yellow]Usage:[/bold yellow] questions answer autosave [question_id] [answer]")
         context.console.print("[bold cyan]Example:[/bold cyan] questions answer autosave q1 'my answer'")
         return
 
     question_id = args[0]
-    answer = " ".join(args[1:]) if len(args) > 1 else ""
+    user_answer = " ".join(args[1:]) if len(args) > 1 else ""
 
     context.console.print("[dim]Autosaving answer...[/dim]")
 
@@ -346,8 +351,10 @@ def autosave_answer(context: CLIContext, *args: str) -> None:
         "POST",
         "/questions/autosave",
         json_data={
+            "session_id": context.session.current_session_id,
             "question_id": question_id,
-            "answer": answer,
+            "user_answer": {"answer": user_answer},  # user_answer는 dict 형식
+            "response_time_ms": 0,  # CLI에서는 타이밍 측정 안 함, 기본값 0
         },
     )
 
