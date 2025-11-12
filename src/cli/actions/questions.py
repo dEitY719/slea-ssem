@@ -150,6 +150,61 @@ def _get_unscored_answers(session_id: str | None) -> list[dict[str, Any]]:
         return []
 
 
+def _get_question_type(question_id: str | None) -> str | None:
+    """
+    Get question type from database.
+
+    Returns: item_type (e.g., 'multiple_choice', 'true_false', 'short_answer')
+    """
+    try:
+        if not question_id:
+            return None
+
+        db = SessionLocal()
+        question = db.query(Question).filter_by(id=question_id).first()
+        db.close()
+
+        return question.item_type if question else None
+    except Exception:
+        return None
+
+
+def _format_user_answer(user_answer: str, question_type: str | None) -> dict[str, Any]:
+    """
+    Format user answer dict based on question type.
+
+    Args:
+        user_answer: Raw answer text from user
+        question_type: Type of question (multiple_choice, true_false, short_answer)
+
+    Returns:
+        Properly formatted user_answer dict with correct field name
+
+    """
+    # If we don't know the type, default to short answer format (most permissive)
+    if not question_type:
+        return {"text": user_answer}
+
+    question_type_lower = question_type.lower()
+
+    # Multiple choice: use selected_key for the choice
+    if "multiple" in question_type_lower or "choice" in question_type_lower:
+        return {"selected_key": user_answer}
+
+    # True/False: convert to boolean if possible, otherwise keep as string
+    if "true" in question_type_lower or "false" in question_type_lower:
+        if user_answer.lower() in ("true", "yes", "1", "y"):
+            return {"answer": True}
+        elif user_answer.lower() in ("false", "no", "0", "n"):
+            return {"answer": False}
+        else:
+            # If unclear, store as-is (backend will handle)
+            return {"answer": user_answer}
+
+    # Short answer: use text field
+    return {"text": user_answer}
+
+
 # ============================================================================
 # Help Functions
 # ============================================================================
@@ -695,7 +750,13 @@ def autosave_answer(context: CLIContext, *args: str) -> None:
         _print_autosave_answer_help(context)
         return
 
+    # Get question type to format answer correctly
+    question_type = _get_question_type(question_id)
+    formatted_answer = _format_user_answer(user_answer, question_type)
+
     context.console.print(f"[dim]Autosaving answer for question {question_id}...[/dim]")
+    if question_type:
+        context.console.print(f"[dim](type: {question_type})[/dim]")
 
     # API 호출
     status_code, response, error = context.client.make_request(
@@ -704,7 +765,7 @@ def autosave_answer(context: CLIContext, *args: str) -> None:
         json_data={
             "session_id": session_id,
             "question_id": question_id,
-            "user_answer": {"answer": user_answer},  # user_answer는 dict 형식
+            "user_answer": formatted_answer,  # Properly formatted based on question type
             "response_time_ms": 0,  # CLI에서는 타이밍 측정 안 함, 기본값 0
         },
     )
