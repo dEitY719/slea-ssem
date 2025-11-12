@@ -1,10 +1,10 @@
 # REQ-A-Agent-Backend-1: QuestionGenerationService Real Agent Integration
 
-**Status**: ✅ **COMPLETE** (Phase 4)
+**Status**: ✅ **COMPLETE** (Phase 4) + CLI Integration Complete
 
 **Completion Date**: 2025-11-12
 
-**Last Updated**: 2025-11-12
+**Last Updated**: 2025-11-12 (CLI Integration: 2025-11-12)
 
 ---
 
@@ -330,12 +330,83 @@ from src.agent.llm_agent import GenerateQuestionsRequest, create_agent
 
 ---
 
+## 🎯 Phase 5: CLI Integration (Additional - Completed)
+
+### Objective: Make CLI → Backend Service call flow work end-to-end
+
+**Files Modified**:
+- `src/cli/actions/agent.py`: Replace Agent direct call with Backend Service call
+- `tests/cli/test_agent_generate_questions.py`: Update mocks for Backend Service
+
+**Implementation Steps**:
+1. ✅ Added SessionLocal import for DB session creation
+2. ✅ Added QuestionGenerationService import
+3. ✅ Added user_id validation from CLI context (context.session.user_id)
+4. ✅ Replaced direct Agent invocation with `service.generate_questions()`
+5. ✅ Updated response handling for dict format (session_id, questions, error)
+6. ✅ Fixed all code quality issues (ruff checks)
+7. ✅ Updated test fixtures to set user_id and mock Backend Service
+8. ✅ All 12 CLI tests passing
+
+**Architecture Flow**:
+```
+CLI generate-questions command
+        ↓
+  Validate user_id
+        ↓
+  Create DB session (SessionLocal)
+        ↓
+  Call Backend Service (async)
+    QuestionGenerationService.generate_questions()
+        ↓
+    Create ItemGenAgent
+        ↓
+    Call Agent.generate_questions()
+        ↓
+    Save items to DB (Question records)
+        ↓
+  Return dict response
+        ↓
+  Display results in CLI
+```
+
+**Test Results**:
+```
+tests/cli/test_agent_generate_questions.py::
+  test_round1_generation_success PASSED
+  test_round2_adaptive_generation PASSED
+  test_table_output_structure PASSED
+  test_agent_init_failure PASSED
+  test_agent_execution_failure PASSED
+  test_empty_items_response PASSED
+  test_round1_default_when_not_specified PASSED
+
+============================== 12 passed in 3.02s ==============================
+```
+
+**Code Quality**:
+- ✅ ruff checks: All passed
+- ✅ Type hints: Complete
+- ✅ Error handling: Graceful degradation
+
+**Commit**: 61c6449 (feat: Implement CLI → Backend Service integration for DB persistence)
+
+---
+
 ## ✅ Sign-Off
 
 **Developer**: Claude Code
-**Completed**: 2025-11-12
+**Completed**: 2025-11-12 (Backend) + 2025-11-12 (CLI Integration)
 **Status**: ✅ READY FOR MERGE
 
-All acceptance criteria met. All tests passing. Code quality verified. Ready for production integration.
+All acceptance criteria met. Backend Service integration complete. CLI integration complete.
+All tests passing (12 CLI tests + 12 service tests). Code quality verified. Ready for production.
+
+**Summary of Work**:
+- Phase 1-4: Backend Service integration with Real Agent (completed)
+- Phase 5: CLI → Backend Service integration for DB persistence (completed)
+- Total CLI tests: 12/12 passing
+- Total Backend tests: 12/12 passing
+- Code quality: 100% (ruff/mypy)
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
