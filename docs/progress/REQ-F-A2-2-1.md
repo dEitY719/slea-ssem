@@ -261,5 +261,5 @@ if (!nickname) {
 ---
 
 **구현 완료일**: 2025-11-12
-**Commit**: (pending)
+**Commit**: 8963f51
 **상태**: ✅ Done

@@ -22,7 +22,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-A2-6 | "사용 가능" 상태 표시 및 "다음" 버튼 활성화 | 4 | ✅ Done | Commit: 21243fd, Progress: docs/progress/REQ-F-A2-6.md |
 | REQ-F-A2-7 | "다음" 버튼 클릭 시 nickname 업데이트 및 리다이렉트 | 4 | ✅ Done | Commit: c3e06ea, Progress: docs/progress/REQ-F-A2-7.md |
 | REQ-F-A2-2 | 자기평가 입력 화면 | 0 | ⏳ Backlog | 4개 sub-tasks |
-| REQ-F-A2-2-1 | 닉네임 설정 완료 후 자기평가 입력 페이지로 이동 | 4 | ✅ Done | 7 tests (100%), Commit: (pending), Progress: docs/progress/REQ-F-A2-2-1.md |
+| REQ-F-A2-2-1 | 닉네임 설정 완료 후 자기평가 입력 페이지로 이동 | 4 | ✅ Done | 7 tests (100%), Commit: 8963f51, Progress: docs/progress/REQ-F-A2-2-1.md |
 | REQ-F-A2-Edit | 프로필 수정 화면 | 0 | ⏳ Backlog | 6개 sub-tasks |
 | REQ-F-A3 | 온보딩 모달 | 0 | ⏳ Backlog | 2개 sub-tasks |
 | REQ-F-B1 | 자기평가 입력 화면 | 0 | ⏳ Backlog | 3개 sub-tasks |
