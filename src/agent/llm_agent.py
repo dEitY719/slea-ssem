@@ -870,11 +870,13 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
                             for q in questions_data:
                                 try:
                                     # answer_schema 구성
+                                    # Tool 5 반환값에서 flattened 필드 사용 (correct_answer, correct_keywords)
                                     answer_schema = AnswerSchema(
                                         type=q.get("answer_schema", "exact_match"),
-                                        keywords=q.get("correct_keywords"),
-                                        correct_answer=q.get("correct_answer"),
+                                        keywords=q.get("correct_keywords"),  # From Tool 5 response
+                                        correct_answer=q.get("correct_answer"),  # From Tool 5 response
                                     )
+                                    logger.info(f"  ✓ answer_schema populated: type={answer_schema.type}, keywords={answer_schema.keywords is not None}, correct_answer={answer_schema.correct_answer is not None}")
 
                                     item = GeneratedItem(
                                         id=q.get("question_id", f"q_{uuid.uuid4().hex[:8]}"),

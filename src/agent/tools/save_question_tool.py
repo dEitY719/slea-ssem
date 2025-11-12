@@ -286,19 +286,33 @@ def _save_generated_question_impl(
 
         logger.info(f"Question saved successfully: {question.id}")
 
+        # Flatten answer_schema for Agent's Final Answer JSON
+        # Extracts fields from answer_schema dict for easy Agent consumption
+        flattened_answer_schema = {}
+        if isinstance(answer_schema, dict):
+            # Extract answer-specific fields
+            if "correct_key" in answer_schema:
+                flattened_answer_schema["correct_answer"] = answer_schema["correct_key"]
+            if "correct_keywords" in answer_schema:
+                flattened_answer_schema["correct_keywords"] = answer_schema["correct_keywords"]
+            if "validation_score" in answer_schema:
+                flattened_answer_schema["validation_score"] = answer_schema["validation_score"]
+            if "explanation" in answer_schema:
+                flattened_answer_schema["explanation"] = answer_schema["explanation"]
+
         return {
             "question_id": question.id,
-            "round_id": round_id,
-            "saved_at": question.created_at.isoformat(),
-            "success": True,
-            # Return full question data for Agent response
-            "item_type": question.item_type,
+            "type": question.item_type,  # Changed from item_type to type (Agent expects "type")
             "stem": question.stem,
             "choices": question.choices,
             "difficulty": question.difficulty,
             "category": question.category,
-            "answer_schema": question.answer_schema,
-            "validation_score": answer_schema.get("validation_score") if isinstance(answer_schema, dict) else None,
+            "answer_schema": "exact_match",  # Simplified for Final Answer JSON
+            "round_id": round_id,
+            "saved_at": question.created_at.isoformat(),
+            "success": True,
+            # Flattened answer schema fields for Agent to use directly in Final Answer JSON
+            **flattened_answer_schema,  # Spreads correct_answer, correct_keywords, validation_score
         }
 
     except Exception as e:

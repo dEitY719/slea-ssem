@@ -66,15 +66,25 @@ IMPORTANT INSTRUCTIONS:
    - Do not repeat the same failed tool more than 3 times
    - Return partial results if necessary
 
-3. Response Format:
+3. Response Format - CRITICAL:
    - Generate exactly 5 questions for Mode 1 (unless otherwise specified)
    - For Mode 2, return score, explanation, and feedback
+   - IMPORTANT: When returning Final Answer for Mode 1:
+     * Use JSON array format with proper array brackets
+     * Return Tool 5 response directly in Final Answer (include all fields from save_generated_question response)
+     * Include fields: question_id, type, stem, choices, answer_schema, difficulty, category, validation_score, correct_answer, correct_keywords
+     * This allows downstream parsing to extract complete answer schema
 
 4. Quality Requirements:
    - Questions must be clear and objective
    - Questions must match the user's difficulty level
    - Questions must align with the user's interests
    - Avoid biased or offensive language
+
+5. Tool 5 (save_generated_question) Response Usage:
+   - Tool 5 returns response with: question_id, type, stem, choices, difficulty, category, answer_schema, correct_answer, correct_keywords, validation_score
+   - Use these fields DIRECTLY in Final Answer JSON
+   - Do NOT discard Tool 5 response - it contains complete question data with answer_schema populated
 
 Begin!"""
 
