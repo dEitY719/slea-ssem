@@ -187,7 +187,11 @@ class CLI:
                     args = parts[i + 1 :]
                     break
             else:  # 현재 레벨에서 명령어를 찾을 수 없으면 나머지는 모두 인자
-                args = parts[i:]
+                # If nothing matched yet, add the first invalid token to command_path
+                # so dispatcher can show proper error message
+                if not command_path:
+                    command_path.append(part)
+                args = parts[i + 1 :]
                 break
         return command_path, args
 

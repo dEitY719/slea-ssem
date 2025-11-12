@@ -66,23 +66,43 @@ def show_session_questions(context: CLIContext, *args: str) -> None:
         context.console.print(f"[dim]Total: {len(questions)} question(s)[/dim]")
         context.console.print()
 
-        # Create and populate table
+        # Create and populate table (simplified: ID, Stem, Choices, Answer only)
         table = Table(title=None, show_header=True, header_style="bold cyan")
         table.add_column("ID", style="magenta", max_width=20)
-        table.add_column("Type", style="green")
         table.add_column("Stem", style="white")
-        table.add_column("Difficulty", style="yellow", justify="center")
-        table.add_column("Category", style="cyan")
+        table.add_column("Choices", style="green")
+        table.add_column("Answer", style="yellow")
 
         for q in questions:
             # Truncate stem if too long
-            stem = q.stem[:60] + "..." if len(q.stem) > 60 else q.stem
+            stem = q.stem[:50] + "..." if len(q.stem) > 50 else q.stem
+
+            # Format choices
+            choices_str = ""
+            if q.choices:
+                choices_str = ", ".join(q.choices[:3])
+                if len(q.choices) > 3:
+                    choices_str += ", ..."
+
+            # Format answer from answer_schema
+            answer_str = ""
+            if isinstance(q.answer_schema, dict):
+                if "correct_key" in q.answer_schema:
+                    answer_str = q.answer_schema["correct_key"]
+                    validation_score = q.answer_schema.get("validation_score")
+                    if validation_score is not None:
+                        answer_str += f" ({validation_score:.2f})"
+                elif "correct_keywords" in q.answer_schema:
+                    keywords = q.answer_schema["correct_keywords"]
+                    answer_str = ", ".join(keywords[:2])
+                    if len(keywords) > 2:
+                        answer_str += ", ..."
+
             table.add_row(
                 q.id[:12] + "...",
-                q.item_type.replace("_", " ").title(),
                 stem,
-                str(q.difficulty),
-                q.category,
+                choices_str,
+                answer_str,
             )
 
         context.console.print(table)
@@ -94,11 +114,23 @@ def show_session_questions(context: CLIContext, *args: str) -> None:
             context.console.print("[bold cyan]📄 First Question Details:[/bold cyan]")
             context.console.print(f"  ID: {first_q.id}")
             context.console.print(f"  Type: {first_q.item_type}")
-            context.console.print(f"  Stem: {first_q.stem[:100]}{'...' if len(first_q.stem) > 100 else ''}")
+            context.console.print(f"  Stem: {first_q.stem}")
             context.console.print(f"  Difficulty: {first_q.difficulty}/10")
             context.console.print(f"  Category: {first_q.category}")
             if first_q.choices:
                 context.console.print(f"  Choices: {first_q.choices}")
+
+            # Display answer information
+            if isinstance(first_q.answer_schema, dict):
+                context.console.print("  Answer Schema:")
+                if "correct_key" in first_q.answer_schema:
+                    context.console.print(f"    Correct Answer: {first_q.answer_schema['correct_key']}")
+                if "correct_keywords" in first_q.answer_schema:
+                    context.console.print(f"    Keywords: {first_q.answer_schema['correct_keywords']}")
+                if "validation_score" in first_q.answer_schema:
+                    context.console.print(f"    Validation Score: {first_q.answer_schema['validation_score']:.2f}")
+                if "explanation" in first_q.answer_schema:
+                    context.console.print(f"    Explanation: {first_q.answer_schema['explanation']}")
             context.console.print()
 
     except Exception as e:
