@@ -29,11 +29,13 @@ class GenerateQuestionsRequest(BaseModel):
     Attributes:
         survey_id: UserProfileSurvey ID to determine user interests
         round: Test round number (1 or 2, default 1)
+        domain: Question domain/topic (e.g., "AI", "food", default "AI")
 
     """
 
     survey_id: str = Field(..., description="UserProfileSurvey ID")
     round: int = Field(default=1, ge=1, le=2, description="Test round (1 or 2)")
+    domain: str = Field(default="AI", description="Question domain/topic (e.g., AI, food, science)")
 
 
 class QuestionResponse(BaseModel):
@@ -273,7 +275,7 @@ class ExplanationResponse(BaseModel):
     summary="Generate Test Questions",
     description="Generate 5 test questions based on user survey and interests",
 )
-def generate_questions(
+async def generate_questions(
     request: GenerateQuestionsRequest,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -301,7 +303,7 @@ def generate_questions(
 
     try:
         question_service = QuestionGenerationService(db)
-        result = question_service.generate_questions(
+        result = await question_service.generate_questions(
             user_id=user_id,
             survey_id=request.survey_id,
             round_num=request.round,

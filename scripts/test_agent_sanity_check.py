@@ -40,8 +40,9 @@ from src.agent.llm_agent import (
 )
 
 # .env 파일 로드 (프로젝트 루트)
+# override=False: 이미 환경변수로 설정된 값은 덮어쓰지 않음 (테스트 환경에서 중요)
 env_path = Path(__file__).parent.parent / ".env"
-load_dotenv(env_path)
+load_dotenv(env_path, override=False)
 
 # 로깅 설정
 logging.basicConfig(
@@ -168,12 +169,14 @@ class AgentSanityCheck:
 
         try:
             self.request = GenerateQuestionsRequest(
+                session_id="test_session",
                 survey_id="test_survey",
                 round_idx=1,
                 prev_answers=None,
             )
 
             console.print("  ✅ Request created")
+            console.print(f"     session_id: {self.request.session_id}")
             console.print(f"     survey_id: {self.request.survey_id}")
             console.print(f"     round_idx: {self.request.round_idx}")
             console.print(f"     prev_answers: {self.request.prev_answers}")

@@ -46,14 +46,14 @@ class LoginResponse(BaseModel):
     Attributes:
         access_token: Signed JWT token
         token_type: Token type (bearer)
-        user_id: User's unique identifier
+        user_id: User's database primary key (integer)
         is_new_user: True if new user account was created
 
     """
 
     access_token: str = Field(..., description="JWT token")
     token_type: str = Field(default="bearer", description="Token type")
-    user_id: str = Field(..., description="User ID")
+    user_id: int = Field(..., description="User's database ID (integer primary key)")
     is_new_user: bool = Field(..., description="True if new user created")
 
 
@@ -87,7 +87,7 @@ def login(
     try:
         auth_service = AuthService(db)
         user_data = request.model_dump()
-        jwt_token, is_new_user = auth_service.authenticate_or_create_user(user_data)
+        jwt_token, is_new_user, user_id = auth_service.authenticate_or_create_user(user_data)
 
         # Return appropriate status code based on is_new_user
         status_code = 201 if is_new_user else 200
@@ -97,7 +97,7 @@ def login(
             content={
                 "access_token": jwt_token,
                 "token_type": "bearer",
-                "user_id": request.knox_id,
+                "user_id": user_id,
                 "is_new_user": is_new_user,
             },
         )

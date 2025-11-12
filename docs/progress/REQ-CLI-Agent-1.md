@@ -12,6 +12,7 @@
 ### 1.1 Requirement Summary
 
 Add hierarchical `agent` command group to CLI with 4 subcommands enabling:
+
 - LLM-based question generation workflow
 - Single answer scoring
 - Batch answer scoring with parallelization
@@ -20,6 +21,7 @@ Add hierarchical `agent` command group to CLI with 4 subcommands enabling:
 ### 1.2 Feature Intent
 
 Enable developers/testers to interact with the ItemGenAgent through CLI interface for testing and validation of:
+
 - REQ-A-Mode1-Pipeline: 6-tool question generation chain
 - REQ-A-Mode2-Pipeline: Auto-scoring with explanations
 - REQ-A-Mode2-Parallel: Batch scoring with async parallelization
@@ -29,6 +31,7 @@ Enable developers/testers to interact with the ItemGenAgent through CLI interfac
 #### Location & Implementation
 
 **Files to Create/Modify**:
+
 - ✅ Create: `src/cli/actions/agent.py` (NEW - 200+ LOC)
 - 🔧 Modify: `src/cli/config/command_layout.py` (add agent command group)
 - ✅ Existing: `src/cli/main.py`, `src/cli/context.py` (no changes needed)
@@ -55,12 +58,14 @@ agent                              # Group command (agent_help)
 #### Signature & I/O Contracts
 
 **Agent Help Command**:
+
 ```python
 def agent_help(context: CLIContext, *args: str) -> None:
     """Display agent command group help."""
 ```
 
 **Command Implementations** (Phase 2-3 will implement):
+
 ```python
 def generate_questions(context: CLIContext, *args: str) -> None:
     """Workflow: Generate questions via ItemGenAgent (Mode 1)"""
@@ -82,6 +87,7 @@ def t1_get_user_profile(context: CLIContext, *args: str) -> None:
 #### Behavior & Output Format
 
 **Help Output**:
+
 ```
 Usage: agent [OPTIONS] COMMAND [ARGS]...
 
@@ -98,6 +104,7 @@ Commands:
 ```
 
 **Tools Help Output**:
+
 ```
 Usage: agent tools [OPTIONS] COMMAND [ARGS]...
 
@@ -185,6 +192,7 @@ Commands:
 ### Testing Approach
 
 **Phase 2 will create tests for**:
+
 - `agent --help` outputs help without error
 - `agent [subcommand] --help` for each subcommand
 - Tools subgroup help display (t1~t6)
@@ -216,6 +224,7 @@ agent tools tool-1 [args]    # Debug: Individual tools
 ```
 
 Compared to flat structure:
+
 ```
 agent-generate-questions     # Harder to discover as group
 agent-score-answer
@@ -226,6 +235,7 @@ agent-tools-1
 ### Why Separate `tools` Subgroup?
 
 Grouping tools under `agent tools` keeps tool debugging operations discoverable while separating them from primary workflows:
+
 - Primary workflows: generate-questions, score-answer, batch-score
 - Debugging/dev tools: tool-1 through tool-6
 
@@ -234,6 +244,7 @@ Users can run `agent tools --help` to see all available tools.
 ### Why Placeholder Functions?
 
 REQ-CLI-Agent-2,3,4,5 will implement actual functionality. Phase 1 establishes the CLI structure so:
+
 - Parser can validate command hierarchy
 - Help system works correctly
 - Phase 2 tests can verify structure
@@ -250,7 +261,9 @@ Create `tests/cli/test_agent_cli.py` with pytest-based tests for command structu
 ### 2.2 Test Cases
 
 #### TC-1: Agent Help Command
+
 **Test**: `agent --help` displays help without error
+
 ```python
 def test_agent_help():
     """TC-1: Verify agent --help outputs help message"""
@@ -263,7 +276,9 @@ def test_agent_help():
 ```
 
 #### TC-2: Agent Generate Questions Help
+
 **Test**: `agent generate-questions --help` displays generate-questions help
+
 ```python
 def test_agent_generate_questions_help():
     """TC-2: Verify agent generate-questions --help works"""
@@ -274,7 +289,9 @@ def test_agent_generate_questions_help():
 ```
 
 #### TC-3: Agent Score Answer Help
+
 **Test**: `agent score-answer --help` displays score-answer help
+
 ```python
 def test_agent_score_answer_help():
     """TC-3: Verify agent score-answer --help works"""
@@ -285,7 +302,9 @@ def test_agent_score_answer_help():
 ```
 
 #### TC-4: Agent Batch Score Help
+
 **Test**: `agent batch-score --help` displays batch-score help
+
 ```python
 def test_agent_batch_score_help():
     """TC-4: Verify agent batch-score --help works"""
@@ -296,7 +315,9 @@ def test_agent_batch_score_help():
 ```
 
 #### TC-5: Agent Tools Help
+
 **Test**: `agent tools --help` displays tools help with t1~t6 list
+
 ```python
 def test_agent_tools_help():
     """TC-5: Verify agent tools --help shows all 6 tools"""
@@ -309,7 +330,9 @@ def test_agent_tools_help():
 ```
 
 #### TC-6: Agent Tools T1 Help
+
 **Test**: `agent tools t1 --help` displays t1 help
+
 ```python
 def test_agent_tools_t1_help():
     """TC-6: Verify agent tools t1 --help works"""
@@ -320,7 +343,9 @@ def test_agent_tools_t1_help():
 ```
 
 #### TC-7: Agent Unknown Subcommand
+
 **Test**: `agent invalid-command` returns error
+
 ```python
 def test_agent_invalid_subcommand():
     """TC-7: Verify agent rejects invalid subcommands"""
@@ -331,7 +356,9 @@ def test_agent_invalid_subcommand():
 ```
 
 #### TC-8: Tools Unknown Tool
+
 **Test**: `agent tools invalid-tool` returns error
+
 ```python
 def test_agent_tools_invalid_tool():
     """TC-8: Verify agent tools rejects invalid tools"""
@@ -342,7 +369,9 @@ def test_agent_tools_invalid_tool():
 ```
 
 #### TC-9: Command Layout Validation
+
 **Test**: Verify command_layout.py contains agent configuration
+
 ```python
 def test_command_layout_agent_config():
     """TC-9: Verify COMMAND_LAYOUT includes agent command group"""
@@ -355,7 +384,9 @@ def test_command_layout_agent_config():
 ```
 
 #### TC-10: Agent Module Functions Exist
+
 **Test**: Verify src/cli/actions/agent.py contains all required functions
+
 ```python
 def test_agent_module_functions():
     """TC-10: Verify agent module has all required functions"""
@@ -388,6 +419,7 @@ def test_agent_module_functions():
 **Create**: `tests/cli/test_agent_cli.py` (~350 LOC)
 
 Structure:
+
 ```python
 # Fixtures:
 # - mock_cli_context: CLIContext with buffered console
@@ -417,6 +449,7 @@ Structure:
 ✅ **All components implemented successfully**:
 
 #### 1. Command Layout Update
+
 - **File**: `src/cli/config/command_layout.py`
 - **Changes**: Added agent command group with:
   - 4 subcommands: generate-questions, score-answer, batch-score, tools
@@ -424,6 +457,7 @@ Structure:
   - Full target mappings for all commands
 
 #### 2. CLI Actions Module
+
 - **File**: `src/cli/actions/agent.py` (292 LOC)
 - **Functions Implemented**:
   - `agent_help()`: Display agent command help
@@ -434,6 +468,7 @@ Structure:
   - `t1_get_user_profile()` through `t6_score_and_explain()`: Tool debugging interfaces
 
 #### 3. Test Suite
+
 - **File**: `tests/cli/test_agent_cli.py` (350 LOC)
 - **Test Cases**: 33 tests organized in 3 test classes:
 
@@ -446,6 +481,7 @@ Structure:
 ### 3.2 Implementation Quality
 
 ✅ **All Code Quality Checks Pass**:
+
 - Ruff format: ✅ All files properly formatted
 - Ruff lint: ✅ No style violations
 - Type hints: ✅ All functions typed
@@ -453,6 +489,7 @@ Structure:
 - Docstrings: ✅ All public functions documented
 
 ✅ **All Tests Pass**:
+
 - Test execution: ✅ 33/33 tests passing (100%)
 - Test coverage: ✅ All command paths covered
 - Help output validation: ✅ Rich console output tested with ANSI stripping
@@ -460,6 +497,7 @@ Structure:
 ### 3.3 Technical Details
 
 **Command Hierarchy Created**:
+
 ```
 agent                              # Group command
 ├── generate-questions            # Mode 1 workflow
@@ -477,6 +515,7 @@ agent                              # Group command
 **Tool Naming**: Changed from `tool-1` to `t1` (shorter, cleaner) as per user request.
 
 **Placeholder Implementation**: Each command shows placeholder message referencing corresponding REQ ID:
+
 - REQ-CLI-Agent-2: generate-questions
 - REQ-CLI-Agent-3: score-answer
 - REQ-CLI-Agent-4: batch-score
@@ -493,4 +532,3 @@ agent                              # Group command
 **Implementation Status**: ✅ **COMPLETE AND VERIFIED**
 
 **Next**: Phase 4 (SUMMARY & COMMIT)
-

@@ -14,6 +14,7 @@
 **REQ ID**: REQ-A-Agent-Sanity-0
 
 **Key Features**:
+
 - Step-by-Step Agent 검증 (5단계)
 - LangGraph v2 호환성 확인
 - Tool Calling 루프 검증
@@ -43,6 +44,7 @@
 **Location**: `docs/AGENT-TEST-SCENARIO.md` (Section: Phase 0 - Agent Sanity Check)
 
 **Key Design Decisions**:
+
 1. **Step-by-Step Testing**: --step N 플래그로 누적 실행 (Step 1~N)
 2. **LangGraph v2 호환성**: ChatPromptTemplate 사용, HumanMessage 기반 invocation
 3. **환경 변수 로드**: 자동 .env 파일 로드 (Python 시작 시)
@@ -69,6 +71,7 @@
 | TC-9 | test_sanity_check_exit_code | 종료 코드 검증 (0=성공) | ✅ Pass |
 
 **Test Execution**:
+
 ```bash
 pytest tests/agent/test_agent_sanity_check.py -v
 ```
@@ -82,12 +85,14 @@ pytest tests/agent/test_agent_sanity_check.py -v
 #### 1. `src/agent/prompts/react_prompt.py` (Lines 1-122)
 
 **Changes**:
+
 - ❌ Old: `PromptTemplate` with variables `["input", "agent_scratchpad", "tools", "tool_names"]`
 - ✅ New: `ChatPromptTemplate.from_messages()` with:
   - `SystemMessagePromptTemplate` for agent instructions
   - `MessagesPlaceholder` for conversation history
 
 **LangGraph v2 Compatibility Fix**:
+
 ```python
 # Old (LangChain v1 style)
 return PromptTemplate(
@@ -105,6 +110,7 @@ return ChatPromptTemplate.from_messages([
 #### 2. `src/agent/llm_agent.py` (Lines 26, 434-436)
 
 **Changes**:
+
 - ✅ Added `HumanMessage` import
 - ✅ Changed invocation from `ainvoke({"input": ...})` to `ainvoke({"messages": [HumanMessage(...)]})`
 
@@ -121,12 +127,14 @@ result = await self.executor.ainvoke(
 #### 3. `src/agent/config.py` (Line 29)
 
 **Changes**:
+
 - ❌ Model: `gemini-1.5-pro` (불안정)
 - ✅ Model: `gemini-2.0-flash` (최신, 안정적)
 
 #### 4. `scripts/test_agent_sanity_check.py` (330 lines)
 
 **Features**:
+
 - 5단계 Step-by-Step 검증
 - --step N, --all 플래그 지원
 - .env 자동 로드
@@ -136,6 +144,7 @@ result = await self.executor.ainvoke(
 #### 5. `tests/agent/test_agent_sanity_check.py` (400+ lines)
 
 **Features**:
+
 - 9개 test cases
 - subprocess로 스크립트 실행
 - 시스템 환경 변수 모킹
@@ -307,7 +316,7 @@ Exit Code: 0 (Success)
 
 ## 📚 References
 
-- **LangGraph v2 Docs**: https://python.langchain.com/docs/concepts/agents
+- **LangGraph v2 Docs**: <https://python.langchain.com/docs/concepts/agents>
 - **Agent Test Scenario**: docs/AGENT-TEST-SCENARIO.md (Phase 0)
 - **Agent Config**: src/agent/config.py
 - **Agent Implementation**: src/agent/llm_agent.py
@@ -318,6 +327,7 @@ Exit Code: 0 (Success)
 ## 🤖 Git Commit Information
 
 **Commit Message**:
+
 ```
 fix: Implement REQ-A-Agent-Sanity-0 - LangGraph v2 compatibility & step-by-step testing
 

@@ -10,15 +10,18 @@
 ## 📋 요구사항
 
 ### 요약
+
 사용자가 닉네임 중복 확인 후 "다음" 버튼을 클릭하면, 백엔드 API를 호출하여 `users.nickname`을 업데이트하고 자기평가 입력 페이지로 리다이렉트
 
 ### 수용 기준
+
 - ✅ "다음" 버튼 클릭 시 `POST /profile/register` API 호출
 - ✅ `users.nickname` 필드 업데이트
 - ✅ 성공 시 `/self-assessment` 페이지로 리다이렉트
 - ✅ 실패 시 에러 메시지 표시
 
 ### 관련 문서
+
 - `docs/feature_requirement_mvp1.md` - REQ-F-A2-7 (Line 111)
 
 ---
@@ -26,14 +29,18 @@
 ## 🎯 Phase 1: Specification
 
 ### Intent
+
 닉네임 등록 프로세스의 최종 단계로, 사용자가 선택한 닉네임을 DB에 저장하고 다음 온보딩 단계(자기평가)로 이동
 
 ### Backend API (이미 구현됨 ✅)
+
 **Endpoint**: `POST /profile/register`
+
 - **File**: `src/backend/api/profile.py:158-178`
 - **Authentication**: Required (JWT Bearer token)
 
 **Request**:
+
 ```json
 {
   "nickname": "john_doe"
@@ -41,6 +48,7 @@
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -52,6 +60,7 @@
 ```
 
 ### 구현 위치
+
 - `src/frontend/src/pages/NicknameSetupPage.tsx` - **IMPLEMENTED** - handleNextClick logic
 - `src/frontend/src/lib/transport/index.ts` - **IMPLEMENTED** - API transport layer
 - `src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx` - **IMPLEMENTED** - Tests
@@ -61,11 +70,13 @@
 ## 🧪 Phase 2: Test Design
 
 ### 테스트 파일
+
 **`src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx`**
 
 ### 테스트 커버리지
 
 #### Test: "submits nickname and navigates to self assessment after success"
+
 - Mock `POST /profile/nickname/check` → available
 - Mock `POST /profile/register` → success
 - Click "다음" button
@@ -75,6 +86,7 @@
 - **Purpose**: 성공 플로우 검증 ✅ REQ-F-A2-7
 
 #### Test: "shows error message when nickname registration fails"
+
 - Mock `POST /profile/nickname/check` → available
 - Mock `POST /profile/register` → error
 - Click "다음" button
@@ -91,6 +103,7 @@
 ### 1. `src/frontend/src/pages/NicknameSetupPage.tsx` (Lines 39-55)
 
 **handleNextClick Implementation**:
+
 ```typescript
 const handleNextClick = useCallback(async () => {
   if (isSubmitting || checkStatus !== 'available') {
@@ -117,6 +130,7 @@ const handleNextClick = useCallback(async () => {
 ```
 
 **Key Features**:
+
 - **Guard clause**: Prevents submission if not available
 - **Loading state**: `isSubmitting` prevents double-click
 - **Error handling**: Catches API errors and displays message
@@ -125,6 +139,7 @@ const handleNextClick = useCallback(async () => {
 ### 2. `src/frontend/src/lib/transport/index.ts`
 
 **Transport Layer**:
+
 ```typescript
 export const transport = {
   post: async <T = any>(url: string, data?: any): Promise<T> => {
@@ -149,6 +164,7 @@ export const transport = {
 ```
 
 **Features**:
+
 - Automatic JWT token injection
 - Error handling with detail extraction
 - Type-safe response
@@ -179,6 +195,7 @@ export const transport = {
 | REQ-F-A2-7 | 실패 시 에러 표시 | `setManualError()` line 52 | Test line 224 | ✅ |
 
 **Backend Dependency**:
+
 | API | File | Status |
 |-----|------|--------|
 | `POST /profile/register` | `src/backend/api/profile.py:158-178` | ✅ Already implemented |
@@ -188,6 +205,7 @@ export const transport = {
 ## 📁 변경된 파일 목록
 
 ### 수정
+
 - `src/frontend/src/pages/NicknameSetupPage.tsx` (+17 lines) - handleNextClick
 - `src/frontend/src/pages/__tests__/NicknameSetupPage.test.tsx` (+60 lines) - Tests
 
@@ -238,6 +256,7 @@ User clicks "다음" button (when checkStatus === 'available')
 ### Possible Errors
 
 **1. Network Error**:
+
 ```
 User: clicks "다음"
   → fetch() throws network error
@@ -246,6 +265,7 @@ User: clicks "다음"
 ```
 
 **2. API Error (400 Bad Request)**:
+
 ```
 User: clicks "다음"
   → API returns 400 (e.g., nickname already taken)
@@ -254,6 +274,7 @@ User: clicks "다음"
 ```
 
 **3. Authentication Error (401 Unauthorized)**:
+
 ```
 User: clicks "다음"
   → API returns 401 (JWT expired)
@@ -289,10 +310,12 @@ After error:
 ## 📝 관련 요구사항
 
 **의존성**:
+
 - **REQ-F-A2-6**: "사용 가능" 상태 & "다음" 버튼 활성화
 - **REQ-B-A2-5**: `POST /profile/register` 엔드포인트 - ✅ 완료
 
 **후속 작업**:
+
 - **REQ-F-A2-2**: 자기평가 입력 화면 (리다이렉트 목적지)
 
 ---

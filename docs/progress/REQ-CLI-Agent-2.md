@@ -12,6 +12,7 @@
 ### 1.1 Requirement Summary
 
 Implement `agent generate-questions` CLI command that:
+
 - Executes complete Mode 1 pipeline (Tool 1-5 chain)
 - Takes survey context and generates adaptive questions
 - Supports Round 1 (initial) and Round 2 (adaptive based on previous answers)
@@ -20,6 +21,7 @@ Implement `agent generate-questions` CLI command that:
 ### 1.2 Feature Intent
 
 Enable CLI users to directly invoke the ItemGenAgent's Mode 1 question generation workflow without backend API calls, supporting full testing and debugging of:
+
 - REQ-A-Mode1-Pipeline: 5-tool orchestration
 - User profile matching
 - Difficulty adaptation
@@ -30,6 +32,7 @@ Enable CLI users to directly invoke the ItemGenAgent's Mode 1 question generatio
 #### Location & Implementation
 
 **Files to Create/Modify**:
+
 - ✅ Modify: `src/cli/actions/agent.py` (replace placeholder in `generate_questions()`)
 - ✅ Modify: `tests/cli/test_agent_cli.py` (add integration tests)
 - ✅ New: Comprehensive E2E tests with mock agent
@@ -52,18 +55,21 @@ Options:
 **Success Flow**:
 
 1. **Initialize Phase**:
+
    ```
    🚀 Initializing Agent... (GEMINI_API_KEY required)
    ✅ Agent initialized
    ```
 
 2. **Generation Phase**:
+
    ```
    📝 Generating questions...
       survey_id=survey_123, round=1
    ```
 
 3. **Results Summary**:
+
    ```
    ✅ Generation Complete
       round_id: round_20251111_123456_001
@@ -73,6 +79,7 @@ Options:
    ```
 
 4. **Results Table** (Rich Table format):
+
    ```
    📋 Generated Items:
    ┏━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━┓
@@ -85,6 +92,7 @@ Options:
    ```
 
 5. **Item Details** (first item):
+
    ```
    📄 First Item Details:
       Stem: What is a transformer in NLP?
@@ -95,29 +103,34 @@ Options:
 #### Error Handling
 
 **Missing survey-id**:
+
 ```
 ❌ Error: --survey-id is required
 Usage: agent generate-questions --survey-id SURVEY_ID [--round 1] [--prev-answers JSON]
 ```
 
 **Invalid round**:
+
 ```
 ❌ Error: --round must be 1 or 2 (got: 3)
 ```
 
 **Invalid JSON in prev-answers**:
+
 ```
 ❌ Error: --prev-answers must be valid JSON array
 Invalid JSON: ...
 ```
 
 **Agent initialization failure**:
+
 ```
 ❌ Error: Agent initialization failed
 Reason: GEMINI_API_KEY not found
 ```
 
 **Agent execution failure**:
+
 ```
 ❌ Error: Question generation failed
 Agent steps: 5/10
@@ -160,6 +173,7 @@ Last error: Tool timeout after 8 seconds
 ### 2.1 Test Execution Strategy
 
 Create `tests/cli/test_agent_generate_questions.py` with:
+
 - Unit tests for argument parsing and validation
 - Integration tests with mock ItemGenAgent
 - E2E tests with real agent (if GEMINI_API_KEY available)
@@ -168,7 +182,9 @@ Create `tests/cli/test_agent_generate_questions.py` with:
 ### 2.2 Test Cases
 
 #### TC-1: Help Command Display
+
 **Test**: `agent generate-questions --help` shows usage
+
 ```python
 def test_generate_questions_help(mock_context: CLIContext) -> None:
     """TC-1: Verify --help displays command usage"""
@@ -180,7 +196,9 @@ def test_generate_questions_help(mock_context: CLIContext) -> None:
 ```
 
 #### TC-2: Missing Required survey-id Parameter
+
 **Test**: Command without --survey-id returns error
+
 ```python
 def test_missing_survey_id(mock_context: CLIContext) -> None:
     """TC-2: Verify error when --survey-id missing"""
@@ -192,7 +210,9 @@ def test_missing_survey_id(mock_context: CLIContext) -> None:
 ```
 
 #### TC-3: Successful Round 1 Generation (Mocked Agent)
+
 **Test**: Complete Round 1 flow with mock agent
+
 ```python
 def test_round1_generation_success(mock_context, mock_agent) -> None:
     """TC-3: Verify successful Round 1 question generation"""
@@ -208,7 +228,9 @@ def test_round1_generation_success(mock_context, mock_agent) -> None:
 ```
 
 #### TC-4: Round 2 Adaptive Generation with Previous Answers
+
 **Test**: Round 2 with prev-answers JSON
+
 ```python
 def test_round2_adaptive_with_prev_answers(mock_context, mock_agent) -> None:
     """TC-4: Verify Round 2 adaptive generation"""
@@ -221,7 +243,9 @@ def test_round2_adaptive_with_prev_answers(mock_context, mock_agent) -> None:
 ```
 
 #### TC-5: Invalid Round Number (not 1 or 2)
+
 **Test**: Invalid round parameter
+
 ```python
 def test_invalid_round_number(mock_context) -> None:
     """TC-5: Verify error for invalid round"""
@@ -232,7 +256,9 @@ def test_invalid_round_number(mock_context) -> None:
 ```
 
 #### TC-6: Invalid JSON in prev-answers Parameter
+
 **Test**: Malformed JSON
+
 ```python
 def test_invalid_json_prev_answers(mock_context) -> None:
     """TC-6: Verify error for invalid JSON"""
@@ -245,7 +271,9 @@ def test_invalid_json_prev_answers(mock_context) -> None:
 ```
 
 #### TC-7: LANGCHAIN_DEBUG Environment Variable Support
+
 **Test**: Verbose logging with LANGCHAIN_DEBUG=1
+
 ```python
 def test_langchain_debug_enabled(mock_context, mock_agent) -> None:
     """TC-7: Verify LANGCHAIN_DEBUG enables verbose output"""
@@ -258,7 +286,9 @@ def test_langchain_debug_enabled(mock_context, mock_agent) -> None:
 ```
 
 #### TC-8: Agent Initialization Failure (Missing API Key)
+
 **Test**: GEMINI_API_KEY not found
+
 ```python
 def test_agent_init_failure_no_api_key(mock_context, monkeypatch) -> None:
     """TC-8: Verify clear error when API key missing"""
@@ -271,7 +301,9 @@ def test_agent_init_failure_no_api_key(mock_context, monkeypatch) -> None:
 ```
 
 #### TC-9: Rich Table Output Structure Validation
+
 **Test**: Verify Rich Table format and content
+
 ```python
 def test_table_output_structure(mock_context, mock_agent) -> None:
     """TC-9: Verify Rich table structure and columns"""
@@ -286,7 +318,9 @@ def test_table_output_structure(mock_context, mock_agent) -> None:
 ```
 
 #### TC-10: Complete Integration Test with Mock Agent Response
+
 **Test**: Full pipeline with mock data
+
 ```python
 def test_full_integration_with_mock_data(mock_context, mock_agent) -> None:
     """TC-10: Full integration test with mocked agent response"""
@@ -305,16 +339,19 @@ def test_full_integration_with_mock_data(mock_context, mock_agent) -> None:
 **File**: `tests/cli/test_agent_generate_questions.py` (~450 LOC)
 
 **Fixtures**:
+
 - `mock_context`: CLIContext with buffered console
 - `mock_agent`: Mock ItemGenAgent with sample responses
 - `mock_llm`: Mock Gemini LLM response
 - `test_survey_context`: Sample survey data
 
 **Test Classes**:
+
 - `TestGenerateQuestionsHelpAndErrors` (TC-1, TC-2, TC-5, TC-6, TC-8)
 - `TestGenerateQuestionsSuccess` (TC-3, TC-4, TC-7, TC-9, TC-10)
 
 **Mocking Strategy**:
+
 - Mock `src.agent.llm_agent.ItemGenAgent` constructor and methods
 - Mock LLM responses to return deterministic test data
 - Capture Rich console output for validation
@@ -339,6 +376,7 @@ Successfully implemented `agent generate-questions` CLI command with full Mode 1
 ### 3.2 Files Modified/Created
 
 #### Modified: `src/cli/actions/agent.py`
+
 - **Function**: `generate_questions(context: CLIContext, *args: str) -> None` (200+ lines)
   - Argument parsing: --survey-id (required), --round (default 1), --prev-answers (JSON)
   - Parameter validation: type checking, range validation, JSON parsing
@@ -352,6 +390,7 @@ Successfully implemented `agent generate-questions` CLI command with full Mode 1
   - Help message display with command signature, options, and examples
 
 - **Imports Added**:
+
   ```python
   import asyncio
   import json
@@ -361,6 +400,7 @@ Successfully implemented `agent generate-questions` CLI command with full Mode 1
   ```
 
 #### Created: `tests/cli/test_agent_generate_questions.py`
+
 - **Test Classes**: 2 classes, 12 test cases
   - `TestGenerateQuestionsHelpAndErrors`: 5 tests
     - TC-1: Help command display
@@ -385,16 +425,19 @@ Successfully implemented `agent generate-questions` CLI command with full Mode 1
 ### 3.3 Implementation Details
 
 #### Argument Parsing
+
 - Manual while loop with index tracking for --flag value pairs
 - Handles: missing values, flag-only args (--help), unrecognized args
 - Validation: survey_id required, round in [1, 2], prev_answers valid JSON array
 
 #### Async Agent Integration
+
 - Challenge: ItemGenAgent.generate_questions() is async
 - Solution: asyncio.run() to execute async function from sync context
 - Error handling: Try-except wrapping with proper error messages
 
 #### Output Formatting
+
 - Rich Table: 4 columns (ID, Type, Difficulty, Validation)
   - ID truncation: first 12 chars + "..." for long UUIDs
   - Difficulty: integer display
@@ -402,6 +445,7 @@ Successfully implemented `agent generate-questions` CLI command with full Mode 1
 - First item details: stem, answer_schema.type, keywords list
 
 #### Error Handling (5 modes)
+
 1. Missing survey-id → error + help message
 2. Invalid round (not 1 or 2) → error message
 3. Invalid JSON in prev-answers → JSONDecodeError details
@@ -429,6 +473,7 @@ tests/cli/test_agent_generate_questions.py::TestGenerateQuestionsSuccess::test_r
 ```
 
 **Coverage**:
+
 - ✅ All error cases (missing args, invalid types, JSON errors, agent failures)
 - ✅ Success cases (Round 1, Round 2 adaptive, table output)
 - ✅ Edge cases (empty items, default parameters)
@@ -462,6 +507,7 @@ tests/cli/test_agent_generate_questions.py::TestGenerateQuestionsSuccess::test_r
 **REQ-CLI-Agent-2**: ✅ COMPLETE (All Phases 1-4 Done)
 
 **Requirement**: Implement `agent generate-questions` CLI command
+
 - ✅ Mode 1 pipeline execution (ItemGenAgent integration)
 - ✅ Round 1 (initial) and Round 2 (adaptive) support
 - ✅ Parameter validation (--survey-id, --round, --prev-answers)
@@ -486,12 +532,14 @@ tests/cli/test_agent_generate_questions.py::TestGenerateQuestionsSuccess::test_r
 ### 4.3 Implementation Files
 
 **Created**:
+
 - `tests/cli/test_agent_generate_questions.py` (330 lines)
   - 12 comprehensive test cases
   - Mock fixtures for ItemGenAgent and responses
   - ANSI code stripping utility
 
 **Modified**:
+
 - `src/cli/actions/agent.py` (200+ lines added to generate_questions function)
   - Full implementation of CLI command
   - Helper function for help display
@@ -504,6 +552,7 @@ tests/cli/test_agent_generate_questions.py::TestGenerateQuestionsSuccess::test_r
 **Summary**: Implement REQ-CLI-Agent-2: agent generate-questions command
 
 **Changes**:
+
 1. `src/cli/actions/agent.py`: Implement generate_questions() with full Mode 1 pipeline
 2. `tests/cli/test_agent_generate_questions.py`: Create comprehensive test suite (12 tests)
 

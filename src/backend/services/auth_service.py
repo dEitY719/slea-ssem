@@ -35,7 +35,7 @@ class AuthService:
         """
         self.session = session
 
-    def authenticate_or_create_user(self, user_data: dict[str, str]) -> tuple[str, bool]:
+    def authenticate_or_create_user(self, user_data: dict[str, str]) -> tuple[str, bool, int]:
         """
         Authenticate user or create new user account.
 
@@ -50,9 +50,10 @@ class AuthService:
                 - email: Email address
 
         Returns:
-            Tuple of (jwt_token, is_new_user):
+            Tuple of (jwt_token, is_new_user, user_id):
                 - jwt_token: Signed JWT token containing only {knox_id, iat, exp}
                 - is_new_user: True if new user, False if existing user
+                - user_id: User's database primary key (integer)
 
         Raises:
             ValueError: If required fields are missing from user_data
@@ -74,7 +75,7 @@ class AuthService:
             existing_user.last_login = datetime.now(UTC)
             self.session.commit()
             jwt_token = self._generate_jwt(knox_id)
-            return jwt_token, False
+            return jwt_token, False, existing_user.id
 
         # REQ-B-A1-3: New user - create user record and generate JWT
         new_user = User(
@@ -89,7 +90,7 @@ class AuthService:
         self.session.commit()
 
         jwt_token = self._generate_jwt(knox_id)
-        return jwt_token, True
+        return jwt_token, True, new_user.id
 
     def _generate_jwt(self, knox_id: str) -> str:
         """

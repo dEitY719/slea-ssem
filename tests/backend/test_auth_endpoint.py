@@ -41,6 +41,9 @@ class TestAuthEndpoint:
         assert data["is_new_user"] is True
         assert isinstance(data["access_token"], str)
         assert len(data["access_token"]) > 0
+        assert "user_id" in data
+        assert isinstance(data["user_id"], int)
+        assert data["user_id"] > 0
 
     def test_post_auth_login_existing_user(self, client: TestClient, user_fixture: User) -> None:
         """
@@ -70,6 +73,9 @@ class TestAuthEndpoint:
         assert "access_token" in data
         assert data["is_new_user"] is False
         assert isinstance(data["access_token"], str)
+        assert "user_id" in data
+        assert isinstance(data["user_id"], int)
+        assert data["user_id"] == user_fixture.id
 
     def test_post_auth_login_missing_required_field(self, client: TestClient) -> None:
         """

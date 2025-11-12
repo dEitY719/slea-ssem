@@ -86,8 +86,10 @@ class TestAgentSanityCheckScript:
             - Exit code: 1
         """
         # GEMINI_API_KEY 제거 (환경변수 커스터마이징)
+        # Note: empty string이 아닌 제거해야 load_dotenv override=False가 제대로 작동
+        # subprocess에 명시적으로 GEMINI_API_KEY를 빈 문자열로 설정
         env = os.environ.copy()
-        env.pop("GEMINI_API_KEY", None)
+        env["GEMINI_API_KEY"] = ""
 
         # 환경변수가 없는 상태에서 스크립트 실행
         cmd = [sys.executable, str(self.script_path), "--step", "1"]

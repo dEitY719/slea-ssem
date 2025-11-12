@@ -65,6 +65,8 @@ idna==3.11
     #   anyio
     #   httpx
     #   requests
+iniconfig==2.3.0
+    # via pytest
 jsonpatch==1.33
     # via langchain-core
 jsonpointer==3.0.0
@@ -113,6 +115,9 @@ packaging==25.0
     # via
     #   langchain-core
     #   langsmith
+    #   pytest
+pluggy==1.6.0
+    # via pytest
 prompt-toolkit==3.0.52
     # via slea-ssem (pyproject.toml)
 proto-plus==1.26.1
@@ -153,8 +158,12 @@ pydantic-core==2.41.5
 pydantic-settings==2.12.0
     # via slea-ssem (pyproject.toml)
 pygments==2.19.2
-    # via rich
+    # via
+    #   pytest
+    #   rich
 pyjwt==2.10.1
+    # via slea-ssem (pyproject.toml)
+pytest==9.0.0
     # via slea-ssem (pyproject.toml)
 python-dotenv==1.2.1
     # via

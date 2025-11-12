@@ -13,6 +13,7 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
+from dotenv import load_dotenv
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.history import InMemoryHistory
@@ -22,9 +23,9 @@ from src.cli.config.loader import load_config
 from src.cli.config.models import Command, CommandConfig
 from src.cli.context import CLIContext
 
-# Configure logging (WARNING level for user-friendly output)
-# Set to DEBUG for troubleshooting, INFO for important events, WARNING for errors only
-logging.basicConfig(level=logging.WARNING, stream=sys.stderr, format="%(levelname)s: %(message)s")
+# Configure logging (INFO level for detailed output during debugging)
+# Set to DEBUG for very detailed, WARNING for errors only, INFO for important events
+logging.basicConfig(level=logging.INFO, stream=sys.stderr, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Suppress asyncio debug logs
@@ -186,6 +187,10 @@ class CLI:
                     args = parts[i + 1 :]
                     break
             else:  # 현재 레벨에서 명령어를 찾을 수 없으면 나머지는 모두 인자
+                # If nothing matched yet, add the first invalid token to command_path
+                # so dispatcher can show proper error message
+                if not command_path:
+                    command_path.append(part)
                 args = parts[i:]
                 break
         return command_path, args
@@ -256,6 +261,9 @@ class CLI:
 
 def main() -> None:
     """Start the interactive CLI."""
+    # Load environment variables from .env file
+    load_dotenv()
+
     try:
         cli = CLI()
         cli.run()

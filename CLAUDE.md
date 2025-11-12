@@ -332,3 +332,50 @@ Phase 4: Commit + Progress tracking
 ---
 
 **Forcing Function Principle**: 3-4 intuitive commands (dev.sh, commit.sh, tox) reduce learning curve & execution variance. See `docs/PROJECT_SETUP_PROMPT.md` for details.
+
+---
+
+## 🎯 CURRENT STATUS & NEXT TASKS
+
+**Next High-Priority Tasks** (~2.5 hours total):
+
+### Task 1: REQ-A-Agent-Backend-1 (Mock → Real Agent 통합) ⭐ HIGH PRIORITY
+- **File**: `src/backend/services/question_gen_service.py` (수정)
+- **Objective**: QuestionGenerationService가 Mock 대신 Real Agent 호출
+- **Duration**: ~1.5시간
+- **What to do**:
+  1. generate_questions() 메서드를 async로 변경
+  2. create_agent() 호출 추가
+  3. GenerateQuestionsRequest 생성 및 전달
+  4. 이전 라운드 답변 (prev_answers) 조회
+  5. Agent 응답을 DB에 저장
+- **Acceptance**: Phase 1-4 documentation + 모든 테스트 통과
+- **Test Location**: `tests/backend/test_question_gen_service_agent.py`
+- **Spec Location**: `docs/AGENT-TEST-SCENARIO.md` lines 471-555
+
+### Task 2 (Optional): REQ-A-Agent-Backend-2 (ScoringService 통합)
+- **File**: `src/backend/services/scoring_service.py`
+- **Objective**: ScoringService가 Tool 6 호출
+- **Duration**: ~1시간 (선택사항)
+- **Spec Location**: `docs/AGENT-TEST-SCENARIO.md` lines 517-555
+
+---
+
+## 📚 Documentation References (Already Exist)
+**Do NOT regenerate these** - they are already complete:
+- `docs/TOOL_DEFINITIONS_SUMMARY.md` - Complete tool signatures & details
+- `docs/TOOL_QUICK_REFERENCE.md` - Quick examples & validation rules
+- `docs/TOOL_DOCUMENTATION_INDEX.md` - Navigation & troubleshooting
+- `docs/AGENT-TEST-SCENARIO.md` - Full phase planning (REQ-A-Agent-*)
+
+**Just reference them when implementing!**
+
+---
+
+## 🚀 Quick Start After Context Gap
+
+1. Read this section first (2 min)
+2. Run: `git log --oneline -10` to see recent commits
+3. Start with Task 1 (REQ-A-Agent-Backend-1) in `docs/AGENT-TEST-SCENARIO.md` lines 471-555
+4. Use TOOL documentation (don't regenerate - it already exists)
+5. Create progress file in `docs/progress/REQ-A-Agent-Backend-1.md` after Phase 4

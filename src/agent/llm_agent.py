@@ -46,9 +46,15 @@ _round_id_gen = RoundIDGenerator()
 class GenerateQuestionsRequest(BaseModel):
     """문항 생성 요청 (REQ: POST /api/v1/items/generate)."""
 
+    session_id: str = Field(..., description="테스트 세션 ID (Backend Service가 생성)")
     survey_id: str = Field(..., description="설문 ID")
     round_idx: int = Field(..., ge=1, description="라운드 번호 (1-based)")
     prev_answers: list[dict] | None = Field(default=None, description="이전 라운드 답변 (적응형 테스트용)")
+    question_count: int = Field(default=5, ge=1, le=20, description="생성할 문항 개수 (기본값: 5, 테스트: 2)")
+    question_types: list[str] | None = Field(
+        default=None, description="생성할 문항 유형 (multiple_choice | true_false | short_answer), None이면 모두 생성"
+    )
+    domain: str = Field(default="AI", description="문항 도메인/주제 (예: AI, food, science)")
 
 
 class AnswerSchema(BaseModel):
@@ -308,65 +314,103 @@ class ItemGenAgent:
 
         """
         tool_results = []
+        logger.info(f"\n🔧 _extract_tool_results: Looking for tool_name='{tool_name}'")
 
         # Format 1: AgentExecutor intermediate_steps (for backward compatibility with tests)
         intermediate_steps = result.get("intermediate_steps", [])
         if intermediate_steps:
-            logger.debug("Using intermediate_steps format (test mock detected)")
-            for step_tool_name, tool_output_str in intermediate_steps:
+            logger.info("✓ Format 1: intermediate_steps detected (test mock)")
+            logger.info(f"  Total steps: {len(intermediate_steps)}")
+            for i, (step_tool_name, tool_output_str) in enumerate(intermediate_steps):
+                logger.info(f"  [{i}] step_tool_name='{step_tool_name}', matches_target={step_tool_name == tool_name}")
                 if step_tool_name == tool_name:
                     tool_results.append((step_tool_name, tool_output_str))
+                    logger.info(f"       ✓ MATCHED - output_type={type(tool_output_str).__name__}")
+            logger.info(f"  Result: {len(tool_results)} matching tools found\n")
             return tool_results
 
         # Format 2: LangGraph messages format (actual LangGraph output)
         messages = result.get("messages", [])
         if not messages:
-            logger.warning("No intermediate_steps or messages found in agent result")
+            logger.warning("No intermediate_steps or messages found in agent result\n")
             return []
 
-        logger.debug("Using messages format (actual LangGraph output)")
+        logger.info("✓ Format 2: messages detected (LangGraph output)")
+        logger.info(f"  Total messages: {len(messages)}\n")
 
-        # Build a map of tool_call_id → ToolMessage for quick lookup
+        # Step 1: Build a map of tool_call_id → ToolMessage for quick lookup
+        logger.info("Step 1️⃣: Scanning for ToolMessages...")
         tool_messages_by_id: dict[str, ToolMessage] = {}
-        for message in messages:
+        for i, message in enumerate(messages):
+            msg_type = type(message).__name__
             if isinstance(message, ToolMessage):
                 tool_call_id = message.tool_call_id
+                name = getattr(message, "name", "?")
+                content_preview = str(getattr(message, "content", ""))[:100]
+                logger.info(f"  [{i}] ToolMessage found:")
+                logger.info(f"       tool_call_id={tool_call_id}, name={name}")
+                logger.info(f"       content_preview={content_preview}...")
                 if tool_call_id:
                     tool_messages_by_id[tool_call_id] = message
-                    logger.debug(f"Found ToolMessage for tool_call_id={tool_call_id}, tool_name={message.name}")
+                    logger.info("       ✓ Added to map")
+                else:
+                    logger.info("       ⚠️  No tool_call_id!")
+            elif msg_type == "AIMessage":
+                logger.info(f"  [{i}] AIMessage (checking for tool_calls...)")
+            else:
+                logger.info(f"  [{i}] {msg_type}")
 
-        # Iterate through AIMessages to find matching tool calls
-        for message in messages:
+        logger.info(f"\nToolMessage map summary: {len(tool_messages_by_id)} items\n")
+
+        # Step 2: Iterate through AIMessages to find matching tool calls
+        logger.info("Step 2️⃣: Scanning AIMessages for tool_calls...")
+        ai_message_count = 0
+        for i, message in enumerate(messages):
             if isinstance(message, AIMessage):
+                ai_message_count += 1
+                logger.info(f"  [{i}] AIMessage #{ai_message_count}")
+
                 # AIMessage has tool_calls list with ToolCall objects
                 tool_calls = getattr(message, "tool_calls", [])
+                logger.info(f"       tool_calls: {len(tool_calls)} found")
+
                 if not tool_calls:
+                    logger.info("       ⚠️  No tool_calls in this message")
                     continue
 
-                for tool_call in tool_calls:
+                for j, tool_call in enumerate(tool_calls):
                     try:
                         # ToolCall is an object with .id and .name attributes
                         call_id = tool_call.id if hasattr(tool_call, "id") else tool_call.get("id")
                         call_name = tool_call.name if hasattr(tool_call, "name") else tool_call.get("name")
 
+                        logger.info(f"         [{j}] tool_call: name='{call_name}', id={call_id}")
+                        logger.info(f"              target_tool_name='{tool_name}', matches={call_name == tool_name}")
+
                         # Check if this tool call matches what we're looking for
                         if call_name == tool_name:
+                            logger.info("              ✓ NAME MATCHED!")
                             # Find the corresponding ToolMessage
                             if call_id in tool_messages_by_id:
                                 tool_msg = tool_messages_by_id[call_id]
                                 content = tool_msg.content if hasattr(tool_msg, "content") else str(tool_msg)
                                 tool_results.append((tool_name, content))
-                                logger.debug(
-                                    f"Matched tool_call: tool_name={tool_name}, "
-                                    f"tool_call_id={call_id}, content_preview={str(content)[:50]}..."
-                                )
+                                content_preview = str(content)[:100]
+                                logger.info(f"              ✓ FOUND ToolMessage with id={call_id}")
+                                logger.info(f"              content_preview={content_preview}...")
                             else:
-                                logger.warning(f"Tool call {call_id} for {tool_name} has no matching ToolMessage")
+                                logger.warning(
+                                    f"              ✗ NO ToolMessage found for id={call_id}!\n"
+                                    f"                 Available IDs in map: {list(tool_messages_by_id.keys())}"
+                                )
+                        else:
+                            logger.info(f"              ✗ Name mismatch (looking for '{tool_name}')")
 
                     except (AttributeError, KeyError, TypeError) as e:
-                        logger.warning(f"Error extracting tool_call properties: {e}")
+                        logger.error(f"         [{j}] ERROR extracting tool_call properties: {e}")
                         continue
 
+        logger.info(f"\nStep 2️⃣ Result: {len(tool_results)} matching tools found\n")
         return tool_results
 
     async def generate_questions(self, request: GenerateQuestionsRequest) -> GenerateQuestionsResponse:
@@ -407,24 +451,36 @@ class ItemGenAgent:
             round_id = _round_id_gen.generate(session_id=request.survey_id, round_number=request.round_idx)
 
             # 에이전트 입력 구성
+            question_types_str = (
+                ", ".join(request.question_types)
+                if request.question_types
+                else "multiple_choice, true_false, short_answer"
+            )
             agent_input = f"""
 Generate high-quality exam questions for the following survey.
+Session ID: {request.session_id}
 Survey ID: {request.survey_id}
 Round: {request.round_idx}
+Domain: {request.domain}
 Previous Answers: {json.dumps(request.prev_answers) if request.prev_answers else "None (First round)"}
+Question Count: {request.question_count}
+Question Types: {question_types_str}
 
 Follow these steps:
 1. Get survey context and user profile (Tool 1)
 2. Search question templates for similar items (Tool 2) if available
 3. Get keywords for adaptive difficulty (Tool 3)
-4. Generate new questions with appropriate difficulty
+4. Generate new questions with appropriate difficulty (focused on {request.domain} domain)
 5. Validate each question (Tool 4)
-6. Save validated questions (Tool 5) with round_id={round_id}
+6. Save validated questions (Tool 5) with session_id={request.session_id} and round_id={round_id}
 
 Important:
+- Generate EXACTLY {request.question_count} questions with the specified types
+- All questions should be related to {request.domain} domain/topic
 - Generate questions with appropriate answer_schema (exact_match, keyword_match, or semantic_match)
 - Each question must include: id, type, stem, choices (if MC), answer_schema, difficulty, category
 - Return all saved questions with validation scores
+- When calling Tool 5, ALWAYS pass session_id={request.session_id} to save questions with correct session reference
 """
 
             # 에이전트 실행 (Tool Calling 루프)
@@ -711,71 +767,255 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
         logger.info(f"문항 생성 결과 파싱 중... round_id={round_id}")
 
         try:
-            # 1. save_generated_question 도구 결과 추출 (포맷 무관)
-            tool_results = self._extract_tool_results(result, "save_generated_question")
-            agent_steps = len(result.get("intermediate_steps", [])) or len(result.get("messages", []))
-            logger.info(f"도구 호출 {agent_steps}개 발견, save_generated_question {len(tool_results)}개")
+            # DEBUG: Agent output 구조 분석
+            logger.info("=" * 80)
+            logger.info("🔍 AGENT OUTPUT STRUCTURE ANALYSIS")
+            logger.info("=" * 80)
 
-            # 2. save_generated_question 도구 결과 파싱
+            # 1. Result dict 키 확인
+            result_keys = list(result.keys())
+            logger.info(f"Result 최상위 키: {result_keys}")
+
+            # 2. intermediate_steps 확인
+            intermediate_steps = result.get("intermediate_steps", [])
+            if intermediate_steps:
+                logger.info(f"\n✓ intermediate_steps 발견: {len(intermediate_steps)}개")
+                for i, (tool_name, tool_output) in enumerate(intermediate_steps):
+                    output_preview = str(tool_output)[:150]
+                    logger.info(f"  [{i}] tool_name={tool_name}, output_type={type(tool_output).__name__}")
+                    logger.info(f"      output_preview={output_preview}...")
+            else:
+                logger.info("\n✗ intermediate_steps 없음")
+
+            # 3. messages 확인
+            messages = result.get("messages", [])
+            if messages:
+                logger.info(f"\n✓ messages 발견: {len(messages)}개")
+                for i, msg in enumerate(messages):
+                    msg_type = type(msg).__name__
+                    msg_attrs = {
+                        "type": getattr(msg, "type", "N/A"),
+                        "has_content": hasattr(msg, "content"),
+                        "has_tool_calls": hasattr(msg, "tool_calls"),
+                        "has_tool_call_id": hasattr(msg, "tool_call_id"),
+                    }
+                    logger.info(f"  [{i}] type={msg_type}, attrs={msg_attrs}")
+
+                    # AIMessage의 경우 tool_calls 확인
+                    if msg_type == "AIMessage" and hasattr(msg, "tool_calls"):
+                        tool_calls = getattr(msg, "tool_calls", [])
+                        if tool_calls:
+                            logger.info(f"      tool_calls: {len(tool_calls)}개")
+                            for j, tc in enumerate(tool_calls):
+                                tc_name = getattr(tc, "name", tc.get("name") if isinstance(tc, dict) else "?")
+                                tc_id = getattr(tc, "id", tc.get("id") if isinstance(tc, dict) else "?")
+                                logger.info(f"        [{j}] name={tc_name}, id={tc_id}")
+                        # DEBUG: AIMessage의 content 전체 출력
+                        ai_content = getattr(msg, "content", "")
+                        if ai_content:
+                            content_preview = str(ai_content)[:500]
+                            logger.info("      AIMessage.content (first 500 chars):")
+                            logger.info(f"        {content_preview}...")
+
+                    # ToolMessage의 경우 내용 확인
+                    if msg_type == "ToolMessage":
+                        content = getattr(msg, "content", "?")
+                        tool_call_id = getattr(msg, "tool_call_id", "?")
+                        name = getattr(msg, "name", "?")
+                        logger.info(f"      tool_call_id={tool_call_id}, name={name}")
+                        logger.info(f"      content_preview={str(content)[:200]}...")
+            else:
+                logger.info("\n✗ messages 없음")
+
+            logger.info("=" * 80)
+
+            # 0. ReAct 텍스트 형식: Final Answer JSON 파싱 시도
+            logger.info("\n🔍 Attempting to parse Final Answer JSON from AIMessage...")
             items: list[GeneratedItem] = []
             failed_count = 0
             error_messages: list[str] = []
+            agent_steps = 0  # Initialize agent_steps early
 
-            for tool_name, tool_output_str in tool_results:
-                if tool_name != "save_generated_question":
-                    continue
+            # AIMessage에서 Final Answer JSON 추출
+            for message in result.get("messages", []):
+                if isinstance(message, AIMessage):
+                    content = getattr(message, "content", "")
 
-                if not tool_output_str:
-                    failed_count += 1
-                    continue
+                    # Final Answer: 패턴 찾기
+                    if "Final Answer:" in content:
+                        logger.info("✓ Found 'Final Answer:' in AIMessage content")
 
-                # JSON 파싱
-                try:
-                    tool_output = json.loads(tool_output_str) if isinstance(tool_output_str, str) else tool_output_str
-                except json.JSONDecodeError as e:
-                    logger.warning(f"JSON 파싱 실패: {str(tool_output_str)[:100]}")
-                    failed_count += 1
-                    error_messages.append(f"JSON decode error: {str(e)}")
-                    continue
+                        try:
+                            # Final Answer 뒤의 JSON 추출
+                            json_start = content.find("Final Answer:") + len("Final Answer:")
+                            json_str = content[json_start:].strip()
 
-                # success 플래그 확인
-                has_error = "error" in tool_output
-                is_success = tool_output.get("success", not has_error)
+                            # ```json ... ``` 마크다운 제거
+                            if "```json" in json_str:
+                                json_str = json_str.split("```json")[1].split("```")[0].strip()
+                            elif "```" in json_str:
+                                json_str = json_str.split("```")[1].split("```")[0].strip()
 
-                if not is_success or has_error:
-                    failed_count += 1
-                    if "error" in tool_output:
-                        error_messages.append(tool_output["error"])
-                    continue
+                            # Unescape 처리: Agent가 escaped quotes를 사용할 수 있음
+                            # Final Answer: [{\"question_id\": ... → [{\"question_id\": ...
+                            # Replace escaped quotes with regular quotes for JSON parsing
+                            json_str = json_str.replace('\\"', '"')
 
-                # GeneratedItem 객체 생성
-                try:
-                    # answer_schema 구성
-                    answer_schema = AnswerSchema(
-                        type=tool_output.get("answer_type", "exact_match"),
-                        keywords=tool_output.get("correct_keywords"),
-                        correct_answer=tool_output.get("correct_answer"),
-                    )
+                            logger.info(f"📋 Extracted JSON (first 300 chars): {json_str[:300]}...")
 
-                    item = GeneratedItem(
-                        id=tool_output.get("question_id", f"q_{uuid.uuid4().hex[:8]}"),
-                        type=tool_output.get("item_type", "multiple_choice"),
-                        stem=tool_output.get("stem", ""),
-                        choices=tool_output.get("choices"),
-                        answer_schema=answer_schema,
-                        difficulty=tool_output.get("difficulty", 5),
-                        category=tool_output.get("category", "general"),
-                        validation_score=tool_output.get("validation_score", 0.0),
-                        saved_at=tool_output.get("saved_at", datetime.now(UTC).isoformat()),
-                    )
-                    items.append(item)
-                    logger.info(f"✓ 문항 파싱 성공: {item.id}")
+                            # JSON 파싱
+                            questions_data = json.loads(json_str)
 
-                except Exception as e:
-                    logger.error(f"GeneratedItem 생성 실패: {e}")
-                    failed_count += 1
-                    error_messages.append(str(e))
-                    continue
+                            if not isinstance(questions_data, list):
+                                questions_data = [questions_data]
+
+                            logger.info(f"✅ Parsed {len(questions_data)} question(s) from Final Answer JSON")
+
+                            # 각 question을 GeneratedItem으로 변환
+                            for q in questions_data:
+                                try:
+                                    # answer_schema 구성
+                                    # Tool 5 반환값에서 flattened 필드 사용 (correct_answer, correct_keywords)
+                                    answer_schema = AnswerSchema(
+                                        type=q.get("answer_schema", "exact_match"),
+                                        keywords=q.get("correct_keywords"),  # From Tool 5 response
+                                        correct_answer=q.get("correct_answer"),  # From Tool 5 response
+                                    )
+                                    logger.info(
+                                        f"  ✓ answer_schema populated: type={answer_schema.type}, keywords={answer_schema.keywords is not None}, correct_answer={answer_schema.correct_answer is not None}"
+                                    )
+
+                                    item = GeneratedItem(
+                                        id=q.get("question_id", f"q_{uuid.uuid4().hex[:8]}"),
+                                        type=q.get("type", "multiple_choice"),
+                                        stem=q.get("stem", ""),
+                                        choices=q.get("choices"),
+                                        answer_schema=answer_schema,
+                                        difficulty=q.get("difficulty", 5),
+                                        category=q.get("category", "AI"),
+                                        validation_score=q.get("validation_score", 0.0),
+                                        saved_at=datetime.now(UTC).isoformat(),
+                                    )
+                                    items.append(item)
+                                    logger.info(f"  ✓ Created GeneratedItem: {item.id} ({item.stem[:50]}...)")
+
+                                except Exception as e:
+                                    logger.error(f"  ✗ Failed to create GeneratedItem: {e}")
+                                    failed_count += 1
+                                    error_messages.append(f"GeneratedItem creation error: {str(e)}")
+                                    continue
+
+                            # Final Answer JSON이 파싱되면 도구 추출 스킵
+                            if items:
+                                logger.info(f"\n✅ Successfully parsed {len(items)} items from Final Answer JSON")
+                                logger.info("Skipping tool results extraction (using Final Answer format)")
+                                # Update agent_steps when Final Answer JSON is found
+                                agent_steps = max(
+                                    agent_steps,
+                                    len(result.get("intermediate_steps", [])) or len(result.get("messages", [])),
+                                )
+                                break
+
+                        except json.JSONDecodeError as e:
+                            logger.warning(f"❌ Failed to parse Final Answer JSON: {e}")
+                            error_messages.append(f"Final Answer JSON decode error: {str(e)}")
+                            continue
+                        except Exception as e:
+                            logger.warning(f"❌ Error processing Final Answer: {e}")
+                            error_messages.append(f"Final Answer processing error: {str(e)}")
+                            continue
+
+            # 1. Final Answer JSON이 없으면 save_generated_question 도구 결과 추출
+            if not items:
+                logger.info("\n📊 Extracting save_generated_question tool results (LangGraph format)...")
+                tool_results = self._extract_tool_results(result, "save_generated_question")
+                agent_steps = max(
+                    agent_steps, len(result.get("intermediate_steps", [])) or len(result.get("messages", []))
+                )
+                logger.info(f"✓ 도구 호출 {agent_steps}개 발견, save_generated_question {len(tool_results)}개")
+
+                # DEBUG: 추출된 tool_results 상세 출력
+                if tool_results:
+                    logger.info("\n📋 Extracted tool results:")
+                    for i, (tool_name, tool_output_str) in enumerate(tool_results):
+                        logger.info(f"  [{i}] tool_name={tool_name}")
+                        logger.info(f"      output_type={type(tool_output_str).__name__}")
+                        output_preview = str(tool_output_str)[:300]
+                        logger.info(f"      output_preview={output_preview}...")
+                else:
+                    logger.warning("⚠️  No tool results extracted!")
+
+                # Tool results 파싱으로 items 구성
+                for tool_name, tool_output_str in tool_results:
+                    if tool_name != "save_generated_question":
+                        continue
+
+                    if not tool_output_str:
+                        failed_count += 1
+                        continue
+
+                    # JSON 파싱
+                    try:
+                        tool_output = (
+                            json.loads(tool_output_str) if isinstance(tool_output_str, str) else tool_output_str
+                        )
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"JSON 파싱 실패: {str(tool_output_str)[:100]}")
+                        failed_count += 1
+                        error_messages.append(f"JSON decode error: {str(e)}")
+                        continue
+
+                    # success 플래그 확인
+                    has_error = "error" in tool_output
+                    is_success = tool_output.get("success", not has_error)
+
+                    if not is_success or has_error:
+                        failed_count += 1
+                        if "error" in tool_output:
+                            error_messages.append(tool_output["error"])
+                        continue
+
+                    # GeneratedItem 객체 생성
+                    try:
+                        # answer_schema 구성 (Tool 5가 제공하거나 기본값 사용)
+                        schema_from_tool = tool_output.get("answer_schema", {})
+                        if isinstance(schema_from_tool, dict):
+                            # Tool 5에서 반환한 answer_schema 사용
+                            answer_schema = AnswerSchema(
+                                type=schema_from_tool.get(
+                                    "type", schema_from_tool.get("correct_key") and "exact_match" or "keyword_match"
+                                ),
+                                keywords=schema_from_tool.get("correct_keywords") or schema_from_tool.get("keywords"),
+                                correct_answer=schema_from_tool.get("correct_key")
+                                or schema_from_tool.get("correct_answer"),
+                            )
+                        else:
+                            # Fallback to tool_output fields
+                            answer_schema = AnswerSchema(
+                                type=tool_output.get("answer_type", "exact_match"),
+                                keywords=tool_output.get("correct_keywords"),
+                                correct_answer=tool_output.get("correct_answer"),
+                            )
+
+                        item = GeneratedItem(
+                            id=tool_output.get("question_id", f"q_{uuid.uuid4().hex[:8]}"),
+                            type=tool_output.get("item_type", "multiple_choice"),
+                            stem=tool_output.get("stem", ""),
+                            choices=tool_output.get("choices"),
+                            answer_schema=answer_schema,
+                            difficulty=tool_output.get("difficulty", 5),
+                            category=tool_output.get("category", "general"),
+                            validation_score=tool_output.get("validation_score", 0.0),
+                            saved_at=tool_output.get("saved_at", datetime.now(UTC).isoformat()),
+                        )
+                        items.append(item)
+                        logger.info(f"✓ 문항 파싱 성공: {item.id}, stem={item.stem[:50] if item.stem else 'N/A'}")
+
+                    except Exception as e:
+                        logger.error(f"GeneratedItem 생성 실패: {e}")
+                        failed_count += 1
+                        error_messages.append(str(e))
+                        continue
 
             # 3. 응답 생성
             error_msg = " | ".join(error_messages) if error_messages else None

@@ -67,12 +67,13 @@ def agent_instance(mock_llm, mock_tools):
         with patch("src.agent.llm_agent.TOOLS", mock_tools):
             with patch("src.agent.llm_agent.get_react_prompt") as mock_prompt:
                 with patch("src.agent.llm_agent.create_react_agent") as mock_create_agent:
-                    # Mock the LangGraph agent
-                    mock_agent = AsyncMock()
-                    mock_create_agent.return_value = mock_agent
+                    # Mock the LangGraph agent (executor)
+                    mock_executor = AsyncMock()
+                    mock_executor.ainvoke = AsyncMock()
+                    mock_create_agent.return_value = mock_executor
 
                     agent = ItemGenAgent()
-                    agent.agent = mock_agent  # Ensure mocked agent is set
+                    agent.executor = mock_executor  # Set executor mock
                     return agent
 
 
@@ -100,6 +101,7 @@ class TestGenerateQuestionsHappyPath:
             - items list contains 1 GeneratedItem
         """
         request = GenerateQuestionsRequest(
+            session_id="session_123",
             survey_id="survey_123",
             round_idx=1,
             prev_answers=None,
@@ -147,6 +149,7 @@ class TestGenerateQuestionsHappyPath:
             - Returns response with multiple GeneratedItem objects
         """
         request = GenerateQuestionsRequest(
+            session_id="session_456",
             survey_id="survey_456",
             round_idx=2,
             prev_answers=[{"item_id": "q_prev_1", "score": 85}],
@@ -204,6 +207,7 @@ class TestGenerateQuestionsHappyPath:
             - Difficulty adjusted based on previous performance
         """
         request = GenerateQuestionsRequest(
+            session_id="session_adaptive",
             survey_id="survey_adaptive",
             round_idx=2,
             prev_answers=[
@@ -222,8 +226,12 @@ class TestGenerateQuestionsHappyPath:
         assert isinstance(response, GenerateQuestionsResponse)
         # Verify prev_answers were passed to agent
         call_args = agent_instance.executor.ainvoke.call_args
-        input_str = call_args[0][0].get("input", "")
-        assert "prev_answers" in input_str.lower() or "previous" in input_str.lower()
+        # ainvoke is called with {"messages": [HumanMessage(content=agent_input)]}
+        messages = call_args[0][0].get("messages", [])
+        assert len(messages) > 0, "No messages in ainvoke call"
+        agent_input_str = messages[0].content if hasattr(messages[0], 'content') else str(messages[0])
+        assert "prev_answers" in agent_input_str.lower() or "previous" in agent_input_str.lower(), \
+            f"prev_answers not found in agent input: {agent_input_str}"
 
 
 class TestGenerateQuestionsValidation:
@@ -244,6 +252,7 @@ class TestGenerateQuestionsValidation:
         """
         with pytest.raises(ValueError):
             GenerateQuestionsRequest(
+                session_id="session_test",
                 survey_id="survey_test",
                 round_idx=0,  # Invalid: < 1
             )
@@ -263,6 +272,7 @@ class TestGenerateQuestionsValidation:
         """
         with pytest.raises(Exception):  # Missing required field
             GenerateQuestionsRequest(
+                session_id="session_test",
                 round_idx=1,
             )
 
@@ -285,6 +295,7 @@ class TestGenerateQuestionsErrorHandling:
             - items list is empty
         """
         request = GenerateQuestionsRequest(
+            session_id="session_error",
             survey_id="survey_error",
             round_idx=1,
         )
@@ -312,6 +323,7 @@ class TestGenerateQuestionsErrorHandling:
             - Graceful degradation
         """
         request = GenerateQuestionsRequest(
+            session_id="session_malformed",
             survey_id="survey_malformed",
             round_idx=1,
         )
@@ -826,6 +838,7 @@ class TestIntegrationWithMockedComponents:
             - Response contains proper structure
         """
         request = GenerateQuestionsRequest(
+            session_id="integration_session",
             survey_id="integration_survey",
             round_idx=1,
         )

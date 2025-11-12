@@ -1,20 +1,148 @@
 """Questions and test-related CLI actions."""
 
+import re
+
+from rich.table import Table
+
+from src.backend.database import SessionLocal
+from src.backend.models.question import Question
 from src.cli.context import CLIContext
+
+
+def _is_valid_session_id(value: str) -> bool:
+    """Check if value looks like a valid UUID (session ID)."""
+    uuid_pattern = r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+    return bool(re.match(uuid_pattern, value.lower()))
 
 
 def questions_help(context: CLIContext, *args: str) -> None:
     """Questions 도메인의 사용 가능한 명령어를 보여줍니다."""
+    # If session_id is provided, show questions instead
+    if args and _is_valid_session_id(args[0]):
+        show_session_questions(context, *args)
+        return
+
     context.console.print("[bold yellow]Questions Commands:[/bold yellow]")
-    context.console.print("  questions session resume      - 테스트 세션 재개")
-    context.console.print("  questions session status      - 세션 상태 변경 (일시중지/재개)")
-    context.console.print("  questions session time_status - 세션 시간 제한 확인")
-    context.console.print("  questions generate            - 테스트 문항 생성 (Round 1)")
-    context.console.print("  questions generate adaptive   - 적응형 문항 생성 (Round 2+)")
-    context.console.print("  questions answer autosave     - 답변 자동 저장")
-    context.console.print("  questions answer score        - 단일 답변 채점")
-    context.console.print("  questions score               - 라운드 점수 계산 및 저장")
-    context.console.print("  questions explanation generate - 해설 생성")
+    context.console.print("  questions [session_id]         - 세션의 문항 조회")
+    context.console.print("  questions session resume        - 테스트 세션 재개")
+    context.console.print("  questions session status        - 세션 상태 변경 (일시중지/재개)")
+    context.console.print("  questions session time_status   - 세션 시간 제한 확인")
+    context.console.print("  questions generate              - 테스트 문항 생성 (Round 1)")
+    context.console.print("  questions generate adaptive     - 적응형 문항 생성 (Round 2+)")
+    context.console.print("  questions answer autosave       - 답변 자동 저장")
+    context.console.print("  questions answer score          - 단일 답변 채점")
+    context.console.print("  questions score                 - 라운드 점수 계산 및 저장")
+    context.console.print("  questions explanation generate  - 해설 생성")
+
+
+def show_session_questions(context: CLIContext, *args: str) -> None:
+    """세션에 포함된 문항을 조회하고 표시합니다."""
+    if not args:
+        context.console.print("[bold yellow]Usage:[/bold yellow] questions [session_id]")
+        context.console.print("[bold cyan]Example:[/bold cyan] questions 8c288904-bbf4-4d60-a5da-988ee538e0c8")
+        return
+
+    session_id = args[0]
+
+    if not _is_valid_session_id(session_id):
+        context.console.print("[bold red]✗ Invalid session ID format[/bold red]")
+        context.console.print(f"[yellow]Expected UUID format, got: {session_id}[/yellow]")
+        return
+
+    db_session = None
+    try:
+        # Get database session
+        db_session = SessionLocal()
+
+        # Query questions for this session
+        questions = db_session.query(Question).filter_by(session_id=session_id).all()
+
+        if not questions:
+            context.console.print(f"[bold yellow]⚠️  No questions found for session {session_id}[/bold yellow]")
+            return
+
+        # Display title
+        context.console.print(f"[bold cyan]Questions in Session {session_id}[/bold cyan]")
+        context.console.print(f"[dim]Total: {len(questions)} question(s)[/dim]")
+        context.console.print()
+
+        # Create and populate table (simplified: ID, Stem, Choices, Answer only)
+        table = Table(title=None, show_header=True, header_style="bold cyan")
+        table.add_column("ID", style="magenta", max_width=20)
+        table.add_column("Stem", style="white")
+        table.add_column("Choices", style="green")
+        table.add_column("Answer", style="yellow")
+
+        for q in questions:
+            # Truncate stem if too long
+            stem = q.stem[:50] + "..." if len(q.stem) > 50 else q.stem
+
+            # Format choices
+            choices_str = ""
+            if q.choices:
+                choices_str = ", ".join(q.choices[:3])
+                if len(q.choices) > 3:
+                    choices_str += ", ..."
+
+            # Format answer from answer_schema
+            answer_str = ""
+            if isinstance(q.answer_schema, dict):
+                # Try correct_answer first (newer format), then correct_key (legacy)
+                if "correct_answer" in q.answer_schema:
+                    answer_str = str(q.answer_schema["correct_answer"])[:40]  # Truncate long answers
+                elif "correct_key" in q.answer_schema:
+                    answer_str = q.answer_schema["correct_key"]
+                    validation_score = q.answer_schema.get("validation_score")
+                    if validation_score is not None:
+                        answer_str += f" ({validation_score:.2f})"
+                elif "correct_keywords" in q.answer_schema:
+                    keywords = q.answer_schema["correct_keywords"]
+                    answer_str = ", ".join(keywords[:2])
+                    if len(keywords) > 2:
+                        answer_str += ", ..."
+
+            table.add_row(
+                q.id[:12] + "...",
+                stem,
+                choices_str,
+                answer_str,
+            )
+
+        context.console.print(table)
+        context.console.print()
+
+        # Display first question details
+        if questions:
+            first_q = questions[0]
+            context.console.print("[bold cyan]📄 First Question Details:[/bold cyan]")
+            context.console.print(f"  ID: {first_q.id}")
+            context.console.print(f"  Type: {first_q.item_type}")
+            context.console.print(f"  Stem: {first_q.stem}")
+            context.console.print(f"  Difficulty: {first_q.difficulty}/10")
+            context.console.print(f"  Category: {first_q.category}")
+            if first_q.choices:
+                context.console.print(f"  Choices: {first_q.choices}")
+
+            # Display answer information
+            if isinstance(first_q.answer_schema, dict):
+                context.console.print("  Answer Schema:")
+                if "correct_key" in first_q.answer_schema:
+                    context.console.print(f"    Correct Answer: {first_q.answer_schema['correct_key']}")
+                if "correct_keywords" in first_q.answer_schema:
+                    context.console.print(f"    Keywords: {first_q.answer_schema['correct_keywords']}")
+                if "validation_score" in first_q.answer_schema:
+                    context.console.print(f"    Validation Score: {first_q.answer_schema['validation_score']:.2f}")
+                if "explanation" in first_q.answer_schema:
+                    context.console.print(f"    Explanation: {first_q.answer_schema['explanation']}")
+            context.console.print()
+
+    except Exception as e:
+        context.console.print("[bold red]✗ Error retrieving questions[/bold red]")
+        context.console.print(f"[red]  {str(e)}[/red]")
+        context.logger.error(f"Error retrieving questions for session {session_id}: {e}", exc_info=True)
+    finally:
+        if db_session:
+            db_session.close()
 
 
 def resume_session(context: CLIContext, *args: str) -> None:

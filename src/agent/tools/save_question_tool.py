@@ -211,6 +211,7 @@ def _save_generated_question_impl(
     difficulty: int = 5,
     categories: list[str] | None = None,
     round_id: str = "",
+    session_id: str = "unknown",
     validation_score: float | None = None,
     explanation: str | None = None,
 ) -> dict[str, Any]:
@@ -229,6 +230,7 @@ def _save_generated_question_impl(
         difficulty: Difficulty level (1-10)
         categories: Domain categories
         round_id: Round ID for tracking
+        session_id: Test session ID (from Backend Service)
         validation_score: Tool 4's final_score (metadata)
         explanation: Optional explanation
 
@@ -267,7 +269,7 @@ def _save_generated_question_impl(
     try:
         # Create Question instance
         question = Question(
-            session_id="unknown",  # Will be filled by agent orchestration
+            session_id=session_id,  # From Backend Service via Agent request
             item_type=item_type,
             stem=stem,
             choices=choices,
@@ -284,11 +286,33 @@ def _save_generated_question_impl(
 
         logger.info(f"Question saved successfully: {question.id}")
 
+        # Flatten answer_schema for Agent's Final Answer JSON
+        # Extracts fields from answer_schema dict for easy Agent consumption
+        flattened_answer_schema = {}
+        if isinstance(answer_schema, dict):
+            # Extract answer-specific fields
+            if "correct_key" in answer_schema:
+                flattened_answer_schema["correct_answer"] = answer_schema["correct_key"]
+            if "correct_keywords" in answer_schema:
+                flattened_answer_schema["correct_keywords"] = answer_schema["correct_keywords"]
+            if "validation_score" in answer_schema:
+                flattened_answer_schema["validation_score"] = answer_schema["validation_score"]
+            if "explanation" in answer_schema:
+                flattened_answer_schema["explanation"] = answer_schema["explanation"]
+
         return {
             "question_id": question.id,
+            "type": question.item_type,  # Changed from item_type to type (Agent expects "type")
+            "stem": question.stem,
+            "choices": question.choices,
+            "difficulty": question.difficulty,
+            "category": question.category,
+            "answer_schema": "exact_match",  # Simplified for Final Answer JSON
             "round_id": round_id,
             "saved_at": question.created_at.isoformat(),
             "success": True,
+            # Flattened answer schema fields for Agent to use directly in Final Answer JSON
+            **flattened_answer_schema,  # Spreads correct_answer, correct_keywords, validation_score
         }
 
     except Exception as e:
@@ -335,6 +359,7 @@ def save_generated_question(
     difficulty: int = 5,
     categories: list[str] | None = None,
     round_id: str = "",
+    session_id: str = "unknown",
     validation_score: float | None = None,
     explanation: str | None = None,
 ) -> dict[str, Any]:
@@ -355,6 +380,7 @@ def save_generated_question(
         difficulty: Difficulty level 1-10
         categories: Domain categories (e.g., ["LLM", "RAG"])
         round_id: Round ID for tracking (format: "session_id_round_timestamp")
+        session_id: Test session ID (from Backend Service, for DB linking)
         validation_score: Tool 4's final_score (0.0-1.0) - stored as metadata
         explanation: Optional explanation - stored as metadata
 
@@ -380,6 +406,7 @@ def save_generated_question(
         ...     difficulty=7,
         ...     categories=["LLM", "RAG"],
         ...     round_id="sess_123_1_2025-11-09T10:30:00Z",
+        ...     session_id="123e4567-e89b-12d3-a456-426614174000",
         ...     validation_score=0.92,
         ...     explanation="RAG combines retrieval with generation..."
         ... )
@@ -396,6 +423,7 @@ def save_generated_question(
         difficulty,
         categories,
         round_id,
+        session_id,
         validation_score,
         explanation,
     )

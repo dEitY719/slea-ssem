@@ -1,7 +1,9 @@
 """System-level CLI actions."""
 
 import os
+from collections import defaultdict
 
+from rich.rule import Rule
 from rich.table import Table
 
 from src.cli.config.command_layout import COMMAND_LAYOUT
@@ -48,7 +50,7 @@ def help(context: CLIContext, *args: str) -> None:
         "[bold cyan]╔════════════════════════════════════════════════════════════════════════════════╗[/bold cyan]"
     )
     context.console.print(
-        "[bold cyan]║  SLEA-SSEM CLI - Available Commands                                          ║[/bold cyan]"
+        "[bold cyan]║  SLEA-SSEM CLI - Available Commands                                            ║[/bold cyan]"
     )
     context.console.print(
         "[bold cyan]╚════════════════════════════════════════════════════════════════════════════════╝[/bold cyan]"
@@ -74,23 +76,46 @@ def help(context: CLIContext, *args: str) -> None:
         else:
             api_commands.append((cmd, usage, description))
 
-    # Create rich table
-    table = Table(show_header=False, box=None, padding=(0, 2))
+    # Calculate max command width for proper alignment
+    all_usages = [usage for _cmd, usage, _desc in api_commands + system_commands if usage]
+    max_width = max(len(usage) for usage in all_usages) if all_usages else 20
 
-    # Display API commands
-    for _cmd, usage, description in api_commands:
-        # Usage in normal style (white), description in dim style
-        table.add_row(usage, f"[dim]{description}[/dim]")
+    # Group API commands by their root command
+    api_groups = defaultdict(list)
+    for cmd, usage, description in api_commands:
+        root_cmd = cmd.split(" ")[0]
+        api_groups[root_cmd].append((usage, description))
 
-    # Add separator line
-    table.add_row(f"[dim]{'─' * 70}[/dim]", "")
+    sorted_group_names = sorted(api_groups.keys())
 
-    # Display system commands
+    for i, group_name in enumerate(sorted_group_names):
+        group_commands = api_groups[group_name]
+        group_table = Table(show_header=False, box=None, padding=(0, 1))
+        group_table.add_column(width=max_width)  # Column for command usage
+        group_table.add_column()  # Column for description
+
+        for usage, description in group_commands:
+            group_table.add_row(usage, f"[dim]{description}[/dim]")
+
+        context.console.print(group_table)
+
+        # Add a separator if it's not the last API group
+        if i < len(sorted_group_names) - 1:
+            context.console.print(Rule(style="dim"))
+
+    # --- Separator before system commands ---
+    context.console.print(Rule(style="dim"))
+
+    # --- System Commands Table ---
+    system_table = Table(show_header=False, box=None, padding=(0, 1))
+    system_table.add_column(width=max_width)  # Column for command usage
+    system_table.add_column()  # Column for description
+
     for _cmd, usage, description in system_commands:
         # Usage in normal style (white), description in dim style
-        table.add_row(usage, f"[dim]{description}[/dim]")
+        system_table.add_row(usage, f"[dim]{description}[/dim]")
 
-    context.console.print(table)
+    context.console.print(system_table)
 
     context.console.print()
     context.console.print("[bold yellow]💡 팁:[/bold yellow] 명령어를 입력하거나 'help'를 다시 입력하세요")

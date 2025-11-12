@@ -1,6 +1,7 @@
 """Tests for agent generate-questions command (Mode 1 question generation).
 
 REQ: REQ-CLI-Agent-2
+REQ: REQ-A-Agent-Backend-1 (CLI → Backend Service integration)
 """
 
 import json
@@ -11,11 +12,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.console import Console
 
-from src.agent.llm_agent import (
-    AnswerSchema,
-    GenerateQuestionsResponse,
-    GeneratedItem,
-)
 from src.cli.actions import agent
 from src.cli.context import CLIContext
 
@@ -50,12 +46,12 @@ class TestGenerateQuestionsHelpAndErrors:
         assert "Usage:" in output
 
     def test_missing_survey_id(self, mock_context: CLIContext) -> None:
-        """TC-2: Verify error when --survey-id missing."""
+        """TC-2: Verify error when no surveys exist (survey_id is optional, uses latest)."""
         agent.generate_questions(mock_context, "--round", "1")
         output = mock_context._buffer.getvalue()
 
         assert "Error" in output or "error" in output
-        assert "survey-id" in output or "required" in output
+        assert "No surveys found" in output or "profile update_survey" in output
 
     def test_invalid_round_number(self, mock_context: CLIContext) -> None:
         """TC-5: Verify error for invalid round number."""
@@ -91,79 +87,74 @@ class TestGenerateQuestionsSuccess:
 
     @pytest.fixture
     def mock_context(self) -> CLIContext:
-        """Create CLIContext with buffered console."""
+        """Create CLIContext with buffered console and logged-in user."""
         buffer = StringIO()
         console = Console(file=buffer, force_terminal=True, width=88)
         context = CLIContext(console=console, logger=None)
         context._buffer = buffer
+        # Set user_id as integer (from /auth/login API response)
+        context.session.user_id = 123
         return context
 
     @pytest.fixture
-    def mock_agent_response(self) -> GenerateQuestionsResponse:
-        """Create mock agent response with 3 questions."""
-        items = [
-            GeneratedItem(
-                id="q_00001_test",
-                type="short_answer",
-                stem="What is a transformer in NLP?",
-                choices=None,
-                answer_schema=AnswerSchema(
-                    type="keyword_match", keywords=["transformer", "attention", "neural"]
-                ),
-                difficulty=5,
-                category="NLP",
-                validation_score=0.92,
-            ),
-            GeneratedItem(
-                id="q_00002_test",
-                type="multiple_choice",
-                stem="Which is not a type of neural network?",
-                choices=["RNN", "CNN", "Abacus", "Transformer"],
-                answer_schema=AnswerSchema(type="exact_match", correct_answer="Abacus"),
-                difficulty=7,
-                category="ML",
-                validation_score=0.89,
-            ),
-            GeneratedItem(
-                id="q_00003_test",
-                type="true_false",
-                stem="True or False: GPT uses only encoder layers?",
-                choices=None,
-                answer_schema=AnswerSchema(type="exact_match", correct_answer="False"),
-                difficulty=3,
-                category="AI",
-                validation_score=0.95,
-            ),
-        ]
-        return GenerateQuestionsResponse(
-            round_id="round_20251111_123456_001",
-            items=items,
-            agent_steps=12,
-            failed_count=0,
-        )
+    def mock_service_response(self) -> dict:
+        """Create mock Backend Service response (dict format)."""
+        return {
+            "session_id": "session_20251111_123456_001",
+            "questions": [
+                {
+                    "id": "q_00001_test",
+                    "item_type": "short_answer",
+                    "stem": "What is a transformer in NLP?",
+                    "choices": None,
+                    "answer_schema": {"type": "keyword_match", "keywords": ["transformer", "attention", "neural"]},
+                    "difficulty": 5,
+                    "category": "NLP",
+                },
+                {
+                    "id": "q_00002_test",
+                    "item_type": "multiple_choice",
+                    "stem": "Which is not a type of neural network?",
+                    "choices": ["RNN", "CNN", "Abacus", "Transformer"],
+                    "answer_schema": {"type": "exact_match", "correct_answer": "Abacus"},
+                    "difficulty": 7,
+                    "category": "ML",
+                },
+                {
+                    "id": "q_00003_test",
+                    "item_type": "true_false",
+                    "stem": "True or False: GPT uses only encoder layers?",
+                    "choices": None,
+                    "answer_schema": {"type": "exact_match", "correct_answer": "False"},
+                    "difficulty": 3,
+                    "category": "AI",
+                },
+            ],
+        }
 
-    @patch("src.cli.actions.agent.ItemGenAgent")
+    @patch("src.cli.actions.agent.SessionLocal")
+    @patch("src.cli.actions.agent.QuestionGenerationService")
     def test_round1_generation_success(
-        self, mock_agent_class, mock_context: CLIContext, mock_agent_response
+        self, mock_service_class, mock_session_local, mock_context: CLIContext, mock_service_response
     ) -> None:
         """TC-3: Verify successful Round 1 generation."""
-        # Setup mock
-        mock_agent_instance = AsyncMock()
-        mock_agent_instance.generate_questions.return_value = mock_agent_response
-        mock_agent_class.return_value = mock_agent_instance
+        # Setup mocks
+        mock_db_session = MagicMock()
+        mock_session_local.return_value = mock_db_session
+
+        mock_service_instance = AsyncMock()
+        mock_service_instance.generate_questions.return_value = mock_service_response
+        mock_service_class.return_value = mock_service_instance
 
         # Execute
         agent.generate_questions(mock_context, "--survey-id", "test_survey", "--round", "1")
         output = strip_ansi(mock_context._buffer.getvalue())
 
         # Assertions
-        assert "Initializing Agent" in output
-        assert "Agent initialized" in output
         assert "Generating questions" in output
         assert "Generation Complete" in output
-        assert "round_id: round_20251111_123456_001" in output
+        assert "session_id: session_20251111_123456_001" in output
         assert "items generated: 3" in output
-        assert "agent_steps: 12" in output
 
         # Verify table
         assert "Generated Items" in output
@@ -174,17 +165,27 @@ class TestGenerateQuestionsSuccess:
         # Verify first item details
         assert "First Item Details" in output
         assert "What is a transformer in NLP?" in output
-        assert "keyword_match" in output
 
-    @patch("src.cli.actions.agent.ItemGenAgent")
+        # Verify service was called correctly
+        mock_service_instance.generate_questions.assert_called_once()
+        call_args = mock_service_instance.generate_questions.call_args
+        assert call_args[1]["user_id"] == 123
+        assert call_args[1]["survey_id"] == "test_survey"
+        assert call_args[1]["round_num"] == 1
+
+    @patch("src.cli.actions.agent.SessionLocal")
+    @patch("src.cli.actions.agent.QuestionGenerationService")
     def test_round2_adaptive_generation(
-        self, mock_agent_class, mock_context: CLIContext, mock_agent_response
+        self, mock_service_class, mock_session_local, mock_context: CLIContext, mock_service_response
     ) -> None:
         """TC-4: Verify Round 2 adaptive generation."""
-        # Setup mock
-        mock_agent_instance = AsyncMock()
-        mock_agent_instance.generate_questions.return_value = mock_agent_response
-        mock_agent_class.return_value = mock_agent_instance
+        # Setup mocks
+        mock_db_session = MagicMock()
+        mock_session_local.return_value = mock_db_session
+
+        mock_service_instance = AsyncMock()
+        mock_service_instance.generate_questions.return_value = mock_service_response
+        mock_service_class.return_value = mock_service_instance
 
         # Execute with prev_answers
         prev_answers = '[{"item_id":"q1","score":85}]'
@@ -202,23 +203,26 @@ class TestGenerateQuestionsSuccess:
         # Assertions
         assert "Generating questions" in output
         assert "round=2" in output
+        assert "items generated: 3" in output
 
-        # Verify agent was called with correct request
-        mock_agent_instance.generate_questions.assert_called_once()
-        call_args = mock_agent_instance.generate_questions.call_args
-        request = call_args[0][0]
-        assert request.round_idx == 2
-        assert request.prev_answers == [{"item_id": "q1", "score": 85}]
+        # Verify service was called with correct parameters
+        mock_service_instance.generate_questions.assert_called_once()
+        call_args = mock_service_instance.generate_questions.call_args
+        assert call_args[1]["round_num"] == 2
 
-    @patch("src.cli.actions.agent.ItemGenAgent")
+    @patch("src.cli.actions.agent.SessionLocal")
+    @patch("src.cli.actions.agent.QuestionGenerationService")
     def test_table_output_structure(
-        self, mock_agent_class, mock_context: CLIContext, mock_agent_response
+        self, mock_service_class, mock_session_local, mock_context: CLIContext, mock_service_response
     ) -> None:
         """TC-9: Verify Rich table structure."""
-        # Setup mock
-        mock_agent_instance = AsyncMock()
-        mock_agent_instance.generate_questions.return_value = mock_agent_response
-        mock_agent_class.return_value = mock_agent_instance
+        # Setup mocks
+        mock_db_session = MagicMock()
+        mock_session_local.return_value = mock_db_session
+
+        mock_service_instance = AsyncMock()
+        mock_service_instance.generate_questions.return_value = mock_service_response
+        mock_service_class.return_value = mock_service_instance
 
         # Execute
         agent.generate_questions(mock_context, "--survey-id", "test_survey")
@@ -228,23 +232,28 @@ class TestGenerateQuestionsSuccess:
         assert "ID" in output
         assert "Type" in output
         assert "Difficulty" in output
-        assert "Validation" in output
+        assert "Category" in output
 
         # Check values in output
         assert "5" in output  # Difficulty value
         assert "7" in output  # Difficulty value
         assert "3" in output  # Difficulty value
-        assert "0.92" in output  # Validation score
-        assert "0.89" in output  # Validation score
-        assert "0.95" in output  # Validation score
+        assert "NLP" in output  # Category
+        assert "ML" in output  # Category
+        assert "AI" in output  # Category
 
-    @patch("src.cli.actions.agent.ItemGenAgent")
+    @patch("src.cli.actions.agent.SessionLocal")
+    @patch("src.cli.actions.agent.QuestionGenerationService")
     def test_agent_init_failure(
-        self, mock_agent_class, mock_context: CLIContext
+        self, mock_service_class, mock_session_local, mock_context: CLIContext
     ) -> None:
-        """TC-8: Verify error handling for agent init failure."""
-        # Setup mock to raise exception
-        mock_agent_class.side_effect = ValueError("GEMINI_API_KEY not found")
+        """TC-8: Verify error handling for service failure."""
+        # Setup mocks
+        mock_db_session = MagicMock()
+        mock_session_local.return_value = mock_db_session
+
+        # Service initialization fails
+        mock_service_class.side_effect = ValueError("Database connection error")
 
         # Execute
         agent.generate_questions(mock_context, "--survey-id", "test_survey")
@@ -252,20 +261,23 @@ class TestGenerateQuestionsSuccess:
 
         # Assertions
         assert "Error" in output or "error" in output
-        assert "Agent initialization failed" in output
-        assert "GEMINI_API_KEY" in output
+        assert "Question generation failed" in output
 
-    @patch("src.cli.actions.agent.ItemGenAgent")
+    @patch("src.cli.actions.agent.SessionLocal")
+    @patch("src.cli.actions.agent.QuestionGenerationService")
     def test_agent_execution_failure(
-        self, mock_agent_class, mock_context: CLIContext
+        self, mock_service_class, mock_session_local, mock_context: CLIContext
     ) -> None:
-        """Verify error handling for agent execution failure."""
-        # Setup mock
-        mock_agent_instance = AsyncMock()
-        mock_agent_instance.generate_questions.side_effect = RuntimeError(
+        """Verify error handling for service execution failure."""
+        # Setup mocks
+        mock_db_session = MagicMock()
+        mock_session_local.return_value = mock_db_session
+
+        mock_service_instance = AsyncMock()
+        mock_service_instance.generate_questions.side_effect = RuntimeError(
             "Tool timeout after 8 seconds"
         )
-        mock_agent_class.return_value = mock_agent_instance
+        mock_service_class.return_value = mock_service_instance
 
         # Execute
         agent.generate_questions(mock_context, "--survey-id", "test_survey")
@@ -276,21 +288,23 @@ class TestGenerateQuestionsSuccess:
         assert "Question generation failed" in output
         assert "Tool timeout" in output
 
-    @patch("src.cli.actions.agent.ItemGenAgent")
+    @patch("src.cli.actions.agent.SessionLocal")
+    @patch("src.cli.actions.agent.QuestionGenerationService")
     def test_empty_items_response(
-        self, mock_agent_class, mock_context: CLIContext
+        self, mock_service_class, mock_session_local, mock_context: CLIContext
     ) -> None:
         """Verify handling of generation with no items."""
-        # Setup mock with empty response
-        empty_response = GenerateQuestionsResponse(
-            round_id="round_20251111_123456_001",
-            items=[],
-            agent_steps=5,
-            failed_count=0,
-        )
-        mock_agent_instance = AsyncMock()
-        mock_agent_instance.generate_questions.return_value = empty_response
-        mock_agent_class.return_value = mock_agent_instance
+        # Setup mocks
+        mock_db_session = MagicMock()
+        mock_session_local.return_value = mock_db_session
+
+        empty_response = {
+            "session_id": "session_20251111_123456_001",
+            "questions": [],
+        }
+        mock_service_instance = AsyncMock()
+        mock_service_instance.generate_questions.return_value = empty_response
+        mock_service_class.return_value = mock_service_instance
 
         # Execute
         agent.generate_questions(mock_context, "--survey-id", "test_survey")
@@ -301,16 +315,21 @@ class TestGenerateQuestionsSuccess:
         assert "items generated: 0" in output
         # First item details should not be shown
         assert "First Item Details" not in output
+        assert "No questions were generated" in output
 
-    @patch("src.cli.actions.agent.ItemGenAgent")
+    @patch("src.cli.actions.agent.SessionLocal")
+    @patch("src.cli.actions.agent.QuestionGenerationService")
     def test_round1_default_when_not_specified(
-        self, mock_agent_class, mock_context: CLIContext, mock_agent_response
+        self, mock_service_class, mock_session_local, mock_context: CLIContext, mock_service_response
     ) -> None:
         """Verify Round 1 is default when --round not specified."""
-        # Setup mock
-        mock_agent_instance = AsyncMock()
-        mock_agent_instance.generate_questions.return_value = mock_agent_response
-        mock_agent_class.return_value = mock_agent_instance
+        # Setup mocks
+        mock_db_session = MagicMock()
+        mock_session_local.return_value = mock_db_session
+
+        mock_service_instance = AsyncMock()
+        mock_service_instance.generate_questions.return_value = mock_service_response
+        mock_service_class.return_value = mock_service_instance
 
         # Execute without specifying round
         agent.generate_questions(mock_context, "--survey-id", "test_survey")
@@ -318,8 +337,9 @@ class TestGenerateQuestionsSuccess:
 
         # Assertions
         assert "round=1" in output
+        assert "items generated: 3" in output
 
-        # Verify agent was called with round_idx=1
-        call_args = mock_agent_instance.generate_questions.call_args
-        request = call_args[0][0]
-        assert request.round_idx == 1
+        # Verify service was called with round_num=1
+        mock_service_instance.generate_questions.assert_called_once()
+        call_args = mock_service_instance.generate_questions.call_args
+        assert call_args[1]["round_num"] == 1

@@ -39,12 +39,14 @@ class TestAuthServiceNewUserRegistration:
 
         # WHEN: Authenticate new user
         auth_service = AuthService(db_session)
-        jwt_token, is_new_user = auth_service.authenticate_or_create_user(user_data)
+        jwt_token, is_new_user, user_id = auth_service.authenticate_or_create_user(user_data)
 
         # THEN: New user record created, JWT generated, flag is True
         assert is_new_user is True
         assert jwt_token is not None
         assert isinstance(jwt_token, str)
+        assert user_id is not None
+        assert isinstance(user_id, int)
 
         # AND: User exists in database
         user = db_session.query(User).filter_by(knox_id="user123").first()
@@ -83,11 +85,12 @@ class TestAuthServiceExistingUserLogin:
 
         # WHEN: Authenticate existing user (re-login)
         auth_service = AuthService(db_session)
-        jwt_token, is_new_user = auth_service.authenticate_or_create_user(user_data)
+        jwt_token, is_new_user, user_id = auth_service.authenticate_or_create_user(user_data)
 
         # THEN: JWT regenerated, flag is False
         assert is_new_user is False
         assert jwt_token is not None
+        assert user_id == existing_user.id
 
         # AND: last_login timestamp updated
         db_session.refresh(existing_user)
@@ -120,7 +123,7 @@ class TestJWTTokenPayload:
 
         # WHEN: Generate JWT
         auth_service = AuthService(db_session)
-        jwt_token, _ = auth_service.authenticate_or_create_user(user_data)
+        jwt_token, _, _ = auth_service.authenticate_or_create_user(user_data)
 
         # THEN: Decode and verify payload contains only knox_id, iat, exp
         payload = auth_service.decode_jwt(jwt_token)
@@ -185,10 +188,11 @@ class TestAuthServiceInputValidation:
 
         # WHEN: Attempt to create user with same knox_id
         auth_service = AuthService(db_session)
-        jwt_token, is_new_user = auth_service.authenticate_or_create_user(user_data)
+        jwt_token, is_new_user, user_id = auth_service.authenticate_or_create_user(user_data)
 
         # THEN: Should return existing user (not create duplicate)
         assert is_new_user is False
+        assert user_id == user_fixture.id
         user_count = db_session.query(User).filter_by(knox_id=existing_knox_id).count()
         assert user_count == 1  # Only one record exists
 
@@ -217,7 +221,7 @@ class TestJWTTokenExpiration:
 
         # WHEN: Generate JWT
         auth_service = AuthService(db_session)
-        jwt_token, _ = auth_service.authenticate_or_create_user(user_data)
+        jwt_token, _, _ = auth_service.authenticate_or_create_user(user_data)
 
         # THEN: Decode and verify expiration
         payload = auth_service.decode_jwt(jwt_token)
