@@ -17,13 +17,13 @@ const HomePage: React.FC = () => {
 
       if (currentNickname === null) {
         // User hasn't set nickname yet, redirect to nickname setup
-        // REQ-F-A2-2: Navigate to /nickname-setup
         navigate('/nickname-setup')
       } else {
-        // User has nickname, proceed to next step
-        // TODO: When REQ-F-B1 (assessment) is implemented, navigate to /assessment
-        // For now, we still go to /signup as placeholder
-        navigate('/signup')
+        // User has nickname, proceed to self-assessment
+        // REQ-F-A2-2-1: Navigate to /self-assessment
+        // TODO: When profile check API is available, check if user has completed profile
+        // and navigate to /test if profile exists
+        navigate('/self-assessment')
       }
     } catch (err) {
       // Log detailed error for debugging

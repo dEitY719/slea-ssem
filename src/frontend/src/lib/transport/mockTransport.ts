@@ -2,7 +2,7 @@
 
 import { HttpTransport, RequestConfig } from './types'
 
-// Mock data storage
+// Mock data storage: 엔드포인트별로 미리 정의된 가짜 데이터 저장
 const mockData: Record<string, any> = {
   '/api/profile/nickname': {
     user_id: 'mock_user@samsung.com',
@@ -14,19 +14,27 @@ const mockData: Record<string, any> = {
     available: true,
     suggestions: [],
   },
+  '/profile/survey': {
+    level: null,
+    career: null,
+    job_role: null,
+    duty: null,
+    interests: null,
+  },
   // Add more mock endpoints here
 }
 
-// Track taken nicknames for mock
+// Track taken nicknames for mock: 이미 사용 중인 닉네임 목록
 const takenNicknames = new Set(['admin', 'test', 'mockuser', 'existing_user'])
 
-// Mock configuration
+// Mock configuration: 네트워크 지연, 에러 여부 등 시뮬레이션 설정
 export const mockConfig = {
   delay: 500,           // Network delay in ms
   simulateError: false, // Simulate API errors
   slowNetwork: false,   // Simulate slow network (3s delay)
 }
 
+// 실제로 요청을 처리하는 객체
 class MockTransport implements HttpTransport {
   private async mockRequest<T>(url: string, method: string, requestData?: any): Promise<T> {
     console.log(`[Mock Transport] ${method} ${url}`, requestData)
@@ -99,6 +107,70 @@ class MockTransport implements HttpTransport {
       return response as T
     }
 
+    // Handle survey update endpoint
+    if (url === '/profile/survey' && method === 'PUT') {
+      const validLevels = ['beginner', 'intermediate', 'advanced']
+
+      // Validate level if provided
+      if (requestData?.level && !validLevels.includes(requestData.level)) {
+        throw new Error('Invalid level. Must be one of: beginner, intermediate, advanced')
+      }
+
+      // Validate career if provided
+      if (requestData?.career !== undefined && requestData?.career !== null) {
+        const career = requestData.career
+        if (typeof career !== 'number' || career < 0 || career > 60) {
+          throw new Error('career must be a number between 0 and 60')
+        }
+      }
+
+      // Validate job_role if provided
+      if (requestData?.job_role) {
+        if (typeof requestData.job_role !== 'string' || requestData.job_role.length > 100) {
+          throw new Error('job_role must be a string with max 100 characters')
+        }
+      }
+
+      // Validate duty if provided
+      if (requestData?.duty) {
+        if (typeof requestData.duty !== 'string' || requestData.duty.length > 500) {
+          throw new Error('duty must be a string with max 500 characters')
+        }
+      }
+
+      // Validate interests if provided
+      if (requestData?.interests) {
+        if (!Array.isArray(requestData.interests) || requestData.interests.length > 20) {
+          throw new Error('interests must be an array with max 20 items')
+        }
+      }
+
+      // Update mock survey data
+      mockData['/profile/survey'] = {
+        ...mockData['/profile/survey'],
+        ...requestData,
+      }
+
+      const response = {
+        success: true,
+        message: '자기평가 정보 업데이트 완료',
+        user_id: 'mock_user@samsung.com',
+        survey_id: `survey_${Date.now()}`,
+        updated_at: new Date().toISOString(),
+      }
+
+      console.log('[Mock Transport] Survey updated:', mockData['/profile/survey'])
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
+    // Handle GET /profile/nickname endpoint
+    if (url === '/profile/nickname' && method === 'GET') {
+      const response = mockData['/api/profile/nickname']
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
     // Find mock data for this endpoint
     const data = mockData[url]
 
@@ -135,7 +207,9 @@ export function setMockData(endpoint: string, data: any) {
 }
 
 // Helper to simulate different scenarios
-export function setMockScenario(scenario: 'no-nickname' | 'has-nickname' | 'error') {
+export function setMockScenario(
+  scenario: 'no-nickname' | 'has-nickname' | 'no-survey' | 'has-survey' | 'error'
+) {
   switch (scenario) {
     case 'no-nickname':
       mockData['/api/profile/nickname'].nickname = null
@@ -145,6 +219,26 @@ export function setMockScenario(scenario: 'no-nickname' | 'has-nickname' | 'erro
       mockData['/api/profile/nickname'].nickname = 'mockuser'
       mockData['/api/profile/nickname'].registered_at = '2025-11-11T00:00:00Z'
       mockData['/api/profile/nickname'].updated_at = '2025-11-11T00:00:00Z'
+      mockConfig.simulateError = false
+      break
+    case 'no-survey':
+      mockData['/profile/survey'] = {
+        level: null,
+        career: null,
+        job_role: null,
+        duty: null,
+        interests: null,
+      }
+      mockConfig.simulateError = false
+      break
+    case 'has-survey':
+      mockData['/profile/survey'] = {
+        level: 'intermediate',
+        career: 5,
+        job_role: 'SW',
+        duty: 'Backend Development',
+        interests: ['AI', 'Backend'],
+      }
       mockConfig.simulateError = false
       break
     case 'error':

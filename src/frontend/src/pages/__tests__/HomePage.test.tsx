@@ -85,7 +85,8 @@ describe('HomePage', () => {
     })
   })
 
-  it('should redirect to /signup when nickname is null', async () => {
+  it('should redirect to /nickname-setup when nickname is null', async () => {
+    // REQ: REQ-F-A2-1
     ;(globalThis.fetch as any).mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -107,11 +108,13 @@ describe('HomePage', () => {
     fireEvent.click(startButton)
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/signup')
+      // REQ-F-A2-1: Navigate to nickname-setup when nickname is null
+      expect(mockNavigate).toHaveBeenCalledWith('/nickname-setup')
     })
   })
 
-  it('should proceed to next step when nickname exists', async () => {
+  it('should navigate to self-assessment when nickname exists', async () => {
+    // REQ: REQ-F-A2-2-1
     ;(globalThis.fetch as any).mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -133,9 +136,8 @@ describe('HomePage', () => {
     fireEvent.click(startButton)
 
     await waitFor(() => {
-      // TODO: When REQ-F-B1 (assessment) is implemented, change this to /assessment
-      // For now, we still navigate to /signup as placeholder
-      expect(mockNavigate).toHaveBeenCalled()
+      // REQ-F-A2-2-1: Navigate to self-assessment when nickname exists
+      expect(mockNavigate).toHaveBeenCalledWith('/self-assessment')
     })
   })
 
