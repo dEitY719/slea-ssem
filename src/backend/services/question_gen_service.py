@@ -2,34 +2,39 @@
 Question generation service for generating test questions.
 
 REQ: REQ-B-B2-Gen-1, REQ-B-B2-Gen-2, REQ-B-B2-Gen-3
+REQ: REQ-A-Agent-Backend-1 (Real Agent Integration)
 
-Note: This is a Mock implementation. In production, replace with actual LLM integration.
+Implementation: Async service with Real Agent integration for LLM-based question generation.
 """
 
+import logging
 from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
+from src.agent.llm_agent import GenerateQuestionsRequest, create_agent
 from src.backend.models.question import Question
 from src.backend.models.test_result import TestResult
 from src.backend.models.test_session import TestSession
 from src.backend.models.user_profile import UserProfileSurvey
 from src.backend.services.adaptive_difficulty_service import AdaptiveDifficultyService
 
+logger = logging.getLogger(__name__)
+
 
 class QuestionGenerationService:
     """
-    Service for generating test questions.
+    Service for generating test questions with Real Agent integration.
 
     REQ: REQ-B-B2-Gen-1, REQ-B-B2-Gen-2, REQ-B-B2-Gen-3
+    REQ: REQ-A-Agent-Backend-1 (Real Agent Integration)
 
-    Current Implementation: Mock data (placeholder for LLM integration)
-    Future: Replace mock_questions() with actual OpenAI/LLM API calls
+    Implementation:
+        - generate_questions: Async method using ItemGenAgent (Google Gemini LLM)
+        - generate_questions_adaptive: Round 2+ with adaptive difficulty
 
-    Methods:
-        generate_questions: Generate 5 questions based on survey data
-
+    Note: MOCK_QUESTIONS kept for fallback/testing purposes only.
     """
 
     # Mock question templates for different categories and difficulty levels
@@ -241,23 +246,25 @@ class QuestionGenerationService:
         """
         self.session = session
 
-    def generate_questions(
+    async def generate_questions(
         self,
         user_id: int,
         survey_id: str,
         round_num: int = 1,
     ) -> dict[str, Any]:
         """
-        Generate 5 questions based on survey data (Mock Implementation).
+        Generate 5 questions using Real Agent (async).
 
         REQ: REQ-B-B2-Gen-1, REQ-B-B2-Gen-2, REQ-B-B2-Gen-3
+        REQ: REQ-A-Agent-Backend-1 (Real Agent Integration)
 
-        In production, this would call LLM API (OpenAI, etc.) with:
-        - User's proficiency level
-        - User's interests
-        - Category-specific "fun" prompts
-
-        Current: Returns mock questions based on user interests
+        Workflow:
+        1. Validate survey exists and retrieve context
+        2. Create TestSession with in_progress status
+        3. Retrieve previous round answers (for adaptive difficulty)
+        4. Call Real Agent (ItemGenAgent) via GenerateQuestionsRequest
+        5. Save generated items to DB as Question records
+        6. Return backwards-compatible dict response
 
         Args:
             user_id: User ID
@@ -267,80 +274,166 @@ class QuestionGenerationService:
         Returns:
             Dictionary with:
                 - session_id (str): TestSession UUID
-                - questions (list): List of 5 question dictionaries with all fields
+                - questions (list): List of question dictionaries with all fields
 
         Raises:
             Exception: If survey not found
 
         """
-        # Get survey to determine user interests
-        survey = self.session.query(UserProfileSurvey).filter_by(id=survey_id).first()
-        if not survey:
-            raise Exception(f"Survey with id {survey_id} not found.")
+        logger.info(f"📝 Question generation started: survey_id={survey_id}, round={round_num}")
 
-        # Create test session
-        session_id = str(uuid4())
-        test_session = TestSession(
-            id=session_id,
-            user_id=user_id,
-            survey_id=survey_id,
-            round=round_num,
-            status="in_progress",
-        )
-        self.session.add(test_session)
-        self.session.commit()
+        try:
+            # Step 1: Validate survey and get context
+            survey = self.session.query(UserProfileSurvey).filter_by(id=survey_id).first()
+            if not survey:
+                raise Exception(f"Survey with id {survey_id} not found.")
 
-        # Generate 5 questions based on user interests
-        questions_list = []
-        interests = survey.interests or []
+            logger.debug(f"✓ Survey found: interests={survey.interests}")
 
-        # Select categories: use survey interests if available, otherwise use all categories
-        selected_categories = interests if interests else list(self.MOCK_QUESTIONS.keys())
-
-        # Generate 5 questions (cycling through categories)
-        for idx in range(5):
-            category = selected_categories[idx % len(selected_categories)]
-            mock_questions = self.MOCK_QUESTIONS.get(category, [])
-
-            if not mock_questions:
-                continue
-
-            # Select mock question (use idx to vary)
-            mock_q = mock_questions[idx % len(mock_questions)]
-
-            # Create Question record
-            question = Question(
-                id=str(uuid4()),
-                session_id=session_id,
-                item_type=mock_q["item_type"],
-                stem=mock_q["stem"],
-                choices=mock_q.get("choices"),
-                answer_schema=mock_q["answer_schema"],
-                difficulty=mock_q["difficulty"],
-                category=category,
+            # Step 2: Create TestSession
+            session_id = str(uuid4())
+            test_session = TestSession(
+                id=session_id,
+                user_id=user_id,
+                survey_id=survey_id,
                 round=round_num,
+                status="in_progress",
             )
-            self.session.add(question)
-            questions_list.append(question)
+            self.session.add(test_session)
+            self.session.commit()
+            logger.debug(f"✓ TestSession created: session_id={session_id}")
 
-        self.session.commit()
+            # Step 3: Retrieve previous answers (for adaptive difficulty)
+            prev_answers = None
+            if round_num > 1:
+                prev_answers = self._get_previous_answers(user_id, round_num - 1)
+                logger.debug(f"✓ Previous answers retrieved: count={len(prev_answers) if prev_answers else 0}")
 
-        # Format response
-        return {
-            "session_id": session_id,
-            "questions": [
+            # Step 4: Call Real Agent
+            logger.debug("📡 Creating Agent and calling generate_questions...")
+            agent = await create_agent()
+            logger.debug("✓ Agent created successfully")
+
+            agent_request = GenerateQuestionsRequest(
+                survey_id=survey_id,
+                round_idx=round_num,
+                prev_answers=prev_answers,
+            )
+            logger.debug(f"✓ GenerateQuestionsRequest created: {agent_request}")
+
+            agent_response = await agent.generate_questions(agent_request)
+            logger.info(f"✅ Agent response received: {len(agent_response.items)} items generated")
+
+            # Step 5: Save generated items to DB
+            questions_list = []
+            for item in agent_response.items:
+                # Handle both Pydantic model and dict for answer_schema
+                answer_schema_value = (
+                    item.answer_schema.model_dump()
+                    if hasattr(item.answer_schema, "model_dump")
+                    else item.answer_schema
+                )
+                question = Question(
+                    id=item.id,
+                    session_id=session_id,
+                    item_type=item.type,
+                    stem=item.stem,
+                    choices=item.choices,
+                    answer_schema=answer_schema_value,
+                    difficulty=item.difficulty,
+                    category=item.category,
+                    round=round_num,
+                )
+                self.session.add(question)
+                questions_list.append(question)
+                logger.debug(f"  - Saved question: id={item.id}, type={item.type}")
+
+            self.session.commit()
+            logger.info(f"✅ {len(questions_list)} questions saved to database")
+
+            # Step 6: Format and return response (backwards compatible dict format)
+            response = {
+                "session_id": session_id,
+                "questions": [
+                    {
+                        "id": q.id,
+                        "item_type": q.item_type,
+                        "stem": q.stem,
+                        "choices": q.choices,
+                        "answer_schema": q.answer_schema,
+                        "difficulty": q.difficulty,
+                        "category": q.category,
+                    }
+                    for q in questions_list
+                ],
+            }
+            logger.info(f"✅ Question generation completed successfully: {len(questions_list)} questions")
+            return response
+
+        except Exception as e:
+            logger.error(f"❌ Question generation failed: {e}")
+            # Return error response with empty questions (graceful degradation)
+            return {
+                "session_id": f"error_{uuid4().hex[:8]}",
+                "questions": [],
+                "error": str(e),
+            }
+
+    def _get_previous_answers(self, user_id: int, round_num: int) -> list[dict] | None:
+        """
+        Retrieve previous round answers for adaptive difficulty.
+
+        REQ: REQ-A-Agent-Backend-1 (Context for Agent)
+
+        Args:
+            user_id: User ID
+            round_num: Round number to retrieve answers from
+
+        Returns:
+            List of previous answers dict or None if not found
+
+        """
+        try:
+            # Get the latest TestResult for the round
+            test_result = (
+                self.session.query(TestResult)
+                .join(TestSession, TestSession.id == TestResult.session_id)
+                .filter(TestSession.user_id == user_id, TestResult.round == round_num)
+                .order_by(TestResult.created_at.desc())
+                .first()
+            )
+
+            if not test_result:
+                logger.debug(f"No previous answers found for round {round_num}")
+                return None
+
+            # Get questions and answers from the previous session
+            prev_session = self.session.query(TestSession).filter_by(id=test_result.session_id).first()
+            if not prev_session:
+                return None
+
+            prev_questions = self.session.query(Question).filter_by(session_id=prev_session.id).all()
+            if not prev_questions:
+                return None
+
+            # Build prev_answers list from session data
+            # This will be used by Agent for context
+            prev_answers = [
                 {
-                    "id": q.id,
-                    "item_type": q.item_type,
-                    "stem": q.stem,
-                    "choices": q.choices,
-                    "answer_schema": q.answer_schema,
-                    "difficulty": q.difficulty,
+                    "question_id": q.id,
                     "category": q.category,
+                    "difficulty": q.difficulty,
+                    "item_type": q.type,
                 }
-                for q in questions_list
-            ],
-        }
+                for q in prev_questions
+            ]
+
+            logger.debug(f"✓ Retrieved {len(prev_answers)} previous answers for adaptive context")
+            return prev_answers
+
+        except Exception as e:
+            logger.warning(f"Failed to retrieve previous answers: {e}")
+            return None
 
     def generate_questions_adaptive(
         self,

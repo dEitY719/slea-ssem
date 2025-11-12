@@ -337,25 +337,13 @@ Phase 4: Commit + Progress tracking
 
 ## 🎯 NEXT TASKS (Priority Order)
 
-**Current Status**: REQ-CLI-Agent-5 ✅ COMPLETE (Commit: 2535036)
+**Current Status**:
+- REQ-CLI-Agent-5 ✅ COMPLETE (Commit: 2535036)
+- REQ-A-Agent-Sanity-0 ✅ COMPLETE
 
-**Next High-Priority Tasks** (Ready to implement immediately after, ~10 hours total):
+**Next High-Priority Tasks** (~2.5 hours total):
 
-### Task 1: REQ-A-Agent-Sanity-0 (Agent 기본 동작 검증)
-- **File**: `scripts/test_agent_sanity_check.py` (새로 생성)
-- **Objective**: Real Google Gemini LLM으로 Agent 기본 동작 검증
-- **Duration**: ~30분
-- **What to do**:
-  1. Agent 초기화 (create_agent())
-  2. GenerateQuestionsRequest 생성
-  3. agent.generate_questions() 실행
-  4. Tool 1, 3, 5 호출 추적 (LANGCHAIN_DEBUG=1)
-  5. 문항 3개 이상 생성 확인
-- **Acceptance**: Phase 1-4 documentation in `docs/progress/REQ-A-Agent-Sanity-0.md`
-- **Dependencies**: GEMINI_API_KEY 환경변수 필요
-- **Spec Location**: `docs/AGENT-TEST-SCENARIO.md` lines 106-135
-
-### Task 2: REQ-A-Agent-Backend-1 (Mock → Real Agent 통합)
+### Task 1: REQ-A-Agent-Backend-1 (Mock → Real Agent 통합) ⭐ HIGH PRIORITY
 - **File**: `src/backend/services/question_gen_service.py` (수정)
 - **Objective**: QuestionGenerationService가 Mock 대신 Real Agent 호출
 - **Duration**: ~1.5시간
@@ -369,7 +357,7 @@ Phase 4: Commit + Progress tracking
 - **Test Location**: `tests/backend/test_question_gen_service_agent.py`
 - **Spec Location**: `docs/AGENT-TEST-SCENARIO.md` lines 471-555
 
-### Task 3 (Optional): REQ-A-Agent-Backend-2 (ScoringService 통합)
+### Task 2 (Optional): REQ-A-Agent-Backend-2 (ScoringService 통합)
 - **File**: `src/backend/services/scoring_service.py`
 - **Objective**: ScoringService가 Tool 6 호출
 - **Duration**: ~1시간 (선택사항)
@@ -388,10 +376,10 @@ Phase 4: Commit + Progress tracking
 
 ---
 
-## 🚀 Quick Start After Context Gap (10+ hours later)
+## 🚀 Quick Start After Context Gap
 
 1. Read this section first (2 min)
 2. Run: `git log --oneline -10` to see recent commits
-3. Start with Task 1 (REQ-A-Agent-Sanity-0) in `docs/AGENT-TEST-SCENARIO.md` lines 106-135
+3. Start with Task 1 (REQ-A-Agent-Backend-1) in `docs/AGENT-TEST-SCENARIO.md` lines 471-555
 4. Use TOOL documentation (don't regenerate - it already exists)
-5. Create progress file in `docs/progress/REQ-A-Agent-Sanity-0.md` after Phase 4
+5. Create progress file in `docs/progress/REQ-A-Agent-Backend-1.md` after Phase 4
