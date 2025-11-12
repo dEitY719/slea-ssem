@@ -5,10 +5,9 @@ REQ: REQ-CLI-Agent-1, REQ-CLI-Agent-2
 REQ: REQ-A-Agent-Backend-1 (CLI → Backend Service → DB integration)
 
 TEST CONFIGURATION:
-  Current: 2 multiple-choice questions (fast testing)
-  To revert to production: Change lines 164-165 to:
-    question_count=5,
-    question_types=None,
+  Current: 1 multiple-choice question (stable testing, for DB persistence analysis)
+  To revert to production: Change question_count to 5 and question_types to None
+  CLI: agent generate-questions [--domain DOMAIN] [options...]
 """
 
 import asyncio
@@ -84,7 +83,7 @@ def generate_questions(context: CLIContext, *args: str) -> None:
 
     Args:
         context: CLI context with console and logger.
-        *args: Parsed arguments (domain, --survey-id, --round, --prev-answers).
+        *args: Parsed arguments (--domain, --survey-id, --round, --prev-answers).
 
     REQ: REQ-CLI-Agent-2
 
@@ -95,13 +94,17 @@ def generate_questions(context: CLIContext, *args: str) -> None:
     round_idx = 1
     prev_answers_json = None
 
+    # Check for help first
+    if args and args[0] == "help":
+        _print_generate_questions_help(context)
+        return
+
     i = 0
     while i < len(args):
         arg = args[i]
-        # First positional argument is domain
-        if not arg.startswith("--") and domain == "AI" and i == 0:
-            domain = arg
-            i += 1
+        if arg == "--domain" and i + 1 < len(args):
+            domain = args[i + 1]
+            i += 2
         elif arg == "--survey-id" and i + 1 < len(args):
             survey_id = args[i + 1]
             i += 2
@@ -182,7 +185,7 @@ def generate_questions(context: CLIContext, *args: str) -> None:
     context.console.print(f"   survey_id={survey_id}, round={round_idx}, domain={domain}")
 
     # REQ-A-Agent-Backend-1: CLI → Backend Service → DB integration
-    # TEST DEFAULT: 2 multiple-choice questions (will be 5 mixed after testing)
+    # TEST DEFAULT: 1 multiple-choice question (for stable testing, will be 5 mixed after analysis)
     db_session = SessionLocal()
     try:
         service = QuestionGenerationService(db_session)
@@ -191,7 +194,7 @@ def generate_questions(context: CLIContext, *args: str) -> None:
                 user_id=user_id,
                 survey_id=survey_id,
                 round_num=round_idx,
-                question_count=2,  # TEST: 2 questions for quick testing
+                question_count=1,  # TEST: 1 question for stable testing
                 question_types=["multiple_choice"],  # TEST: only MC for now
                 domain=domain,
             )
@@ -1196,9 +1199,12 @@ def _print_generate_questions_help(context: CLIContext) -> None:
     )
     context.console.print()
     context.console.print("[bold white]Usage:[/bold white]")
-    context.console.print("  agent generate-questions [--survey-id SURVEY_ID] [--round 1|2] [--prev-answers JSON]")
+    context.console.print("  agent generate-questions [--domain DOMAIN] [--survey-id SURVEY_ID]")
+    context.console.print("                           [--round 1|2] [--prev-answers JSON]")
     context.console.print()
     context.console.print("[bold white]Options:[/bold white]")
+    context.console.print("  --domain TEXT            Question domain/topic [default: AI]")
+    context.console.print("                           Examples: AI, food, science, mathematics")
     context.console.print("  --survey-id TEXT         Survey ID [optional: uses latest if not provided]")
     context.console.print("  --round INTEGER          Round number: 1 (initial) or 2 (adaptive) [default: 1]")
     context.console.print("  --prev-answers TEXT      JSON array of previous answers (Round 2 only)")
@@ -1206,14 +1212,20 @@ def _print_generate_questions_help(context: CLIContext) -> None:
     context.console.print("  --help                   Show this help message")
     context.console.print()
     context.console.print("[bold white]Examples:[/bold white]")
-    context.console.print("  # Generate Round 1 using latest survey")
+    context.console.print("  # Generate Round 1 with default AI domain using latest survey")
     context.console.print("  agent generate-questions")
     context.console.print()
-    context.console.print("  # Generate with specific survey")
-    context.console.print("  agent generate-questions --survey-id survey_123")
+    context.console.print("  # Generate with specific domain")
+    context.console.print("  agent generate-questions --domain food")
+    context.console.print()
+    context.console.print("  # Generate with specific survey and domain")
+    context.console.print("  agent generate-questions --domain science --survey-id survey_123")
     context.console.print()
     context.console.print("  # Generate Round 2 with adaptive difficulty")
     context.console.print('  agent generate-questions --round 2 --prev-answers \'[{"item_id":"q1","score":85}]\'')
+    context.console.print()
+    context.console.print("  # Show this help message")
+    context.console.print("  agent generate-questions --help")
     context.console.print()
 
 
