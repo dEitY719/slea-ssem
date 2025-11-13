@@ -253,6 +253,27 @@ class MockTransport implements HttpTransport {
       return response as T
     }
 
+    // Handle GET /api/results/{sessionId} endpoint
+    if (url.startsWith('/api/results/') && method === 'GET') {
+      const sessionId = url.split('/').pop()
+      console.log('[Mock Transport] Fetching results for session:', sessionId)
+
+      // Mock result data
+      const mockResultData = {
+        user_id: 1,
+        grade: 'Advanced',
+        score: 82.5,
+        rank: 3,
+        total_cohort_size: 506,
+        percentile: 72.0,
+        percentile_confidence: 'high',
+        percentile_description: '상위 28%',
+      }
+
+      console.log('[Mock Transport] Response:', mockResultData)
+      return mockResultData as T
+    }
+
     // Find mock data for this endpoint
     const data = mockData[url]
 
