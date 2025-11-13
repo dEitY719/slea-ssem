@@ -283,7 +283,76 @@ describe('GradeDistributionChart', () => {
     })
   })
 
-  // Test 6: Accessibility
+  // Test 6: Confidence Warning (REQ-F-B4-4)
+  describe('Confidence Warning - REQ-F-B4-4', () => {
+    it('should display confidence warning when cohort size < 100', () => {
+      render(
+        <GradeDistributionChart
+          distribution={mockDistribution}
+          userGrade="Advanced"
+          rank={3}
+          totalCohortSize={85}
+          percentileDescription="상위 28%"
+          showConfidenceWarning={true}
+        />
+      )
+
+      // ✅ 경고 메시지가 표시되어야 함
+      expect(screen.getByText(/분포 신뢰도 낮음/i)).toBeInTheDocument()
+    })
+
+    it('should NOT display confidence warning when cohort size >= 100', () => {
+      render(
+        <GradeDistributionChart
+          distribution={mockDistribution}
+          userGrade="Advanced"
+          rank={3}
+          totalCohortSize={506}
+          percentileDescription="상위 28%"
+          showConfidenceWarning={false}
+        />
+      )
+
+      // ✅ 경고 메시지가 표시되지 않아야 함
+      expect(screen.queryByText(/분포 신뢰도 낮음/i)).not.toBeInTheDocument()
+    })
+
+    it('should display cohort size in warning message', () => {
+      render(
+        <GradeDistributionChart
+          distribution={mockDistribution}
+          userGrade="Advanced"
+          rank={3}
+          totalCohortSize={42}
+          percentileDescription="상위 28%"
+          showConfidenceWarning={true}
+        />
+      )
+
+      // ✅ 모집단 수가 경고 메시지에 포함되어야 함
+      expect(screen.getByText(/42명/i)).toBeInTheDocument()
+    })
+
+    it('should have prominent warning styling (CSS class)', () => {
+      const { container } = render(
+        <GradeDistributionChart
+          distribution={mockDistribution}
+          userGrade="Advanced"
+          rank={3}
+          totalCohortSize={99}
+          percentileDescription="상위 28%"
+          showConfidenceWarning={true}
+        />
+      )
+
+      // ✅ 경고 배너가 눈에 띄는 CSS 클래스를 가져야 함
+      const warningBanner = container.querySelector('.distribution-confidence-warning')
+      expect(warningBanner).toBeInTheDocument()
+      expect(warningBanner).toHaveClass('distribution-confidence-warning')
+    })
+  })
+
+  // Test 7: Accessibility
   describe('Accessibility', () => {
     it('should have proper ARIA labels', () => {
       render(

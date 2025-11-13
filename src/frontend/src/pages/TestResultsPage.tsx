@@ -1,4 +1,4 @@
-// REQ: REQ-F-B4-1, REQ-F-B4-3
+// REQ: REQ-F-B4-1, REQ-F-B4-3, REQ-F-B4-4
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTestResults } from '../hooks/useTestResults'
@@ -111,13 +111,14 @@ const TestResultsPage: React.FC = () => {
           />
         </div>
 
-        {/* Grade Distribution Chart - REQ: REQ-F-B4-3 */}
+        {/* Grade Distribution Chart - REQ: REQ-F-B4-3, REQ-F-B4-4 */}
         <GradeDistributionChart
           distribution={resultData.grade_distribution}
           userGrade={resultData.grade}
           rank={resultData.rank}
           totalCohortSize={resultData.total_cohort_size}
           percentileDescription={resultData.percentile_description}
+          showConfidenceWarning={showConfidenceWarning}
         />
 
         {/* Action Buttons */}

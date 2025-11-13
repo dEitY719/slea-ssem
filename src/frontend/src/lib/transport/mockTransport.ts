@@ -10,7 +10,7 @@ const mockData: Record<string, any> = {
     registered_at: null,
     updated_at: null,
   },
-  '/profile/nickname/check': {
+  '/api/profile/nickname/check': {
     available: true,
     suggestions: [],
   },
@@ -128,7 +128,7 @@ class MockTransport implements HttpTransport {
     }
 
     // Handle nickname register endpoint
-    if (url === '/profile/register' && method === 'POST' && requestData?.nickname) {
+    if (url === '/api/profile/register' && method === 'POST' && requestData?.nickname) {
       const nickname: string = requestData.nickname
 
       if (nickname.length < 3) {
@@ -169,7 +169,7 @@ class MockTransport implements HttpTransport {
     }
 
     // Handle survey update endpoint
-    if (url === '/profile/survey' && method === 'PUT') {
+    if (url === '/api/profile/survey' && method === 'PUT') {
       const validLevels = ['beginner', 'intermediate', 'advanced']
 
       // Validate level if provided
@@ -226,7 +226,7 @@ class MockTransport implements HttpTransport {
     }
 
     // Handle questions generate endpoint
-    if (url === '/questions/generate' && method === 'POST') {
+    if (url === '/api/questions/generate' && method === 'POST') {
       console.log('[Mock Transport] Generating questions for:', requestData)
       const response = mockData['/questions/generate']
       console.log('[Mock Transport] Response:', response)
@@ -234,7 +234,7 @@ class MockTransport implements HttpTransport {
     }
 
     // Handle questions autosave endpoint
-    if (url === '/questions/autosave' && method === 'POST') {
+    if (url === '/api/questions/autosave' && method === 'POST') {
       console.log('[Mock Transport] Autosaving answer:', requestData)
       const response = {
         saved: true,

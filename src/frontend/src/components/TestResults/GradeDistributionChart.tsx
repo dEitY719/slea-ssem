@@ -9,6 +9,7 @@ interface GradeDistributionChartProps {
   rank: number
   totalCohortSize: number
   percentileDescription: string
+  showConfidenceWarning?: boolean
 }
 
 /**
@@ -28,6 +29,7 @@ export const GradeDistributionChart: React.FC<GradeDistributionChartProps> = ({
   rank,
   totalCohortSize,
   percentileDescription,
+  showConfidenceWarning = false,
 }) => {
   // Find max count for scaling bars
   const maxCount = Math.max(...distribution.map(d => d.count), 1)
@@ -35,6 +37,19 @@ export const GradeDistributionChart: React.FC<GradeDistributionChartProps> = ({
   return (
     <div className="grade-distribution-container">
       <h2 className="distribution-title">전사 상대 순위 및 분포</h2>
+
+      {/* Confidence Warning Banner - REQ: REQ-F-B4-4 */}
+      {showConfidenceWarning && (
+        <div className="distribution-confidence-warning" role="alert">
+          <span className="warning-icon">⚠️</span>
+          <div className="warning-content">
+            <strong className="warning-title">분포 신뢰도 낮음</strong>
+            <p className="warning-description">
+              모집단이 {totalCohortSize}명으로 적어 통계적 신뢰도가 낮을 수 있습니다.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Text Summary */}
       <div className="distribution-summary">
