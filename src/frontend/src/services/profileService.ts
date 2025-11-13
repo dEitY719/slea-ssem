@@ -83,7 +83,7 @@ export const profileService = {
    * @returns Availability status and suggestions
    */
   async checkNickname(nickname: string): Promise<NicknameCheckResponse> {
-    return transport.post<NicknameCheckResponse>('/profile/nickname/check', {
+    return transport.post<NicknameCheckResponse>('/api/profile/nickname/check', {
       nickname,
     })
   },
@@ -95,7 +95,7 @@ export const profileService = {
    * @returns Registration response
    */
   async registerNickname(nickname: string): Promise<NicknameRegisterResponse> {
-    return transport.post<NicknameRegisterResponse>('/profile/register', {
+    return transport.post<NicknameRegisterResponse>('/api/profile/register', {
       nickname,
     })
   },
@@ -107,6 +107,6 @@ export const profileService = {
    * @returns Survey update response with survey_id
    */
   async updateSurvey(surveyData: SurveyUpdateRequest): Promise<SurveyUpdateResponse> {
-    return transport.put<SurveyUpdateResponse>('/profile/survey', surveyData)
+    return transport.put<SurveyUpdateResponse>('/api/profile/survey', surveyData)
   },
 }

@@ -70,7 +70,7 @@ export const questionService = {
   async generateQuestions(
     request: GenerateQuestionsRequest
   ): Promise<GenerateQuestionsResponse> {
-    return transport.post<GenerateQuestionsResponse>('/questions/generate', request)
+    return transport.post<GenerateQuestionsResponse>('/api/questions/generate', request)
   },
 
   /**
@@ -80,6 +80,6 @@ export const questionService = {
    * @returns Autosave response
    */
   async autosave(autosaveData: AutosaveRequest): Promise<AutosaveResponse> {
-    return transport.post<AutosaveResponse>('/questions/autosave', autosaveData)
+    return transport.post<AutosaveResponse>('/api/questions/autosave', autosaveData)
   },
 }
