@@ -125,68 +125,109 @@ describe('GradeDistributionChart', () => {
     })
   })
 
-  // Test 4: Edge cases
-  describe('Edge Cases', () => {
-    it('should handle empty distribution gracefully', () => {
-      render(
-        <GradeDistributionChart
-          distribution={[]}
-          userGrade="Beginner"
-          rank={1}
-          totalCohortSize={1}
-          percentileDescription="상위 100%"
-        />
-      )
+    // Test 4: Edge cases
+    describe('Edge Cases', () => {
+      it('should handle empty distribution gracefully', () => {
+        render(
+          <GradeDistributionChart
+            distribution={[]}
+            userGrade="Beginner"
+            rank={1}
+            totalCohortSize={1}
+            percentileDescription="상위 100%"
+          />
+        )
 
-      // 에러 없이 렌더링되어야 함
-      expect(screen.getByText(/전사 상대 순위 및 분포/i)).toBeInTheDocument()
+        // 에러 없이 렌더링되어야 함
+        expect(screen.getByText(/전사 상대 순위 및 분포/i)).toBeInTheDocument()
+      })
+
+      it('should handle large cohort size (1000+)', () => {
+        const largeDistribution: GradeDistribution[] = [
+          { grade: 'Beginner', count: 250, percentage: 25.0 },
+          { grade: 'Intermediate', count: 300, percentage: 30.0 },
+          { grade: 'Intermediate-Advanced', count: 200, percentage: 20.0 },
+          { grade: 'Advanced', count: 150, percentage: 15.0 },
+          { grade: 'Elite', count: 100, percentage: 10.0 },
+        ]
+
+        render(
+          <GradeDistributionChart
+            distribution={largeDistribution}
+            userGrade="Elite"
+            rank={50}
+            totalCohortSize={1000}
+            percentileDescription="상위 5%"
+          />
+        )
+
+        const summaryParagraph = screen.getByText(/상위 5%/).closest('.summary-text')
+        if (!summaryParagraph) {
+          throw new Error('Summary paragraph not found')
+        }
+        expect(summaryParagraph).toHaveTextContent('순위 50/1000')
+      })
+
+      it('should handle single grade distribution', () => {
+        const singleGrade: GradeDistribution[] = [
+          { grade: 'Beginner', count: 10, percentage: 100.0 },
+        ]
+
+        render(
+          <GradeDistributionChart
+            distribution={singleGrade}
+            userGrade="Beginner"
+            rank={1}
+            totalCohortSize={10}
+            percentileDescription="상위 10%"
+          />
+        )
+
+        expect(screen.getByText(/시작자/i)).toBeInTheDocument()
+        expect(screen.getByText(/100%/)).toBeInTheDocument()
+      })
+
+      it('should clamp negative bar heights to zero', () => {
+        const invalidDistribution: GradeDistribution[] = [
+          { grade: 'Beginner', count: -10, percentage: -5 },
+          { grade: 'Intermediate', count: 0, percentage: 0 },
+        ]
+
+        const { container } = render(
+          <GradeDistributionChart
+            distribution={invalidDistribution}
+            userGrade="Beginner"
+            rank={1}
+            totalCohortSize={100}
+            percentileDescription="상위 10%"
+          />
+        )
+
+        const bars = Array.from(container.querySelectorAll('.distribution-bar'))
+        expect(bars[0]?.getAttribute('style')).toContain('--bar-height: 0%')
+      })
+
+      it('should default NaN bar heights to zero', () => {
+        const nanDistribution: GradeDistribution[] = [
+          { grade: 'Beginner', count: Number.NaN, percentage: 10 },
+          { grade: 'Intermediate', count: 50, percentage: 90 },
+        ]
+
+        const { container } = render(
+          <GradeDistributionChart
+            distribution={nanDistribution}
+            userGrade="Intermediate"
+            rank={2}
+            totalCohortSize={200}
+            percentileDescription="상위 20%"
+          />
+        )
+
+        const bars = Array.from(container.querySelectorAll('.distribution-bar'))
+        expect(bars[0]?.getAttribute('style')).toContain('--bar-height: 0%')
+        expect(bars[1]?.getAttribute('style')).toContain('--bar-height: 0%')
+      })
     })
-
-    it('should handle large cohort size (1000+)', () => {
-      const largeDistribution: GradeDistribution[] = [
-        { grade: 'Beginner', count: 250, percentage: 25.0 },
-        { grade: 'Intermediate', count: 300, percentage: 30.0 },
-        { grade: 'Intermediate-Advanced', count: 200, percentage: 20.0 },
-        { grade: 'Advanced', count: 150, percentage: 15.0 },
-        { grade: 'Elite', count: 100, percentage: 10.0 },
-      ]
-
-      render(
-        <GradeDistributionChart
-          distribution={largeDistribution}
-          userGrade="Elite"
-          rank={50}
-          totalCohortSize={1000}
-          percentileDescription="상위 5%"
-        />
-      )
-
-      const summaryParagraph = screen.getByText(/상위 5%/).closest('.summary-text')
-      if (!summaryParagraph) {
-        throw new Error('Summary paragraph not found')
-      }
-      expect(summaryParagraph).toHaveTextContent('순위 50/1000')
-    })
-
-    it('should handle single grade distribution', () => {
-      const singleGrade: GradeDistribution[] = [
-        { grade: 'Beginner', count: 10, percentage: 100.0 },
-      ]
-
-      render(
-        <GradeDistributionChart
-          distribution={singleGrade}
-          userGrade="Beginner"
-          rank={1}
-          totalCohortSize={10}
-          percentileDescription="상위 10%"
-        />
-      )
-
-      expect(screen.getByText(/시작자/i)).toBeInTheDocument()
-      expect(screen.getByText(/100%/)).toBeInTheDocument()
-    })
-  })
 
   // Test 5: Acceptance criteria (REQ-F-B4-3)
   describe('Acceptance Criteria - REQ-F-B4-3', () => {

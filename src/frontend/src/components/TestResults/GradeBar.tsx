@@ -18,8 +18,14 @@ export const GradeBar: React.FC<GradeBarProps> = ({
   isUserGrade,
 }) => {
   const gradeKorean = getGradeKorean(grade)
+  const safeCount = Number.isFinite(count) && count >= 0 ? count : 0
+  const safePercentage = Number.isFinite(percentage) && percentage >= 0 ? percentage : 0
+  const normalizedHeight = Number.isFinite(barHeightPercentage)
+    ? Math.min(Math.max(barHeightPercentage, 0), 100)
+    : 0
+
   const barStyle = {
-    '--bar-height': `${barHeightPercentage}%`,
+    '--bar-height': `${normalizedHeight}%`,
   } as React.CSSProperties
 
   return (
@@ -39,11 +45,11 @@ export const GradeBar: React.FC<GradeBarProps> = ({
       <div className="bar-container">
         <div
           className="bar-fill"
-          aria-label={`${gradeKorean}: ${count} people, ${percentage}%`}
+          aria-label={`${gradeKorean}: ${safeCount} people, ${safePercentage}%`}
         >
           <div className="bar-value">
-            <span className="bar-count">{count}</span>
-            <span className="bar-percentage">({percentage}%)</span>
+            <span className="bar-count">{safeCount}</span>
+            <span className="bar-percentage">({safePercentage}%)</span>
           </div>
         </div>
       </div>
