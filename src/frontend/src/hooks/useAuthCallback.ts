@@ -3,14 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { saveToken } from '../utils/auth'
 import { parseUserData } from '../utils/parseUserData'
-import { transport } from '../lib/transport'
-
-interface LoginResponse {
-  access_token: string
-  token_type: string
-  user_id: string
-  is_new_user: boolean
-}
+import { authService, type LoginResponse } from '../services'
 
 interface UseAuthCallbackResult {
   loading: boolean
@@ -69,8 +62,8 @@ export function useAuthCallback(searchParams: URLSearchParams): UseAuthCallbackR
             return
           }
 
-          // Call backend authentication API using transport layer
-          data = await transport.post<LoginResponse>('/api/auth/login', userData)
+          // Call backend authentication API using service layer
+          data = await authService.login(userData)
         }
 
         // Save JWT token to localStorage

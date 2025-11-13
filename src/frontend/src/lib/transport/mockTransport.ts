@@ -21,6 +21,67 @@ const mockData: Record<string, any> = {
     duty: null,
     interests: null,
   },
+  '/questions/generate': {
+    session_id: 'mock_session_123',
+    questions: [
+      {
+        id: 'q1',
+        item_type: 'multiple_choice',
+        stem: 'What is the primary goal of machine learning?',
+        choices: [
+          'To replace human intelligence',
+          'To enable computers to learn from data',
+          'To create artificial consciousness',
+          'To build faster processors'
+        ],
+        difficulty: 3,
+        category: 'AI Basics',
+      },
+      {
+        id: 'q2',
+        item_type: 'true_false',
+        stem: 'Deep learning is a subset of machine learning.',
+        choices: null,
+        difficulty: 2,
+        category: 'AI Basics',
+      },
+      {
+        id: 'q3',
+        item_type: 'short_answer',
+        stem: 'Explain the difference between supervised and unsupervised learning.',
+        choices: null,
+        difficulty: 5,
+        category: 'ML Fundamentals',
+      },
+      {
+        id: 'q4',
+        item_type: 'multiple_choice',
+        stem: 'Which algorithm is commonly used for classification tasks?',
+        choices: [
+          'K-means clustering',
+          'Random Forest',
+          'PCA',
+          'DBSCAN'
+        ],
+        difficulty: 4,
+        category: 'ML Algorithms',
+      },
+      {
+        id: 'q5',
+        item_type: 'short_answer',
+        stem: 'What is overfitting and how can you prevent it?',
+        choices: null,
+        difficulty: 6,
+        category: 'ML Fundamentals',
+      },
+    ],
+  },
+  '/questions/autosave': {
+    saved: true,
+    session_id: 'mock_session_123',
+    question_id: '',
+    saved_at: new Date().toISOString(),
+  },
   // Add more mock endpoints here
 }
 
@@ -160,6 +221,27 @@ class MockTransport implements HttpTransport {
       }
 
       console.log('[Mock Transport] Survey updated:', mockData['/profile/survey'])
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
+    // Handle questions generate endpoint
+    if (url === '/questions/generate' && method === 'POST') {
+      console.log('[Mock Transport] Generating questions for:', requestData)
+      const response = mockData['/questions/generate']
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
+    // Handle questions autosave endpoint
+    if (url === '/questions/autosave' && method === 'POST') {
+      console.log('[Mock Transport] Autosaving answer:', requestData)
+      const response = {
+        saved: true,
+        session_id: requestData?.session_id || 'mock_session_123',
+        question_id: requestData?.question_id || '',
+        saved_at: new Date().toISOString(),
+      }
       console.log('[Mock Transport] Response:', response)
       return response as T
     }

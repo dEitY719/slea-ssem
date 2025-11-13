@@ -1,8 +1,8 @@
 // REQ: REQ-F-A2-2
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useNicknameCheck } from '../hooks/useNicknameCheck'
-import { transport } from '../lib/transport'
+import { profileService } from '../services'
 import './NicknameSetupPage.css'
 
 /**
@@ -43,7 +43,7 @@ const NicknameSetupPage: React.FC = () => {
 
     setIsSubmitting(true)
     try {
-      await transport.post('/profile/register', { nickname })
+      await profileService.registerNickname(nickname)
       setIsSubmitting(false)
       navigate('/self-assessment', { replace: true })
     } catch (error) {
@@ -54,7 +54,8 @@ const NicknameSetupPage: React.FC = () => {
     }
   }, [checkStatus, isSubmitting, navigate, nickname, setManualError])
 
-  const getStatusMessage = () => {
+  // Memoize status message to avoid recalculation on every render
+  const statusMessage = useMemo(() => {
     if (checkStatus === 'available') {
       return {
         text: '사용 가능한 닉네임입니다.',
@@ -74,9 +75,7 @@ const NicknameSetupPage: React.FC = () => {
       }
     }
     return null
-  }
-
-  const statusMessage = getStatusMessage()
+  }, [checkStatus, errorMessage])
   const isChecking = checkStatus === 'checking'
   const isNextEnabled = checkStatus === 'available'
   const isInputDisabled = isChecking || isSubmitting

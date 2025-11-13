@@ -1,16 +1,6 @@
 // REQ: REQ-F-A2-1
 import { useState, useCallback } from 'react'
-import { transport } from '../lib/transport'
-
-/**
- * User profile response from GET /api/profile/nickname
- */
-interface UserProfileResponse {
-  user_id: string
-  nickname: string | null
-  registered_at: string | null
-  updated_at: string | null
-}
+import { profileService, type UserProfileResponse } from '../services'
 
 /**
  * Hook for fetching and managing user profile information
@@ -44,8 +34,8 @@ export function useUserProfile() {
     setError(null)
 
     try {
-      // Use transport layer instead of direct fetch
-      const data = await transport.get<UserProfileResponse>('/api/profile/nickname')
+      // Use service layer for API calls
+      const data = await profileService.getNickname()
 
       setNickname(data.nickname)
       setLoading(false)

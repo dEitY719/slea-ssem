@@ -1,7 +1,7 @@
 // REQ: REQ-F-A2-2-4
 import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { transport } from '../lib/transport'
+import { profileService } from '../services'
 import './ProfileReviewPage.css'
 
 /**
@@ -20,6 +20,7 @@ import './ProfileReviewPage.css'
 
 type LocationState = {
   level?: number
+  surveyId?: string
 }
 
 type NicknameResponse = {
@@ -57,7 +58,7 @@ const ProfileReviewPage: React.FC = () => {
       setIsLoading(true)
       setError(null)
       try {
-        const response = await transport.get<NicknameResponse>('/profile/nickname')
+        const response = await profileService.getNickname()
         setNickname(response.nickname)
       } catch (err) {
         const message =
@@ -72,8 +73,19 @@ const ProfileReviewPage: React.FC = () => {
   }, [])
 
   const handleStartClick = useCallback(() => {
-    navigate('/home', { replace: true })
-  }, [navigate])
+    if (!state?.surveyId) {
+      setError('자기평가 정보가 없습니다. 다시 시도해주세요.')
+      return
+    }
+
+    // Navigate to test page with surveyId
+    navigate('/test', {
+      state: {
+        surveyId: state.surveyId,
+        round: 1,
+      },
+    })
+  }, [state?.surveyId, navigate])
 
   const handleEditClick = useCallback(() => {
     navigate('/self-assessment')
@@ -132,15 +144,15 @@ const ProfileReviewPage: React.FC = () => {
             className="start-button"
             onClick={handleStartClick}
           >
-            시작하기
+            테스트 시작
           </button>
         </div>
 
         <div className="info-box">
           <p className="info-title">다음 단계</p>
           <p className="info-text">
-            "시작하기"를 클릭하면 홈 화면으로 이동합니다.
-            테스트를 시작하거나 대시보드를 확인할 수 있습니다.
+            "테스트 시작"을 클릭하면 AI 역량 레벨 테스트가 시작됩니다.
+            1차 문제 5개가 생성되며, 약 10분이 소요됩니다.
           </p>
         </div>
       </div>

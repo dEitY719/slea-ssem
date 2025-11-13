@@ -1,7 +1,7 @@
 // REQ: REQ-F-A2-2-2
 import React, { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { transport } from '../lib/transport'
+import { profileService } from '../services'
 import './SelfAssessmentPage.css'
 
 /**
@@ -67,12 +67,17 @@ const SelfAssessmentPage: React.FC = () => {
 
     try {
       const backendLevel = convertLevelToBackend(level)
-      await transport.put('/profile/survey', {
+      const response = await profileService.updateSurvey({
         level: backendLevel,
+        career: 0,
+        interests: [],
       })
 
       setIsSubmitting(false)
-      navigate('/profile-review', { replace: true, state: { level } })
+      navigate('/profile-review', {
+        replace: true,
+        state: { level, surveyId: response.survey_id },
+      })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : '자기평가 정보 저장에 실패했습니다.'

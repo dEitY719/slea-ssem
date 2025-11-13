@@ -1,14 +1,6 @@
 // REQ: REQ-F-A2-2
 import { useState, useCallback } from 'react'
-import { transport } from '../lib/transport'
-
-/**
- * Nickname check response from POST /profile/nickname/check
- */
-interface NicknameCheckResponse {
-  available: boolean
-  suggestions: string[]
-}
+import { profileService, type NicknameCheckResponse } from '../services'
 
 /**
  * Check status type
@@ -97,10 +89,7 @@ export function useNicknameCheck(): UseNicknameCheckResult {
     setCheckStatus('checking')
 
     try {
-      const response = await transport.post<NicknameCheckResponse>(
-        '/profile/nickname/check',
-        { nickname }
-      )
+      const response = await profileService.checkNickname(nickname)
 
       if (response.available) {
         setCheckStatus('available')
