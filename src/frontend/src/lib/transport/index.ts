@@ -6,13 +6,21 @@ import { mockTransport } from './mockTransport'
 
 /**
  * Check if mock mode is enabled
- * Priority: URL param > Environment variable
+ * Priority: URL param > localStorage > Environment variable
  */
 function isMockMode(): boolean {
   // Check URL parameter first (for testing: ?api_mock=true or legacy ?mock=true)
   const urlParams = new URLSearchParams(window.location.search)
   const mockFlag = urlParams.get('api_mock') ?? urlParams.get('mock')
-  if (mockFlag === 'true') return true
+  if (mockFlag === 'true') {
+    // Persist mock mode to localStorage
+    localStorage.setItem('slea_ssem_api_mock', 'true')
+    return true
+  }
+
+  // Check localStorage (persists across page navigation)
+  const storedMockFlag = localStorage.getItem('slea_ssem_api_mock')
+  if (storedMockFlag === 'true') return true
 
   // Check environment variable
   return import.meta.env.VITE_MOCK_API === 'true'

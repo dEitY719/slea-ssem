@@ -27,7 +27,9 @@ export const getToken = (): string | null => {
 
 /**
  * Remove JWT token from localStorage.
+ * Also clears mock mode flag if present.
  */
 export const removeToken = (): void => {
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem('slea_ssem_api_mock')
 }

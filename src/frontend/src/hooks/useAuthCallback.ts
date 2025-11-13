@@ -45,6 +45,9 @@ export function useAuthCallback(searchParams: URLSearchParams): UseAuthCallbackR
           // 실제 API 호출 없이 mock 응답 반환
           console.log('🎭 Mock mode: 백엔드 API 호출 생략 (api_mock)')
 
+          // Save mock mode flag to localStorage to persist across page navigation
+          localStorage.setItem('slea_ssem_api_mock', 'true')
+
           // Mock 응답 생성 (신규 사용자로 시뮬레이션)
           data = {
             access_token: 'mock_jwt_token_' + Date.now(),
