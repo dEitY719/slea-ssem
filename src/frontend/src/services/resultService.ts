@@ -14,6 +14,15 @@ export type Grade = 'Beginner' | 'Intermediate' | 'Intermediate-Advanced' | 'Adv
 export type PercentileConfidence = 'medium' | 'high'
 
 /**
+ * Grade distribution data (REQ: REQ-F-B4-3)
+ */
+export interface GradeDistribution {
+  grade: Grade
+  count: number
+  percentage: number
+}
+
+/**
  * Test result data
  */
 export interface GradeResult {
@@ -25,6 +34,7 @@ export interface GradeResult {
   percentile: number // 0-100
   percentile_confidence: PercentileConfidence
   percentile_description: string // e.g., "상위 28%"
+  grade_distribution: GradeDistribution[] // REQ: REQ-F-B4-3
 }
 
 /**

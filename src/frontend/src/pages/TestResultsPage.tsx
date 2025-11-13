@@ -1,8 +1,8 @@
-// REQ: REQ-F-B4-1
+// REQ: REQ-F-B4-1, REQ-F-B4-3
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTestResults } from '../hooks/useTestResults'
-import { GradeBadge, MetricCard, ActionButtons } from '../components/TestResults'
+import { GradeBadge, MetricCard, ActionButtons, GradeDistributionChart } from '../components/TestResults'
 import './TestResultsPage.css'
 
 /**
@@ -110,6 +110,15 @@ const TestResultsPage: React.FC = () => {
             percentile={resultData.percentile}
           />
         </div>
+
+        {/* Grade Distribution Chart - REQ: REQ-F-B4-3 */}
+        <GradeDistributionChart
+          distribution={resultData.grade_distribution}
+          userGrade={resultData.grade}
+          rank={resultData.rank}
+          totalCohortSize={resultData.total_cohort_size}
+          percentileDescription={resultData.percentile_description}
+        />
 
         {/* Action Buttons */}
         <ActionButtons

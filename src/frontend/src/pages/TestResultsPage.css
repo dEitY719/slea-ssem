@@ -285,6 +285,206 @@
   transform: translateY(-2px);
 }
 
+/* Grade Distribution Chart - REQ: REQ-F-B4-3 */
+.grade-distribution-container {
+  margin: 2rem 0;
+  padding: 2rem;
+  background-color: #f9f9f9;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.distribution-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.distribution-summary {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.summary-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.summary-percentile {
+  color: #667eea;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.summary-rank {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.summary-description {
+  font-size: 0.9rem;
+  color: #888;
+  margin-top: 0.5rem;
+}
+
+/* Bar Chart */
+.distribution-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 1rem;
+  height: 300px;
+  padding: 1rem;
+  background-color: white;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.distribution-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.distribution-bar:hover {
+  transform: translateY(-4px);
+}
+
+.bar-label {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.bar-grade-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #333;
+  display: block;
+}
+
+.bar-user-indicator {
+  font-size: 0.8rem;
+  color: #667eea;
+  font-weight: 700;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.bar-container {
+  width: 100%;
+  height: 200px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.bar-fill {
+  width: 80%;
+  min-height: 20px;
+  background: linear-gradient(to top, #90caf9 0%, #42a5f5 100%);
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 0.5rem;
+  transition: height 0.6s ease;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* User's current grade highlight */
+.user-current-grade .bar-fill {
+  background: linear-gradient(to top, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 -4px 12px rgba(102, 126, 234, 0.4);
+  border: 3px solid #667eea;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 -4px 12px rgba(102, 126, 234, 0.4);
+  }
+  50% {
+    box-shadow: 0 -6px 16px rgba(102, 126, 234, 0.6);
+  }
+}
+
+.bar-value {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.bar-count {
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+}
+
+.bar-percentage {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.bar-grade-english {
+  font-size: 0.75rem;
+  color: #888;
+  font-style: italic;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+/* Legend */
+.distribution-legend {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.legend-icon-normal {
+  background: linear-gradient(to top, #90caf9 0%, #42a5f5 100%);
+}
+
+.legend-icon-user {
+  background: linear-gradient(to top, #667eea 0%, #764ba2 100%);
+  border: 2px solid #667eea;
+}
+
+.legend-text {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .results-container {
@@ -322,5 +522,37 @@
 
   .action-buttons button {
     width: 100%;
+  }
+
+  /* Distribution chart mobile */
+  .distribution-chart {
+    height: 250px;
+    gap: 0.5rem;
+  }
+
+  .bar-container {
+    height: 150px;
+  }
+
+  .bar-grade-name {
+    font-size: 0.8rem;
+  }
+
+  .bar-user-indicator {
+    font-size: 0.7rem;
+  }
+
+  .bar-count {
+    font-size: 0.9rem;
+  }
+
+  .bar-percentage {
+    font-size: 0.75rem;
+  }
+
+  .distribution-legend {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
   }
 }

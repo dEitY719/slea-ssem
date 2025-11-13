@@ -258,7 +258,7 @@ class MockTransport implements HttpTransport {
       const sessionId = url.split('/').pop()
       console.log('[Mock Transport] Fetching results for session:', sessionId)
 
-      // Mock result data
+      // Mock result data (REQ: REQ-F-B4-1, REQ-F-B4-3)
       const mockResultData = {
         user_id: 1,
         grade: 'Advanced',
@@ -268,6 +268,14 @@ class MockTransport implements HttpTransport {
         percentile: 72.0,
         percentile_confidence: 'high',
         percentile_description: '상위 28%',
+        // REQ: REQ-F-B4-3 - Grade distribution data
+        grade_distribution: [
+          { grade: 'Beginner', count: 102, percentage: 20.2 },
+          { grade: 'Intermediate', count: 156, percentage: 30.8 },
+          { grade: 'Intermediate-Advanced', count: 98, percentage: 19.4 },
+          { grade: 'Advanced', count: 95, percentage: 18.8 },
+          { grade: 'Elite', count: 55, percentage: 10.8 },
+        ],
       }
 
       console.log('[Mock Transport] Response:', mockResultData)
