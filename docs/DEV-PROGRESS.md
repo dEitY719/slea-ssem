@@ -30,7 +30,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-B2 | 문항 풀이 화면 | 0 | ⏳ Backlog | 7개 sub-tasks |
 | REQ-F-B2-1 | 문항 순차 표시 및 답변 제출 UI | 4 | ✅ Done | 9 tests (100%), Commit: f852dfe, Progress: docs/progress/REQ-F-B2-1.md |
 | REQ-F-B2-2 | 남은 시간(타이머) 표시 (20분 제한, 색상 변화) | 4 | ✅ Done | 5 tests (100%), Commit: dd7cbe3, Progress: docs/progress/REQ-F-B2-2.md |
-| REQ-F-B2-6 | 자동 저장 및 "저장됨" 표시 (실시간 저장) | 4 | ✅ Done | 5 tests (100%), Commit: (pending), Progress: docs/progress/REQ-F-B2-6.md |
+| REQ-F-B2-6 | 자동 저장 및 "저장됨" 표시 (실시간 저장) | 4 | ✅ Done | 5 tests (100%), Commit: 068b2ff, Progress: docs/progress/REQ-F-B2-6.md |
 | REQ-F-B3 | 해설 화면 | 0 | ⏳ Backlog | 2개 sub-tasks |
 | REQ-F-B4 | 최종 결과 페이지 | 0 | ⏳ Backlog | 3개 sub-tasks |
 | REQ-F-B5 | 재응시 및 비교 화면 | 0 | ⏳ Backlog | 3개 sub-tasks |
