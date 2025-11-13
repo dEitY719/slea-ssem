@@ -60,17 +60,29 @@ export function useAuthCallback(searchParams: URLSearchParams): UseAuthCallbackR
           await new Promise((resolve) => setTimeout(resolve, 500))
         } else {
           // 실제 모드: 백엔드 API 호출 (Transport pattern 사용)
-          const userData = parseUserData(searchParams)
+          let userData
 
-          // Validate required parameters
-          if (!userData) {
-            setError(
-              isSsoMock
-                ? 'SSO mock 모드에서 전달된 사용자 정보가 부족합니다.'
-                : '필수 정보가 누락되었습니다.'
-            )
-            setLoading(false)
-            return
+          if (isSsoMock) {
+            // SSO mock mode: 가짜 SSO 데이터를 생성하여 백엔드에 전달
+            // 백엔드는 이를 처리하여 실제 JWT 토큰 반환
+            console.log('🎭 SSO mock mode: 가짜 SSO 데이터로 백엔드 호출')
+            userData = {
+              knox_id: 'test_mock_user_' + Date.now(),
+              name: 'Test Mock User',
+              dept: 'Engineering',
+              business_unit: 'S.LSI',
+              email: `test_mock_${Date.now()}@samsung.com`,
+            }
+          } else {
+            // 실제 SSO 데이터를 URL 파라미터에서 파싱
+            userData = parseUserData(searchParams)
+
+            // Validate required parameters
+            if (!userData) {
+              setError('필수 정보가 누락되었습니다.')
+              setLoading(false)
+              return
+            }
           }
 
           // Call backend authentication API using service layer

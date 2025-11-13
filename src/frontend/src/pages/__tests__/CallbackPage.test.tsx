@@ -226,6 +226,52 @@ describe('CallbackPage - REQ-F-A1-2', () => {
     expect(localStorageMock.getItem('slea_ssem_token')).toMatch(/^mock_jwt_token_/)
   })
 
+  // Test 5.5: SSO mock mode - 가짜 SSO 데이터로 백엔드 호출하여 실제 JWT 받기
+  it('should call backend with fake SSO data when sso_mock=true', async () => {
+    const mockResponse = {
+      access_token: 'real_jwt_token_from_backend',
+      token_type: 'bearer',
+      user_id: 'mock_user_123',
+      is_new_user: true,
+    }
+
+    ;(global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: async () => mockResponse,
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/auth/callback?sso_mock=true']}>
+        <CallbackPage />
+      </MemoryRouter>
+    )
+
+    // 백엔드 API가 호출되어야 함
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/auth/login'),
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('test_mock_user_'),
+        })
+      )
+    })
+
+    // 백엔드에서 받은 실제 JWT 토큰이 저장되어야 함
+    await waitFor(() => {
+      expect(localStorageMock.getItem('slea_ssem_token')).toBe('real_jwt_token_from_backend')
+    })
+
+    // api_mock 플래그는 저장되지 않아야 함 (백엔드를 실제로 호출했으므로)
+    expect(localStorageMock.getItem('slea_ssem_api_mock')).toBeNull()
+
+    // /home으로 리다이렉트
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/home')
+    })
+  })
+
   // Test 6: Performance - 3초 이내 리다이렉트
   it('should redirect within 3 seconds after successful authentication', async () => {
     const startTime = Date.now()
