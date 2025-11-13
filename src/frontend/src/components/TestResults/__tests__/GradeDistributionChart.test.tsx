@@ -102,9 +102,12 @@ describe('GradeDistributionChart', () => {
       )
 
       // "상위 28% (순위 3/506)" 형식 확인
-      expect(screen.getByText(/상위 28%/)).toBeInTheDocument()
-      expect(screen.getByText(/3/)).toBeInTheDocument()
-      expect(screen.getByText(/506/)).toBeInTheDocument()
+      const summaryParagraph = screen.getByText(/상위 28%/).closest('.summary-text')
+      if (!summaryParagraph) {
+        throw new Error('Summary paragraph not found')
+      }
+      expect(summaryParagraph).toHaveTextContent('상위 28%')
+      expect(summaryParagraph).toHaveTextContent('순위 3/506')
     })
 
     it('should display distribution chart title', () => {
@@ -158,8 +161,11 @@ describe('GradeDistributionChart', () => {
         />
       )
 
-      expect(screen.getByText(/1000/)).toBeInTheDocument()
-      expect(screen.getByText(/50/)).toBeInTheDocument()
+      const summaryParagraph = screen.getByText(/상위 5%/).closest('.summary-text')
+      if (!summaryParagraph) {
+        throw new Error('Summary paragraph not found')
+      }
+      expect(summaryParagraph).toHaveTextContent('순위 50/1000')
     })
 
     it('should handle single grade distribution', () => {
@@ -227,13 +233,12 @@ describe('GradeDistributionChart', () => {
       )
 
       // ✅ 텍스트 요약 표시 ("상위 28% (순위 3/506)")
-      const summary = screen.getByText(/상위 28%/)
-      expect(summary).toBeInTheDocument()
-
-      const rankInfo = screen.getByText(/3/)
-      const cohortInfo = screen.getByText(/506/)
-      expect(rankInfo).toBeInTheDocument()
-      expect(cohortInfo).toBeInTheDocument()
+      const summaryParagraph = screen.getByText(/상위 28%/).closest('.summary-text')
+      if (!summaryParagraph) {
+        throw new Error('Summary paragraph not found')
+      }
+      expect(summaryParagraph).toHaveTextContent('상위 28%')
+      expect(summaryParagraph).toHaveTextContent('순위 3/506')
     })
   })
 

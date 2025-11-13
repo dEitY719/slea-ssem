@@ -1,7 +1,7 @@
 // REQ: REQ-F-B4-3
 import React from 'react'
 import type { GradeDistribution, Grade } from '../../services/resultService'
-import { getGradeKorean } from '../../utils/gradeHelpers'
+import { GradeBar } from './GradeBar'
 
 interface GradeDistributionChartProps {
   distribution: GradeDistribution[]
@@ -51,44 +51,16 @@ export const GradeDistributionChart: React.FC<GradeDistributionChartProps> = ({
         role="img"
         aria-label="Grade distribution chart showing user position"
       >
-        {distribution.map((item) => {
-          const isUserGrade = item.grade === userGrade
-          const barHeight = (item.count / maxCount) * 100
-
-          return (
-            <div
-              key={item.grade}
-              className={`distribution-bar ${isUserGrade ? 'user-current-grade' : ''}`}
-            >
-              {/* Bar label (grade name) */}
-              <div className="bar-label">
-                <span className="bar-grade-name">{getGradeKorean(item.grade)}</span>
-                {isUserGrade && (
-                  <span className="bar-user-indicator" aria-label="Your current position">
-                    📍 현재 위치
-                  </span>
-                )}
-              </div>
-
-              {/* Bar visual */}
-              <div className="bar-container">
-                <div
-                  className="bar-fill"
-                  style={{ height: `${barHeight}%` }}
-                  aria-label={`${getGradeKorean(item.grade)}: ${item.count} people, ${item.percentage}%`}
-                >
-                  <div className="bar-value">
-                    <span className="bar-count">{item.count}</span>
-                    <span className="bar-percentage">({item.percentage}%)</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* English grade name (bottom) */}
-              <div className="bar-grade-english">{item.grade}</div>
-            </div>
-          )
-        })}
+        {distribution.map((item) => (
+          <GradeBar
+            key={item.grade}
+            grade={item.grade}
+            count={item.count}
+            percentage={item.percentage}
+            isUserGrade={item.grade === userGrade}
+            barHeightPercentage={(item.count / maxCount) * 100}
+          />
+        ))}
       </div>
 
       {/* Legend */}
