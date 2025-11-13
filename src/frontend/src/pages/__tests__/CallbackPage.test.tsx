@@ -193,9 +193,9 @@ describe('CallbackPage - REQ-F-A1-2', () => {
   })
 
   // Test 5: Acceptance Criteria - Mock 모드 (home-first flow)
-  it('should use mock response without API call when mock=true', async () => {
+  it('should use mock response without API call when api_mock=true', async () => {
     render(
-      <MemoryRouter initialEntries={['/auth/callback?mock=true']}>
+      <MemoryRouter initialEntries={['/auth/callback?api_mock=true']}>
         <CallbackPage />
       </MemoryRouter>
     )
@@ -209,6 +209,20 @@ describe('CallbackPage - REQ-F-A1-2', () => {
     expect(global.fetch).not.toHaveBeenCalled()
 
     // 토큰이 저장되었는지 확인
+    expect(localStorageMock.getItem('slea_ssem_token')).toMatch(/^mock_jwt_token_/)
+  })
+
+  it('should continue to support legacy mock=true parameter', async () => {
+    render(
+      <MemoryRouter initialEntries={['/auth/callback?mock=true']}>
+        <CallbackPage />
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/home')
+    })
+
     expect(localStorageMock.getItem('slea_ssem_token')).toMatch(/^mock_jwt_token_/)
   })
 

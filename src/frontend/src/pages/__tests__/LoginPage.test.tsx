@@ -27,11 +27,15 @@ describe('LoginPage', () => {
   })
 
   // Test 3: Happy Path - 버튼 클릭 시 리다이렉트 (개발 모드)
-  it('should redirect to /auth/callback?mock=true in development mode', () => {
+  it('should redirect to SSO mock callback with default parameters when API mock is disabled', () => {
     const originalLocation = window.location
+    const originalMockApi = import.meta.env.VITE_MOCK_API
+    const originalMockSso = import.meta.env.VITE_MOCK_SSO
     // @ts-ignore
     delete window.location
     window.location = { href: '' } as Location
+    import.meta.env.VITE_MOCK_API = 'false'
+    import.meta.env.VITE_MOCK_SSO = 'true'
 
     render(
       <BrowserRouter>
@@ -42,10 +46,64 @@ describe('LoginPage', () => {
 
     fireEvent.click(loginButton)
 
-    // 개발 모드에서는 mock 모드로 콜백 페이지로 리다이렉트
-    expect(window.location.href).toBe('/auth/callback?mock=true')
+    const redirectedUrl = new URL(window.location.href, 'http://localhost')
+    expect(redirectedUrl.pathname).toBe('/auth/callback')
+    expect(redirectedUrl.searchParams.get('sso_mock')).toBe('true')
+    expect(redirectedUrl.searchParams.get('knox_id')).toBe('mock_user_001')
+    expect(redirectedUrl.searchParams.get('name')).toBe('Mock User')
+    expect(redirectedUrl.searchParams.get('dept')).toBe('Mock Department')
+    expect(redirectedUrl.searchParams.get('business_unit')).toBe('S.LSI')
+    expect(redirectedUrl.searchParams.get('email')).toBe('mock.user@samsung.com')
+    expect(redirectedUrl.searchParams.has('api_mock')).toBe(false)
+    expect(redirectedUrl.searchParams.has('mock')).toBe(false)
 
-    // Cleanup
+    if (originalMockApi === undefined) {
+      delete import.meta.env.VITE_MOCK_API
+    } else {
+      import.meta.env.VITE_MOCK_API = originalMockApi
+    }
+    if (originalMockSso === undefined) {
+      delete import.meta.env.VITE_MOCK_SSO
+    } else {
+      import.meta.env.VITE_MOCK_SSO = originalMockSso
+    }
+    window.location = originalLocation
+  })
+
+  it('should include api_mock flag when backend mock mode is enabled', () => {
+    const originalLocation = window.location
+    const originalMockApi = import.meta.env.VITE_MOCK_API
+    const originalMockSso = import.meta.env.VITE_MOCK_SSO
+    // @ts-ignore
+    delete window.location
+    window.location = { href: '' } as Location
+    import.meta.env.VITE_MOCK_API = 'true'
+    import.meta.env.VITE_MOCK_SSO = 'true'
+
+    render(
+      <BrowserRouter>
+        <LoginPage />
+      </BrowserRouter>
+    )
+    const loginButton = screen.getByRole('button', { name: /Samsung AD로 로그인/i })
+
+    fireEvent.click(loginButton)
+
+    const redirectedUrl = new URL(window.location.href, 'http://localhost')
+    expect(redirectedUrl.pathname).toBe('/auth/callback')
+    expect(redirectedUrl.searchParams.get('api_mock')).toBe('true')
+    expect(redirectedUrl.searchParams.get('mock')).toBe('true')
+
+    if (originalMockApi === undefined) {
+      delete import.meta.env.VITE_MOCK_API
+    } else {
+      import.meta.env.VITE_MOCK_API = originalMockApi
+    }
+    if (originalMockSso === undefined) {
+      delete import.meta.env.VITE_MOCK_SSO
+    } else {
+      import.meta.env.VITE_MOCK_SSO = originalMockSso
+    }
     window.location = originalLocation
   })
 

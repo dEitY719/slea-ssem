@@ -15,7 +15,7 @@ import './CallbackPage.css'
  * 3. Save JWT token to localStorage
  * 4. Redirect to home screen (/home)
  *
- * Supports mock mode for development/testing (add ?mock=true to URL)
+ * Supports mock mode for development/testing (add ?api_mock=true and/or ?sso_mock=true)
  */
 const CallbackPage: React.FC = () => {
   const [searchParams] = useSearchParams()

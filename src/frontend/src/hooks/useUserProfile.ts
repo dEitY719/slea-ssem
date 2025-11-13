@@ -9,7 +9,7 @@ import { profileService, type UserProfileResponse } from '../services'
  *
  * Uses Transport pattern for API calls:
  * - Real backend in production
- * - Mock data in development (when VITE_MOCK_API=true or ?mock=true)
+ * - Mock data in development (when VITE_MOCK_API=true or ?api_mock=true)
  *
  * Usage:
  * ```tsx

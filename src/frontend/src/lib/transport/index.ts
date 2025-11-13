@@ -9,9 +9,10 @@ import { mockTransport } from './mockTransport'
  * Priority: URL param > Environment variable
  */
 function isMockMode(): boolean {
-  // Check URL parameter first (for testing: ?mock=true)
+  // Check URL parameter first (for testing: ?api_mock=true or legacy ?mock=true)
   const urlParams = new URLSearchParams(window.location.search)
-  if (urlParams.get('mock') === 'true') return true
+  const mockFlag = urlParams.get('api_mock') ?? urlParams.get('mock')
+  if (mockFlag === 'true') return true
 
   // Check environment variable
   return import.meta.env.VITE_MOCK_API === 'true'

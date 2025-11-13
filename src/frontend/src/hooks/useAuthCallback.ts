@@ -14,7 +14,7 @@ interface UseAuthCallbackResult {
  * Custom hook for handling SSO authentication callback
  *
  * Handles:
- * - Mock mode for development/testing
+ * - Mock mode for development/testing (supports ?api_mock=true & ?sso_mock=true)
  * - User data parsing from URL params
  * - Backend API authentication
  * - JWT token storage
@@ -31,15 +31,19 @@ export function useAuthCallback(searchParams: URLSearchParams): UseAuthCallbackR
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Check for mock mode
-        const isMock = searchParams.get('mock') === 'true'
+        const isApiMock =
+          searchParams.get('api_mock') === 'true' ||
+          searchParams.get('mock') === 'true' ||
+          import.meta.env.VITE_MOCK_API === 'true'
+        const isSsoMock =
+          searchParams.get('sso_mock') === 'true' || searchParams.get('mock') === 'true'
 
         let data: LoginResponse
 
-        if (isMock) {
+        if (isApiMock) {
           // Mock mode: 백엔드 없이 프론트엔드만 테스트할 때 사용
           // 실제 API 호출 없이 mock 응답 반환
-          console.log('🎭 Mock mode: 백엔드 API 호출 생략')
+          console.log('🎭 Mock mode: 백엔드 API 호출 생략 (api_mock)')
 
           // Mock 응답 생성 (신규 사용자로 시뮬레이션)
           data = {
@@ -57,7 +61,11 @@ export function useAuthCallback(searchParams: URLSearchParams): UseAuthCallbackR
 
           // Validate required parameters
           if (!userData) {
-            setError('필수 정보가 누락되었습니다.')
+            setError(
+              isSsoMock
+                ? 'SSO mock 모드에서 전달된 사용자 정보가 부족합니다.'
+                : '필수 정보가 누락되었습니다.'
+            )
             setLoading(false)
             return
           }

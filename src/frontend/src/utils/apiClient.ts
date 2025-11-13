@@ -7,7 +7,7 @@ import { transport } from '../lib/transport'
  * This is a convenience wrapper around the transport layer.
  * Uses Transport pattern:
  * - Real backend in production
- * - Mock data in development (when VITE_MOCK_API=true or ?mock=true)
+ * - Mock data in development (when VITE_MOCK_API=true or ?api_mock=true)
  *
  * Usage:
  * ```tsx
