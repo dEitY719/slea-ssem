@@ -365,6 +365,11 @@
 .bar-label {
   text-align: center;
   margin-bottom: 0.5rem;
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
 }
 
 .bar-grade-name {
@@ -380,6 +385,7 @@
   font-weight: 700;
   display: block;
   margin-top: 0.25rem;
+  min-height: 1.2rem;
 }
 
 .bar-container {
@@ -530,6 +536,10 @@
     gap: 0.5rem;
   }
 
+  .bar-label {
+    min-height: 45px;
+  }
+
   .bar-container {
     height: 150px;
   }
@@ -540,6 +550,7 @@
 
   .bar-user-indicator {
     font-size: 0.7rem;
+    min-height: 1rem;
   }
 
   .bar-count {
