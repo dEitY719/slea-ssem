@@ -47,6 +47,11 @@ const getGradeClass = (grade: string): string => {
   return classMap[grade] || 'grade-default'
 }
 
+// Helper: Format decimal - remove trailing zero for integers
+const formatDecimal = (value: number): string => {
+  return Number(value.toFixed(1)).toString()
+}
+
 const TestResultsPage: React.FC = () => {
   const [resultData, setResultData] = useState<GradeResult | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -194,7 +199,7 @@ const TestResultsPage: React.FC = () => {
               <h2 className="metric-title">점수</h2>
             </div>
             <p className="metric-value">
-              {resultData.score.toFixed(1)} <span className="metric-unit">/ 100</span>
+              {formatDecimal(resultData.score)} <span className="metric-unit">/ 100</span>
             </p>
             <div className="progress-bar-container">
               <div
@@ -232,7 +237,7 @@ const TestResultsPage: React.FC = () => {
             </div>
             <p className="metric-value">{resultData.percentile_description}</p>
             <p className="metric-description">
-              상위 {(100 - resultData.percentile).toFixed(1)}% 내
+              상위 {formatDecimal(100 - resultData.percentile)}% 내
             </p>
           </div>
         </div>
