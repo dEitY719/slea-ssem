@@ -80,10 +80,21 @@ describe('Auth Utility Functions - REQ-F-A1-2', () => {
     it('should not throw error when removing non-existent token', () => {
       expect(() => removeToken()).not.toThrow()
     })
+
+    // Test 8: Mock mode flag should also be removed
+    it('should remove mock mode flag when removing token', () => {
+      localStorageMock.setItem('slea_ssem_token', 'mock_jwt_token_123')
+      localStorageMock.setItem('slea_ssem_api_mock', 'true')
+
+      removeToken()
+
+      expect(localStorageMock.getItem('slea_ssem_token')).toBeNull()
+      expect(localStorageMock.getItem('slea_ssem_api_mock')).toBeNull()
+    })
   })
 
   describe('Token lifecycle', () => {
-    // Test 8: Acceptance Criteria - 저장 → 조회 → 삭제 전체 흐름
+    // Test 9: Acceptance Criteria - 저장 → 조회 → 삭제 전체 흐름
     it('should handle complete token lifecycle', () => {
       // 1. 저장
       const token = 'lifecycle_token_789'
