@@ -71,6 +71,33 @@
   height: 1.25rem;
 }
 
+/* REQ-F-A2-Profile-Access-1: Nickname display styling */
+.nickname-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-white);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 0.5rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: default;
+  transition: background-color 0.2s ease;
+}
+
+.nickname-display:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.nickname-text {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .header-container {
@@ -84,5 +111,14 @@
   .signup-button {
     padding: 0.4rem 1rem;
     font-size: 0.9rem;
+  }
+
+  .nickname-display {
+    padding: 0.4rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .nickname-text {
+    max-width: 120px;
   }
 }
