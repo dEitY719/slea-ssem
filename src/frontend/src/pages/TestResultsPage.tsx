@@ -22,6 +22,7 @@ import './TestResultsPage.css'
 
 type LocationState = {
   sessionId: string
+  surveyId?: string
 }
 
 const TestResultsPage: React.FC = () => {
@@ -124,7 +125,18 @@ const TestResultsPage: React.FC = () => {
         {/* Action Buttons */}
         <ActionButtons
           onGoHome={() => navigate('/home')}
-          onRetake={() => navigate('/test', { state: { retake: true } })}
+          onRetake={() => {
+            // REQ-F-B5-2, REQ-F-B5-3: Retake - go to profile review to confirm info
+            const surveyId = state?.surveyId || localStorage.getItem('lastSurveyId')
+
+            if (surveyId) {
+              // Save to localStorage for profile review page
+              localStorage.setItem('lastSurveyId', surveyId)
+            }
+
+            // Always go to profile review first for retake
+            navigate('/profile-review')
+          }}
         />
       </div>
     </main>

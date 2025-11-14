@@ -157,7 +157,7 @@ const TestPage: React.FC = () => {
         setIsSubmitting(false)
       } else {
         // All questions answered, navigate to results
-        navigate('/test-results', { state: { sessionId } })
+        navigate('/test-results', { state: { sessionId, surveyId: state.surveyId } })
       }
     } catch (err) {
       const message =

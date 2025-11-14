@@ -73,15 +73,27 @@ const ProfileReviewPage: React.FC = () => {
   }, [])
 
   const handleStartClick = useCallback(() => {
-    if (!state?.surveyId) {
-      setError('자기평가 정보가 없습니다. 다시 시도해주세요.')
-      return
+    // Try to get surveyId from state (new test) or localStorage (retake)
+    let surveyId = state?.surveyId
+
+    if (!surveyId) {
+      // REQ-F-B5-3: For retake, use saved surveyId from localStorage
+      const savedSurveyId = localStorage.getItem('lastSurveyId')
+      if (savedSurveyId) {
+        surveyId = savedSurveyId
+      } else {
+        setError('자기평가 정보가 없습니다. 다시 시도해주세요.')
+        return
+      }
+    } else {
+      // Save surveyId to localStorage for future retakes (REQ-F-B5-3)
+      localStorage.setItem('lastSurveyId', surveyId)
     }
 
     // Navigate to test page with surveyId
     navigate('/test', {
       state: {
-        surveyId: state.surveyId,
+        surveyId: surveyId,
         round: 1,
       },
     })
