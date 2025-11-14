@@ -27,6 +27,8 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-A2-2-3 | 필수 필드 입력 시 "완료" 버튼 활성화 | 4 | ✅ Done | Commit: bd3c7ec, Progress: docs/progress/REQ-F-A2-2-3.md |
 | REQ-F-A2-2-4 | "완료" 클릭 시 프로필 저장 및 리뷰 페이지 이동 | 4 | ✅ Done | Commit: d401eed, Progress: docs/progress/REQ-F-A2-2-4.md |
 | REQ-F-A2-Signup | 통합 회원가입 화면 (헤더 "회원가입" 버튼) | 0 | ⏳ Backlog | 7개 sub-tasks (닉네임 + 자기평가 한 페이지) |
+| REQ-F-A2-Signup-1 | 홈화면 헤더 오른쪽 상단에 "회원가입" 버튼 표시 | 4 | ✅ Done | 6 tests (100%), Commit: b757745, Progress: docs/progress/REQ-F-A2-Signup-1.md |
+| REQ-F-A2-Signup-3 | 통합 회원가입 페이지에 닉네임 입력 섹션 표시 | 4 | ✅ Done | 11 tests (100%), Commit: 273c30a, Progress: docs/progress/REQ-F-A2-Signup-3.md |
 | REQ-F-A2-Edit | 프로필 수정 화면 | 0 | ⏳ Backlog | 6개 sub-tasks |
 | REQ-F-A2-Edit-1 | 프로필 리뷰 화면에 "프로필 수정" 버튼 제공 | 4 | ✅ Done | Commit: d401eed, Progress: docs/progress/REQ-F-A2-Edit-1.md |
 | REQ-F-A3 | 개인정보 수집 및 이용 동의 | 0 | ⏳ Backlog | 5개 sub-tasks |
