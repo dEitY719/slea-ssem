@@ -142,6 +142,38 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 ---
 
+## REQ-F-A2-Signup: 통합 회원가입 화면 (헤더 "회원가입" 버튼)
+
+**Note**: 홈화면 헤더의 "회원가입" 버튼을 통해 닉네임 + 자기평가를 한 페이지에서 입력하는 대체 가입 플로우입니다. "시작하기" 플로우(닉네임 → 자기평가 → 프로필 리뷰)와는 별도로 제공됩니다.
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-F-A2-Signup-1** | 홈화면 헤더 오른쪽 상단에 "회원가입" 버튼을 표시해야 한다. nickname == NULL일 때만 표시하고, nickname != NULL일 때는 숨김 처리해야 한다. | **M** |
+| **REQ-F-A2-Signup-2** | "회원가입" 버튼 클릭 시, 통합 회원가입 페이지(/signup)로 이동해야 한다. | **M** |
+| **REQ-F-A2-Signup-3** | 통합 회원가입 페이지에 닉네임 입력 섹션을 표시해야 한다: <br> - 닉네임 입력 필드 <br> - "중복 확인" 버튼 <br> - 실시간 유효성 검사 및 에러 메시지 <br> - 중복 시 대안 3개 제안 (선택) | **M** |
+| **REQ-F-A2-Signup-4** | 통합 회원가입 페이지에 자기평가 입력 섹션을 표시해야 한다: <br> - 수준 (1~5 슬라이더) <br> - 경력(연차) <br> - 직군 <br> - 담당 업무 <br> - 관심분야 (다중 선택) | **M** |
+| **REQ-F-A2-Signup-5** | 닉네임 중복 확인 완료 + 모든 필수 필드 입력 시 "가입 완료" 버튼을 활성화해야 한다. | **M** |
+| **REQ-F-A2-Signup-6** | "가입 완료" 버튼 클릭 시, users.nickname 업데이트 + user_profile 저장을 동시에 수행하고, 홈화면으로 리다이렉트해야 한다. | **M** |
+| **REQ-F-A2-Signup-7** | 가입 완료 후 홈화면 재진입 시, 헤더의 "회원가입" 버튼이 사라져야 한다. (nickname != NULL) | **M** |
+
+**수용 기준**:
+
+- "nickname == NULL 상태에서만 헤더에 '회원가입' 버튼이 표시된다."
+- "'회원가입' 버튼 클릭 시 통합 회원가입 페이지로 이동한다."
+- "한 페이지에서 닉네임과 자기평가를 모두 입력할 수 있다."
+- "닉네임 중복 확인이 정상 작동한다."
+- "필수 필드 누락 시 '가입 완료' 버튼이 비활성화된다."
+- "'가입 완료' 클릭 시 nickname + profile이 모두 저장되고 홈화면으로 리다이렉트된다."
+- "nickname != NULL 상태에서는 '회원가입' 버튼이 숨겨진다."
+
+**UX 이점**:
+
+- "시작하기" 플로우(닉네임 → 자기평가 → 프로필 리뷰)보다 단계가 적어 빠른 가입 가능
+- 가입 후 바로 테스트를 시작하지 않아도 되므로, 플랫폼 탐색이 자유로움
+- 2가지 진입 경로 제공으로 사용자 선택권 향상
+
+---
+
 ## REQ-F-A2-Edit: 프로필 수정 화면 (닉네임/자기평가 변경)
 
 | REQ ID | 요구사항 | 우선순위 |
@@ -563,6 +595,88 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 - "닉네임 변경 요청 후 1초 내 성공/실패 응답이 반환된다."
 - "DB 조회 시 users.nickname이 새로운 값으로 업데이트됨"
 - "updated_at이 최신 타임스탬프로 갱신되어 있다."
+
+---
+
+## REQ-B-A2-Signup: 통합 회원가입 API (닉네임 + 프로필 한 번에 저장)
+
+**Note**: 헤더 "회원가입" 버튼을 통한 통합 가입 플로우를 위한 API입니다. 닉네임 등록(users.nickname 업데이트)과 자기평가 정보 저장(user_profile_surveys 생성)을 한 트랜잭션으로 처리합니다.
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-B-A2-Signup-1** | JWT 토큰으로 현재 사용자를 식별하여 통합 회원가입 요청을 처리해야 한다. (인증 필수) | **M** |
+| **REQ-B-A2-Signup-2** | 닉네임 중복 확인을 먼저 수행하고, 중복 시 400 에러를 반환해야 한다. | **M** |
+| **REQ-B-A2-Signup-3** | users.nickname 업데이트와 user_profile_surveys 생성을 **하나의 트랜잭션**으로 처리해야 한다. | **M** |
+| **REQ-B-A2-Signup-4** | 트랜잭션 실패 시 롤백하고, 적절한 에러 메시지를 반환해야 한다. | **M** |
+| **REQ-B-A2-Signup-5** | 통합 회원가입 API는 2초 내에 응답해야 한다. (DB 트랜잭션 포함) | **M** |
+
+**API 엔드포인트**: `POST /api/signup` (인증 필수: Authorization 헤더의 JWT)
+
+**요청**:
+
+```json
+{
+  "nickname": "정민마케터",
+  "profile": {
+    "level": 3,
+    "career": 2,
+    "job_role": "마케팅",
+    "duty": "AI 제품 마케팅",
+    "interests": ["AI", "마케팅"]
+  }
+}
+```
+
+**응답 (성공)**:
+
+```json
+{
+  "success": true,
+  "message": "회원가입 완료",
+  "user_id": 123,
+  "nickname": "정민마케터",
+  "survey_id": 456,
+  "created_at": "2025-11-14T15:30:00Z"
+}
+```
+
+**응답 (닉네임 중복)**:
+
+```json
+{
+  "success": false,
+  "error": "NICKNAME_ALREADY_EXISTS",
+  "message": "이미 사용 중인 닉네임입니다.",
+  "suggestions": ["정민마케터1", "정민마케터2", "정민_마케터"]
+}
+```
+
+**수용 기준**:
+
+- "JWT 토큰 없이 요청 시 401 Unauthorized 응답"
+- "닉네임 중복 시 400 에러 + 대안 제안 3개 반환"
+- "users.nickname 업데이트 + user_profile_surveys 생성이 하나의 트랜잭션으로 처리됨"
+- "트랜잭션 실패 시 둘 다 롤백됨"
+- "통합 회원가입 API는 2초 내에 응답함"
+
+**트랜잭션 설계**:
+
+```sql
+BEGIN TRANSACTION;
+
+-- 1. 닉네임 중복 확인
+SELECT COUNT(*) FROM users WHERE nickname = ?;
+-- 중복 시 ROLLBACK + 400 에러
+
+-- 2. users.nickname 업데이트
+UPDATE users SET nickname = ? WHERE id = ?;
+
+-- 3. user_profile_surveys 생성
+INSERT INTO user_profile_surveys (user_id, level, career, job_role, duty, interests, created_at)
+VALUES (?, ?, ?, ?, ?, ?, NOW());
+
+COMMIT;
+```
 
 ---
 
