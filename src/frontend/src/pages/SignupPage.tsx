@@ -77,19 +77,9 @@ const SignupPage: React.FC = () => {
     return null
   }, [checkStatus, errorMessage])
 
-  const handleLevelChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10)
-    setLevel(value)
+  const handleLevelChange = useCallback((selectedLevel: number) => {
+    setLevel(selectedLevel)
   }, [])
-
-  // Memoize level description to avoid recalculation on every render
-  const levelDescription = useMemo(() => {
-    if (level === null) {
-      return '슬라이더를 움직여 수준을 선택하세요'
-    }
-    const option = LEVEL_OPTIONS.find((opt) => opt.value === level)
-    return option ? `${option.label}: ${option.description}` : ''
-  }, [level])
 
   const isChecking = checkStatus === 'checking'
   const isCheckButtonDisabled = isChecking || nickname.length === 0
@@ -168,28 +158,28 @@ const SignupPage: React.FC = () => {
           <h2 className="section-title">자기평가 정보</h2>
 
           <div className="form-group">
-            <label htmlFor="level-slider" className="form-label">
-              수준
-            </label>
-            <input
-              id="level-slider"
-              type="range"
-              className="level-slider"
-              min="1"
-              max="5"
-              step="1"
-              value={level || 1}
-              onChange={handleLevelChange}
-              aria-label="수준"
-            />
-            <div className="level-value-display">
-              {level !== null && (
-                <span className="level-value">{level}</span>
-              )}
+            <label className="form-label">기술 수준</label>
+            <div className="level-options">
+              {LEVEL_OPTIONS.map((option) => (
+                <label
+                  key={option.value}
+                  className={`level-option ${level === option.value ? 'selected' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="level"
+                    value={option.value}
+                    checked={level === option.value}
+                    onChange={() => handleLevelChange(option.value)}
+                    aria-label={option.label}
+                  />
+                  <div className="level-content">
+                    <div className="level-label">{option.label}</div>
+                    <div className="level-description">{option.description}</div>
+                  </div>
+                </label>
+              ))}
             </div>
-            <p className={`level-description ${level === null ? 'placeholder' : ''}`}>
-              {levelDescription}
-            </p>
           </div>
 
           <div className="info-box">

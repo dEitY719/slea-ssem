@@ -267,116 +267,111 @@ describe('SignupPage - REQ-F-A2-Signup-3 (Nickname Section)', () => {
   })
 })
 
-describe('SignupPage - REQ-F-A2-Signup-4 (Level Slider)', () => {
+describe('SignupPage - REQ-F-A2-Signup-4 (Level Radio Buttons)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNavigate.mockReset()
   })
 
-  // Test 1: Render level slider
-  test('renders profile section with level slider', () => {
-    // REQ: REQ-F-A2-Signup-4 - 수준 (1~5 슬라이더)
+  // Test 1: Render level options with 5 radio buttons
+  test('renders level selection with 5 options', () => {
+    // REQ: REQ-F-A2-Signup-4 - 수준 (1~5 라디오 버튼)
     renderWithRouter(<SignupPage />)
 
     // Check profile section title
     expect(screen.getByRole('heading', { name: /자기평가 정보/i })).toBeInTheDocument()
 
-    // Check level slider exists
-    const slider = screen.getByLabelText(/수준/i) as HTMLInputElement
-    expect(slider).toBeInTheDocument()
-    expect(slider.type).toBe('range')
-    expect(slider.min).toBe('1')
-    expect(slider.max).toBe('5')
+    // Check all 5 level options exist
+    expect(screen.getByLabelText(/1 - 입문/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/2 - 초급/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/3 - 중급/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/4 - 고급/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/5 - 전문가/i)).toBeInTheDocument()
   })
 
-  // Test 2: Initial state shows placeholder
-  test('shows placeholder when no level is selected', () => {
+  // Test 2: Initial state - no level selected
+  test('no level is selected initially', () => {
     // REQ: REQ-F-A2-Signup-4 - 초기 상태
     renderWithRouter(<SignupPage />)
 
-    // Should show placeholder text
-    expect(screen.getByText(/슬라이더를 움직여 수준을 선택하세요/i)).toBeInTheDocument()
-    
-    // Level value display should be empty (level is null initially)
-    const valueDisplay = document.querySelector('.level-value')
-    expect(valueDisplay).toBeNull()
+    const level1Radio = screen.getByLabelText(/1 - 입문/i) as HTMLInputElement
+    const level2Radio = screen.getByLabelText(/2 - 초급/i) as HTMLInputElement
+    const level3Radio = screen.getByLabelText(/3 - 중급/i) as HTMLInputElement
+    const level4Radio = screen.getByLabelText(/4 - 고급/i) as HTMLInputElement
+    const level5Radio = screen.getByLabelText(/5 - 전문가/i) as HTMLInputElement
+
+    expect(level1Radio.checked).toBe(false)
+    expect(level2Radio.checked).toBe(false)
+    expect(level3Radio.checked).toBe(false)
+    expect(level4Radio.checked).toBe(false)
+    expect(level5Radio.checked).toBe(false)
   })
 
-  // Test 3: Level 2 description (testing from initial state)
-  test('shows correct description for level 2 when changed from initial state', async () => {
+  // Test 3: Select level 1
+  test('selects level 1 when clicked', async () => {
+    // REQ: REQ-F-A2-Signup-4 - 레벨 선택
+    const user = userEvent.setup()
+    renderWithRouter(<SignupPage />)
+
+    const level1Radio = screen.getByLabelText(/1 - 입문/i)
+    await user.click(level1Radio)
+
+    expect(level1Radio).toBeChecked()
+  })
+
+  // Test 4: Select level 3
+  test('selects level 3 when clicked', async () => {
+    // REQ: REQ-F-A2-Signup-4 - 레벨 선택
+    const user = userEvent.setup()
+    renderWithRouter(<SignupPage />)
+
+    const level3Radio = screen.getByLabelText(/3 - 중급/i)
+    await user.click(level3Radio)
+
+    expect(level3Radio).toBeChecked()
+  })
+
+  // Test 5: Select level 5
+  test('selects level 5 when clicked', async () => {
+    // REQ: REQ-F-A2-Signup-4 - 레벨 선택
+    const user = userEvent.setup()
+    renderWithRouter(<SignupPage />)
+
+    const level5Radio = screen.getByLabelText(/5 - 전문가/i)
+    await user.click(level5Radio)
+
+    expect(level5Radio).toBeChecked()
+  })
+
+  // Test 6: Only one level can be selected at a time
+  test('only one level can be selected at a time', async () => {
+    // REQ: REQ-F-A2-Signup-4 - 단일 선택 (라디오 버튼)
+    const user = userEvent.setup()
+    renderWithRouter(<SignupPage />)
+
+    const level2Radio = screen.getByLabelText(/2 - 초급/i) as HTMLInputElement
+    const level4Radio = screen.getByLabelText(/4 - 고급/i) as HTMLInputElement
+
+    // Select level 2
+    await user.click(level2Radio)
+    expect(level2Radio.checked).toBe(true)
+    expect(level4Radio.checked).toBe(false)
+
+    // Select level 4 (should deselect level 2)
+    await user.click(level4Radio)
+    expect(level2Radio.checked).toBe(false)
+    expect(level4Radio.checked).toBe(true)
+  })
+
+  // Test 7: Level descriptions are displayed
+  test('displays description for each level option', () => {
     // REQ: REQ-F-A2-Signup-4 - 레벨 설명 표시
     renderWithRouter(<SignupPage />)
 
-    const slider = screen.getByLabelText(/수준/i) as HTMLInputElement
-    
-    // Change slider to level 2 (triggers onChange from null state)
-    fireEvent.change(slider, { target: { value: '2' } })
-
-    await waitFor(() => {
-      expect(screen.getByText(/2 - 초급: 기본 업무 수행 가능/i)).toBeInTheDocument()
-    })
-    
-    // Level value should be displayed
-    expect(screen.getByText('2')).toBeInTheDocument()
-  })
-
-  // Test 4: Level 3 description
-  test('shows correct description for level 3', async () => {
-    // REQ: REQ-F-A2-Signup-4 - 레벨 설명 표시
-    renderWithRouter(<SignupPage />)
-
-    const slider = screen.getByLabelText(/수준/i) as HTMLInputElement
-    
-    fireEvent.change(slider, { target: { value: '3' } })
-
-    await waitFor(() => {
-      expect(screen.getByText(/3 - 중급: 독립적으로 업무 수행/i)).toBeInTheDocument()
-    })
-  })
-
-  // Test 5: Level 4 description
-  test('shows correct description for level 4', async () => {
-    // REQ: REQ-F-A2-Signup-4 - 레벨 설명 표시
-    renderWithRouter(<SignupPage />)
-
-    const slider = screen.getByLabelText(/수준/i) as HTMLInputElement
-    
-    fireEvent.change(slider, { target: { value: '4' } })
-
-    await waitFor(() => {
-      expect(screen.getByText(/4 - 고급: 복잡한 문제 해결 가능/i)).toBeInTheDocument()
-    })
-  })
-
-  // Test 6: Level 5 description
-  test('shows correct description for level 5', async () => {
-    // REQ: REQ-F-A2-Signup-4 - 레벨 설명 표시
-    renderWithRouter(<SignupPage />)
-
-    const slider = screen.getByLabelText(/수준/i) as HTMLInputElement
-    
-    fireEvent.change(slider, { target: { value: '5' } })
-
-    await waitFor(() => {
-      expect(screen.getByText(/5 - 전문가: 다른 사람을 지도 가능/i)).toBeInTheDocument()
-    })
-  })
-
-  // Test 7: Level value updates on slider change
-  test('updates level value when slider changes', async () => {
-    // REQ: REQ-F-A2-Signup-4 - 슬라이더 상태 관리
-    renderWithRouter(<SignupPage />)
-
-    const slider = screen.getByLabelText(/수준/i) as HTMLInputElement
-    
-    // Initial value
-    expect(slider.value).toBe('1')
-
-    // Change to level 3
-    fireEvent.change(slider, { target: { value: '3' } })
-    
-    await waitFor(() => {
-      expect(slider.value).toBe('3')
-    })
+    expect(screen.getByText(/기초 개념 학습 중/i)).toBeInTheDocument()
+    expect(screen.getByText(/기본 업무 수행 가능/i)).toBeInTheDocument()
+    expect(screen.getByText(/독립적으로 업무 수행/i)).toBeInTheDocument()
+    expect(screen.getByText(/복잡한 문제 해결 가능/i)).toBeInTheDocument()
+    expect(screen.getByText(/다른 사람을 지도 가능/i)).toBeInTheDocument()
   })
 })
