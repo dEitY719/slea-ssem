@@ -30,6 +30,8 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-A2-Signup-1 | 홈화면 헤더 오른쪽 상단에 "회원가입" 버튼 표시 | 4 | ✅ Done | 6 tests (100%), Commit: b757745, Progress: docs/progress/REQ-F-A2-Signup-1.md |
 | REQ-F-A2-Signup-2 | "회원가입" 버튼 클릭 시 /signup 페이지로 이동 | 4 | ✅ Done | 1 test (100%), Commit: b757745, Progress: docs/progress/REQ-F-A2-Signup-2.md |
 | REQ-F-A2-Signup-3 | 통합 회원가입 페이지에 닉네임 입력 섹션 표시 | 4 | ✅ Done | 11 tests (100%), Commit: 273c30a, Progress: docs/progress/REQ-F-A2-Signup-3.md |
+| REQ-F-A2-Profile-Access | 헤더 닉네임 표시 및 드롭다운 메뉴 | 1 | 🚧 In Progress | 8개 sub-tasks (닉네임 표시 → 드롭다운 → 프로필 수정) |
+| REQ-F-A2-Profile-Access-1 | 헤더에 닉네임 표시 (nickname != null) | 4 | ✅ Done | 8 tests (100%), Commit: 16bbf7f, Progress: docs/progress/REQ-F-A2-Profile-Access-1.md |
 | REQ-F-A2-Edit | 프로필 수정 화면 | 0 | ⏳ Backlog | 6개 sub-tasks |
 | REQ-F-A2-Edit-1 | 프로필 리뷰 화면에 "프로필 수정" 버튼 제공 | 4 | ✅ Done | Commit: d401eed, Progress: docs/progress/REQ-F-A2-Edit-1.md |
 | REQ-F-A3 | 개인정보 수집 및 이용 동의 | 0 | ⏳ Backlog | 5개 sub-tasks |
