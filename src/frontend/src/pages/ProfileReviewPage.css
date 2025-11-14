@@ -72,6 +72,10 @@
 
 .edit-button {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   padding: 0.9rem;
   font-size: 1rem;
   font-weight: 600;
@@ -90,6 +94,10 @@
 
 .start-button {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   padding: 0.9rem;
   font-size: 1rem;
   font-weight: 600;
@@ -103,6 +111,12 @@
 
 .start-button:hover {
   background-color: var(--color-primary-hover);
+}
+
+/* Button icons */
+.button-icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* InfoBox styles moved to components/InfoBox.css */

@@ -151,6 +151,9 @@
 }
 
 .next-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1rem;
   font-weight: 600;
@@ -160,6 +163,7 @@
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  margin-top: 2rem;
 }
 
 .next-button:hover:not(:disabled) {
@@ -172,6 +176,9 @@
 }
 
 .back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1rem;
   font-weight: 600;
@@ -185,6 +192,12 @@
 
 .back-button:hover {
   background-color: var(--color-secondary-light);
+}
+
+/* Button icons */
+.button-icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .info-box {

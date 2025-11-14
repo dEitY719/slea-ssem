@@ -1,6 +1,7 @@
 // REQ: REQ-F-A2-Signup-1
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import { UserPlusIcon } from '@heroicons/react/24/outline'
 import './Header.css'
 
 interface HeaderProps {
@@ -52,6 +53,7 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
               onClick={handleSignupClick}
               aria-label="회원가입 페이지로 이동"
             >
+              <UserPlusIcon className="button-icon" />
               회원가입
             </button>
           )}

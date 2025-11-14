@@ -1,6 +1,7 @@
 // REQ: REQ-F-A2-2-4
 import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { PencilIcon, PlayIcon } from '@heroicons/react/24/outline'
 import { profileService } from '../services'
 import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
 import './ProfileReviewPage.css'
@@ -150,6 +151,7 @@ const ProfileReviewPage: React.FC = () => {
             className="edit-button"
             onClick={handleEditClick}
           >
+            <PencilIcon className="button-icon" />
             수정하기
           </button>
           <button
@@ -157,6 +159,7 @@ const ProfileReviewPage: React.FC = () => {
             className="start-button"
             onClick={handleStartClick}
           >
+            <PlayIcon className="button-icon" />
             테스트 시작
           </button>
         </div>

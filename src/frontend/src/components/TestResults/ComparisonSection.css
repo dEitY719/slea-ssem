@@ -9,10 +9,19 @@
 }
 
 .comparison-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 20px;
   font-weight: 600;
   margin: 0 0 8px 0;
   color: #212529;
+}
+
+.comparison-title .section-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-accent);
 }
 
 .previous-test-date {
@@ -77,19 +86,20 @@
 }
 
 .arrow {
-  font-size: 24px;
-  font-weight: bold;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
 }
 
-.comparison-item.improved .arrow {
+.arrow.arrow-up {
   color: #28a745;
 }
 
-.comparison-item.declined .arrow {
+.arrow.arrow-down {
   color: #dc3545;
 }
 
-.comparison-item.unchanged .arrow {
+.arrow.arrow-right {
   color: #6c757d;
 }
 
@@ -117,12 +127,21 @@
 }
 
 .summary-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   margin-top: 16px;
   padding: 12px;
   border-radius: 6px;
   font-size: 16px;
   font-weight: 500;
-  text-align: center;
+}
+
+.summary-message .summary-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
 }
 
 .summary-message.improved {
@@ -150,10 +169,20 @@
 }
 
 .first-attempt-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   font-size: 20px;
   font-weight: 600;
   color: #212529;
   margin: 0 0 16px 0;
+}
+
+.first-attempt-message .message-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #fbbf24;
 }
 
 .current-only {

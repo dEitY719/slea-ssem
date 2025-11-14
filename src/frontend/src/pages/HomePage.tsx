@@ -1,6 +1,7 @@
 // REQ: REQ-F-A1-2, REQ-F-A2-1, REQ-F-A3, REQ-F-A2-Signup-1
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { PlayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { getToken } from '../utils/auth'
 import { useUserProfile } from '../hooks/useUserProfile'
 import { Header } from '../components/Header'
@@ -72,11 +73,13 @@ const HomePage: React.FC = () => {
             개인 맞춤형 레벨 테스트로 학습을 시작하세요.
           </p>
           {errorMessage && (
-            <p className="error-message" style={{ color: '#d32f2f', marginBottom: '1rem' }}>
-              {errorMessage}
-            </p>
+            <div className="error-message">
+              <ExclamationTriangleIcon className="error-icon" />
+              <span>{errorMessage}</span>
+            </div>
           )}
           <button className="start-button" onClick={handleStart}>
+            <PlayIcon className="button-icon" />
             시작하기
           </button>
         </div>

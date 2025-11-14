@@ -1,5 +1,6 @@
 // REQ: REQ-F-A1-2
 import React from 'react'
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import './ErrorMessage.css'
 
 interface ErrorMessageProps {
@@ -25,7 +26,10 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
 }) => {
   return (
     <div className="error-container">
-      <h2 className="error-title">{title}</h2>
+      <div className="error-header">
+        <ExclamationTriangleIcon className="error-icon" />
+        <h2 className="error-title">{title}</h2>
+      </div>
       <p className="error-message">{message}</p>
       {helpLinks && helpLinks.length > 0 && (
         <div className="error-links">

@@ -4,9 +4,23 @@
   text-align: center;
 }
 
+.error-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.error-icon {
+  width: 2rem;
+  height: 2rem;
+  color: #d32f2f;
+}
+
 .error-title {
   color: #d32f2f;
-  margin-bottom: 1rem;
+  margin: 0;
   font-size: 1.5rem;
 }
 

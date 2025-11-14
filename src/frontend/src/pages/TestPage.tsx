@@ -1,6 +1,7 @@
 // REQ: REQ-F-B2-1, REQ-F-B2-2, REQ-F-B2-6
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { ArrowRightIcon, ArrowLeftIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { questionService } from '../services'
 import { Timer, SaveStatus, Question, type QuestionData } from '../components/test'
 import { useAutosave } from '../hooks/useAutosave'
@@ -189,6 +190,7 @@ const TestPage: React.FC = () => {
             className="back-button"
             onClick={() => navigate('/profile-review')}
           >
+            <ArrowLeftIcon className="button-icon" />
             프로필 리뷰로 돌아가기
           </button>
         </div>
@@ -236,11 +238,19 @@ const TestPage: React.FC = () => {
           onClick={handleNextClick}
           disabled={!answer.trim() || isSubmitting}
         >
-          {isSubmitting
-            ? '제출 중...'
-            : currentIndex < questions.length - 1
-            ? '다음'
-            : '완료'}
+          {isSubmitting ? (
+            '제출 중...'
+          ) : currentIndex < questions.length - 1 ? (
+            <>
+              다음
+              <ArrowRightIcon className="button-icon" />
+            </>
+          ) : (
+            <>
+              완료
+              <CheckIcon className="button-icon" />
+            </>
+          )}
         </button>
       </div>
     </main>

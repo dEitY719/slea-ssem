@@ -48,6 +48,9 @@
 }
 
 .retry-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1rem;
   font-weight: 600;
@@ -65,6 +68,9 @@
 }
 
 .back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1rem;
   font-weight: 600;
@@ -99,7 +105,8 @@
 }
 
 .grade-icon {
-  font-size: 4rem;
+  width: 4rem;
+  height: 4rem;
 }
 
 .grade-info {
@@ -183,7 +190,9 @@
 }
 
 .metric-icon {
-  font-size: 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-accent);
 }
 
 .metric-title {
@@ -233,6 +242,9 @@
 
 /* Confidence Warning */
 .confidence-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.85rem;
   color: #f57c00;
   margin-top: 0.75rem;
@@ -240,6 +252,12 @@
   background-color: #fff3e0;
   border-radius: 6px;
   border-left: 3px solid #f57c00;
+}
+
+.confidence-warning .warning-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 
 /* Action Buttons */
@@ -251,6 +269,9 @@
 }
 
 .primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1rem;
   font-weight: 600;
@@ -269,6 +290,9 @@
 }
 
 .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1rem;
   font-weight: 600;
@@ -283,6 +307,12 @@
 .secondary-button:hover {
   background-color: var(--color-accent-light);
   transform: translateY(-2px);
+}
+
+/* Button icons */
+.button-icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* Grade Distribution Chart - REQ: REQ-F-B4-3 */
@@ -421,11 +451,20 @@
 }
 
 .bar-user-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
   font-size: 0.75rem;
   color: var(--color-accent);
   font-weight: 700;
-  display: block;
   line-height: 1.1;
+}
+
+.bar-user-indicator .pin-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
 }
 
 .bar-container {
@@ -552,7 +591,8 @@
   }
 
   .grade-icon {
-    font-size: 3rem;
+    width: 3rem;
+    height: 3rem;
   }
 
   .grade-value {

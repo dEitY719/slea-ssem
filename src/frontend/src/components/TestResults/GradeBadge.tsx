@@ -1,5 +1,6 @@
 // REQ: REQ-F-B4-1
 import React from 'react'
+import { TrophyIcon } from '@heroicons/react/24/solid'
 import { getGradeKorean, getGradeClass } from '../../utils/gradeHelpers'
 
 interface GradeBadgeProps {
@@ -13,7 +14,7 @@ interface GradeBadgeProps {
 export const GradeBadge: React.FC<GradeBadgeProps> = ({ grade }) => {
   return (
     <div className={`grade-badge ${getGradeClass(grade)}`}>
-      <div className="grade-icon">🏆</div>
+      <TrophyIcon className="grade-icon" />
       <div className="grade-info">
         <p className="grade-label">등급</p>
         <p className="grade-value">{getGradeKorean(grade)}</p>

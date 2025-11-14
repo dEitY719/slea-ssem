@@ -40,6 +40,9 @@
 }
 
 .start-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   background-color: var(--color-primary);
   color: var(--text-white);
   border: none;
@@ -61,4 +64,28 @@
 .start-button:active {
   transform: translateY(0);
   box-shadow: var(--shadow-button);
+}
+
+.start-button .button-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #d32f2f;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background-color: #ffebee;
+  border: 1px solid #ef9a9a;
+  border-radius: 4px;
+}
+
+.error-message .error-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
 }
