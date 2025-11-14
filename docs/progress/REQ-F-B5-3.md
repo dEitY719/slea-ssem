@@ -51,38 +51,67 @@
 
 ### Test Cases
 
-**Test Location**: Manual testing (UI flow)
+**Test Locations**:
+- `src/frontend/src/pages/__tests__/ProfileReviewPage.test.tsx` (4 new tests)
+- `src/frontend/src/pages/__tests__/TestResultsPage.test.tsx` (5 new tests)
 
-#### Test 1: Happy Path - 재응시 성공
-```
-Given: 사용자가 테스트를 완료하고 결과 페이지에 있음
-When: "재응시하기" 버튼 클릭
-Then:
-  - ProfileReviewPage로 이동
-  - localStorage에 surveyId 저장됨
-  - "테스트 시작" 클릭 시 테스트 시작
-```
+#### ProfileReviewPage Tests (4 tests)
 
-#### Test 2: surveyId가 state로 전달됨
-```
-Given: TestPage에서 테스트 완료
-When: 마지막 문제 제출
-Then: TestResultsPage로 이동하며 surveyId가 state에 포함됨
-```
+**Test 1**: `navigates to /test with surveyId when "테스트 시작" button clicked`
+- Given: surveyId in state
+- When: "테스트 시작" 클릭
+- Then: navigate to /test with surveyId, save to localStorage
+- **Status**: ✅ PASS
 
-#### Test 3: ProfileReviewPage에서 localStorage fallback
-```
-Given: state에 surveyId가 없음
-When: ProfileReviewPage 로드
-Then: localStorage에서 surveyId 조회하여 사용
-```
+**Test 2**: `uses surveyId from localStorage when state has no surveyId (retake scenario)`
+- Given: surveyId only in localStorage (no state)
+- When: "테스트 시작" 클릭
+- Then: navigate to /test with localStorage surveyId
+- **Status**: ✅ PASS
 
-#### Test 4: surveyId 없을 때 에러 처리
-```
-Given: state와 localStorage 모두 surveyId 없음
-When: ProfileReviewPage에서 "테스트 시작" 클릭
-Then: "자기평가 정보가 없습니다" 에러 표시
-```
+**Test 3**: `shows error when no surveyId available (neither state nor localStorage)`
+- Given: no surveyId anywhere
+- When: "테스트 시작" 클릭
+- Then: show error message, do NOT navigate
+- **Status**: ✅ PASS
+
+**Test 4**: `prefers state surveyId over localStorage when both available`
+- Given: surveyId in both state and localStorage
+- When: "테스트 시작" 클릭
+- Then: use state surveyId (priority), update localStorage
+- **Status**: ✅ PASS
+
+#### TestResultsPage Tests (5 tests)
+
+**Test 1**: `navigates to /profile-review when "재응시하기" button clicked`
+- Given: surveyId in state
+- When: "재응시하기" 클릭
+- Then: save surveyId to localStorage, navigate to /profile-review
+- **Status**: ✅ PASS
+
+**Test 2**: `saves surveyId from state to localStorage on retake`
+- Given: surveyId in state
+- When: "재응시하기" 클릭
+- Then: surveyId saved to localStorage
+- **Status**: ✅ PASS
+
+**Test 3**: `uses surveyId from localStorage when state has no surveyId`
+- Given: surveyId only in localStorage
+- When: "재응시하기" 클릭
+- Then: still navigate to /profile-review (localStorage exists)
+- **Status**: ✅ PASS
+
+**Test 4**: `navigates to profile-review even when no surveyId available`
+- Given: no surveyId anywhere
+- When: "재응시하기" 클릭
+- Then: navigate to /profile-review (fallback)
+- **Status**: ✅ PASS
+
+**Test 5**: `navigates to /home when "홈화면으로 이동" button clicked`
+- Given: results page loaded
+- When: "홈화면으로 이동" 클릭
+- Then: navigate to /home
+- **Status**: ✅ PASS
 
 ---
 
@@ -189,25 +218,43 @@ const handleStartClick = useCallback(() => {
 ## Phase 4: Summary
 
 ### Test Results
-✅ All manual tests passed:
-- "재응시하기" 버튼 클릭 → ProfileReviewPage로 이동
-- localStorage에 surveyId 저장 확인
-- "테스트 시작" 클릭으로 테스트 재시작 성공
-- 에러 케이스: surveyId 없을 때 에러 메시지 표시
+✅ All automated tests passed (9 tests total):
+- **ProfileReviewPage.test.tsx**: 4 tests added for REQ-F-B5-3 (all PASS)
+- **TestResultsPage.test.tsx**: 5 tests created (all PASS)
+
+**Test Coverage**:
+- localStorage fallback logic ✅
+- surveyId state propagation ✅
+- Error handling (no surveyId) ✅
+- Priority: state > localStorage ✅
+- "재응시하기" button navigation ✅
+- localStorage persistence ✅
+
+**Test Execution**:
+```bash
+npm test -- ProfileReviewPage.test.tsx --run
+# Result: 11 passed (7 existing + 4 new)
+
+npm test -- TestResultsPage.test.tsx --run
+# Result: 5 passed (all new)
+```
 
 ### Traceability
 
 | Requirement | Implementation | Test Coverage |
 |-------------|----------------|---------------|
-| REQ-F-B5-3: 재응시 시 이전 정보 자동 입력 | TestResultsPage.tsx:128-139<br>ProfileReviewPage.tsx:75-100<br>TestPage.tsx:160 | Manual UI flow testing |
-| localStorage 저장 | TestResultsPage.tsx:134<br>ProfileReviewPage.tsx:90 | Verified in browser DevTools |
-| surveyId 전달 | TestPage.tsx:160 | Verified via navigation state |
-| Fallback 처리 | ProfileReviewPage.tsx:79-87 | Error message test |
+| REQ-F-B5-3: 재응시 시 이전 정보 자동 입력 | TestResultsPage.tsx:128-139<br>ProfileReviewPage.tsx:75-100<br>TestPage.tsx:160 | ✅ 9 automated tests |
+| localStorage 저장 | TestResultsPage.tsx:134<br>ProfileReviewPage.tsx:90 | ✅ TestResultsPage.test.tsx (Test 1, 2) |
+| surveyId 전달 | TestPage.tsx:160 | ✅ ProfileReviewPage.test.tsx (Test 1) |
+| Fallback 처리 | ProfileReviewPage.tsx:79-87 | ✅ ProfileReviewPage.test.tsx (Test 2, 3, 4) |
+| "재응시하기" 버튼 | TestResultsPage.tsx:127-141 | ✅ TestResultsPage.test.tsx (all 5 tests) |
 
-### Modified Files
+### Modified/Created Files
 1. `src/frontend/src/pages/TestPage.tsx:160`
 2. `src/frontend/src/pages/TestResultsPage.tsx:23-26, 128-139`
 3. `src/frontend/src/pages/ProfileReviewPage.tsx:75-100`
+4. `src/frontend/src/pages/__tests__/ProfileReviewPage.test.tsx` (4 new tests, 2 updated)
+5. `src/frontend/src/pages/__tests__/TestResultsPage.test.tsx` (NEW FILE, 5 tests)
 
 ### Related Requirements
 - ✅ REQ-F-B5-2: "재응시하기" 버튼 제공 (이미 구현됨)
