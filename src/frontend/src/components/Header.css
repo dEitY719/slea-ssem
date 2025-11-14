@@ -1,7 +1,7 @@
 /* REQ: REQ-F-A2-Signup-1 */
 
 .app-header {
-  background-color: #667eea;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
   border-bottom: 1px solid #5568d3;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: sticky;

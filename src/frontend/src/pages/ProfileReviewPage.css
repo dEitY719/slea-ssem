@@ -4,17 +4,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
+  background-color: #f9f9f9;
   padding: 2rem;
 }
 
 .profile-review-container {
   background: white;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 3rem;
   max-width: 600px;
   width: 100%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .page-title {
@@ -74,16 +75,16 @@
   padding: 0.9rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #007bff;
+  color: #00C7B7;
   background-color: white;
-  border: 2px solid #007bff;
+  border: 2px solid #00C7B7;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .edit-button:hover {
-  background-color: #007bff;
+  background-color: #00C7B7;
   color: white;
 }
 
@@ -93,7 +94,7 @@
   font-size: 1rem;
   font-weight: 600;
   color: white;
-  background-color: #28a745;
+  background-color: #FF9900;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -101,13 +102,13 @@
 }
 
 .start-button:hover {
-  background-color: #1c7c32;
+  background-color: #e68a00;
 }
 
 .info-box {
   padding: 1rem;
-  background-color: #e7f3ff;
-  border-left: 4px solid #007bff;
+  background-color: #ede9fe;
+  border-left: 4px solid #667eea;
   border-radius: 4px;
 }
 
