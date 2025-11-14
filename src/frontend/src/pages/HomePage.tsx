@@ -1,14 +1,29 @@
-// REQ: REQ-F-A1-2, REQ-F-A2-1, REQ-F-A3
-import React, { useState } from 'react'
+// REQ: REQ-F-A1-2, REQ-F-A2-1, REQ-F-A3, REQ-F-A2-Signup-1
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getToken } from '../utils/auth'
 import { useUserProfile } from '../hooks/useUserProfile'
+import { Header } from '../components/Header'
 import './HomePage.css'
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate()
-  const { checkNickname } = useUserProfile()
+  const { nickname, loading: nicknameLoading, checkNickname } = useUserProfile()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  // REQ-F-A2-Signup-1: Load nickname on mount to determine if signup button should show
+  useEffect(() => {
+    const loadNickname = async () => {
+      try {
+        await checkNickname()
+      } catch (err) {
+        console.error('Failed to load nickname:', err)
+        // Silently fail for nickname check, user can still use the page
+      }
+    }
+
+    loadNickname()
+  }, [checkNickname])
 
   const handleStart = async () => {
     // REQ-F-A2-1: Check if user has set nickname before proceeding
@@ -43,25 +58,30 @@ const HomePage: React.FC = () => {
   }
 
   return (
-    <main className="home-page">
-      <div className="home-container">
-        <h1 className="home-title">S.LSI Learning Platform</h1>
-        <p className="home-description">
-          AI 기반 학습 플랫폼에 오신 것을 환영합니다.
-        </p>
-        <p className="home-subtitle">
-          개인 맞춤형 레벨 테스트로 학습을 시작하세요.
-        </p>
-        {errorMessage && (
-          <p className="error-message" style={{ color: '#d32f2f', marginBottom: '1rem' }}>
-            {errorMessage}
+    <>
+      {/* REQ-F-A2-Signup-1: Header with conditional signup button */}
+      <Header nickname={nickname} isLoading={nicknameLoading} />
+
+      <main className="home-page">
+        <div className="home-container">
+          <h1 className="home-title">S.LSI Learning Platform</h1>
+          <p className="home-description">
+            AI 기반 학습 플랫폼에 오신 것을 환영합니다.
           </p>
-        )}
-        <button className="start-button" onClick={handleStart}>
-          시작하기
-        </button>
-      </div>
-    </main>
+          <p className="home-subtitle">
+            개인 맞춤형 레벨 테스트로 학습을 시작하세요.
+          </p>
+          {errorMessage && (
+            <p className="error-message" style={{ color: '#d32f2f', marginBottom: '1rem' }}>
+              {errorMessage}
+            </p>
+          )}
+          <button className="start-button" onClick={handleStart}>
+            시작하기
+          </button>
+        </div>
+      </main>
+    </>
   )
 }
 

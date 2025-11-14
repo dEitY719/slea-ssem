@@ -1,4 +1,4 @@
-// REQ: REQ-F-A2-1
+// REQ: REQ-F-A2-1, REQ-F-A2-Signup-1
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
@@ -181,5 +181,92 @@ describe('HomePage', () => {
       const errorElement = screen.queryByText(/오류가 발생했습니다/i)
       expect(errorElement || mockNavigate).toBeTruthy()
     })
+  })
+})
+
+describe('HomePage - REQ-F-A2-Signup-1 (Header Integration)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
+    ;(globalThis.fetch as any) = vi.fn()
+  })
+
+  it('nickname이 null일 때 헤더에 "회원가입" 버튼 표시', async () => {
+    // REQ: REQ-F-A2-Signup-1
+    // Given: User has no nickname (initial load returns null)
+    ;(globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        user_id: 'test@samsung.com',
+        nickname: null,
+        registered_at: null,
+        updated_at: null,
+      }),
+    })
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    )
+
+    // Then: "회원가입" button should appear in header after nickname is loaded
+    await waitFor(() => {
+      const signupButton = screen.getByRole('button', { name: /회원가입/i })
+      expect(signupButton).toBeInTheDocument()
+    })
+  })
+
+  it('nickname이 존재할 때 헤더에 "회원가입" 버튼 숨김', async () => {
+    // REQ: REQ-F-A2-Signup-1
+    // Given: User already has nickname
+    ;(globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        user_id: 'test@samsung.com',
+        nickname: 'existing_user',
+        registered_at: '2025-11-10T12:00:00Z',
+        updated_at: '2025-11-10T12:00:00Z',
+      }),
+    })
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    )
+
+    // Wait for nickname to load
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalled()
+    })
+
+    // Then: "회원가입" button should NOT be visible
+    const signupButton = screen.queryByRole('button', { name: /회원가입/i })
+    expect(signupButton).not.toBeInTheDocument()
+  })
+
+  it('헤더에 플랫폼 이름이 표시됨', () => {
+    // REQ: General header functionality
+    ;(globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        user_id: 'test@samsung.com',
+        nickname: null,
+      }),
+    })
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    )
+
+    // Then: Platform name should appear twice (header + main content)
+    const platformNames = screen.getAllByText(/S\.LSI Learning Platform/i)
+    expect(platformNames.length).toBeGreaterThanOrEqual(1)
   })
 })

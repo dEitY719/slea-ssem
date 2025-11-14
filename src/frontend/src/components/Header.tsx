@@ -1,0 +1,62 @@
+// REQ: REQ-F-A2-Signup-1
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import './Header.css'
+
+interface HeaderProps {
+  /**
+   * User's nickname. If null, user hasn't completed signup yet.
+   * REQ-F-A2-Signup-1: Show "회원가입" button only when nickname is null
+   */
+  nickname: string | null
+
+  /**
+   * Loading state for nickname fetch
+   * Hide signup button while loading to prevent flickering
+   */
+  isLoading?: boolean
+}
+
+/**
+ * Header Component
+ *
+ * REQ-F-A2-Signup-1: Display "회원가입" button in header when nickname is null
+ *
+ * Displays site header with conditional signup button:
+ * - nickname === null: Show "회원가입" button (user hasn't signed up)
+ * - nickname !== null: Hide "회원가입" button (user already signed up)
+ *
+ * @param nickname - User's nickname (null if not set)
+ * @param isLoading - Loading state for nickname fetch
+ */
+export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) => {
+  const navigate = useNavigate()
+
+  const handleSignupClick = () => {
+    // REQ-F-A2-Signup-2: Navigate to /signup page
+    navigate('/signup')
+  }
+
+  return (
+    <header className="app-header">
+      <div className="header-container">
+        <div className="header-left">
+          <h1 className="header-logo">S.LSI Learning Platform</h1>
+        </div>
+
+        <div className="header-right">
+          {/* REQ-F-A2-Signup-1: Show "회원가입" button only when nickname is null */}
+          {!isLoading && nickname === null && (
+            <button
+              className="signup-button"
+              onClick={handleSignupClick}
+              aria-label="회원가입 페이지로 이동"
+            >
+              회원가입
+            </button>
+          )}
+        </div>
+      </div>
+    </header>
+  )
+}
