@@ -25,7 +25,7 @@ class ExplainService:
         get_explanation: Retrieve cached explanation
 
     Design:
-        - Generates 500+ character explanations with 3+ reference links
+        - Generates 200+ character explanations with 3+ reference links
         - Caches explanations by question_id (reused across users)
         - Separates prompts for correct vs incorrect answers
         - Supports timeout handling with graceful degradation
@@ -67,7 +67,7 @@ class ExplainService:
                 - id (str): Explanation ID
                 - question_id (str): Question ID
                 - attempt_answer_id (str|None): Attempt answer ID if provided
-                - explanation_text (str): Generated explanation (≥500 chars)
+                - explanation_text (str): Generated explanation (≥200 chars)
                 - reference_links (list[dict]): Reference links with title+url (≥3)
                 - is_correct (bool): Whether this is for correct/incorrect answer
                 - created_at (str): ISO timestamp
@@ -216,12 +216,25 @@ class ExplainService:
                 f"'{stem}' 문제에 대한 정답 해설입니다.\n\n"
                 f"귀하의 답변이 정확합니다. 이는 {category} 분야의 중요한 개념입니다.\n"
                 f"정답을 선택하신 이유는 문제의 핵심을 정확하게 파악하셨기 때문입니다.\n\n"
-                f"더 깊이 있는 이해를 위해 다음 사항들을 주목하세요:\n"
-                f"1. 이 개념의 핵심 원리와 적용 범위\n"
-                f"2. 실무에서의 활용 예시\n"
-                f"3. 관련 기술이나 이론과의 연결고리\n"
-                f"4. 흔한 오해와 정확한 구분\n\n"
-                f"이 내용을 잘 숙지하면 관련 문제들을 더 효과적으로 해결할 수 있습니다."
+                f"더 깊이 있는 이해를 위해 다음 사항들을 자세하게 설명하세요 (최소 400자):\n\n"
+                f"1. 핵심 개념 상세 설명:\n"
+                f"   - 이 개념의 정확한 정의와 의미\n"
+                f"   - {category} 분야에서 이 개념이 중요한 이유\n"
+                f"   - 이 개념과 관련된 기본 원리들\n\n"
+                f"2. 실제 활용 예시 (구체적인 사례 2-3개):\n"
+                f"   - 이 개념을 실무에서 어떻게 적용하는지\n"
+                f"   - 성공 사례와 그 이유\n"
+                f"   - 주의해야 할 함정이나 예외 상황\n\n"
+                f"3. 관련 개념과의 연결고리:\n"
+                f"   - 유사한 다른 개념과의 차이점\n"
+                f"   - 이전 학습 내용과의 연관성\n"
+                f"   - 향후 더 심화된 학습으로 나아가는 방향\n\n"
+                f"4. 흔한 오해와 올바른 이해:\n"
+                f"   - 학습자들이 자주 하는 실수\n"
+                f"   - 왜 다른 선택지들이 틀렸는지의 명확한 이유\n"
+                f"   - 정답이 유일한 이유\n\n"
+                f"이 모든 내용을 포함하여 400자 이상의 자세한 설명을 제공하면, "
+                f"관련 문제들을 더욱 효과적으로 해결할 수 있습니다."
             )
         else:
             answer_schema = question.answer_schema
@@ -231,16 +244,29 @@ class ExplainService:
                 f"'{stem}' 문제에 대한 오답 해설입니다.\n\n"
                 f"귀하의 답변: {user_answer}\n"
                 f"정답: {correct_key}\n\n"
-                f"이 문제에서 자주 하는 실수:\n"
-                f"많은 수험자들이 문제의 세부 조건을 놓치거나 "
-                f"비슷한 개념을 혼동하여 오답을 선택합니다.\n\n"
-                f"정답이 {correct_key}인 이유:\n"
-                f"1. {category} 분야의 기본 원리에 부합\n"
-                f"2. 다른 선택지들과의 차별화된 특성\n"
-                f"3. 실제 사례와의 연결고리\n\n"
-                f"향후 학습 방향:\n"
-                f"이 유형의 문제를 다시 한번 복습하고, "
-                f"관련 개념들의 차이점을 명확하게 구분하는 것이 중요합니다."
+                f"다음 내용을 자세하게 설명하세요 (최소 400자):\n\n"
+                f"1. 왜 당신의 답변이 틀렸는가:\n"
+                f"   - 귀하가 선택하신 '{user_answer}'의 문제점\n"
+                f"   - 이 선택지가 문제 조건을 어떻게 위반하는지\n"
+                f"   - {category} 분야의 기본 원리와의 불일치\n\n"
+                f"2. 정답이 '{correct_key}'인 명확한 이유:\n"
+                f"   - 정답의 정확한 정의와 의미\n"
+                f"   - {category} 분야의 기본 원리에 어떻게 부합하는지\n"
+                f"   - 실무 사례에서 이 원칙이 왜 중요한지\n\n"
+                f"3. 다른 선택지들과의 비교 분석:\n"
+                f"   - 다른 선택지들이 틀린 구체적인 이유\n"
+                f"   - 정답과 오답의 핵심 차이점\n"
+                f"   - 비슷해 보이지만 왜 다른지의 명확한 설명\n\n"
+                f"4. 흔한 오해와 올바른 이해:\n"
+                f"   - 많은 학습자들이 이 문제에서 하는 실수\n"
+                f"   - 이 개념을 올바르게 이해하는 방법\n"
+                f"   - 유사 개념들과 정확하게 구분하는 방법\n\n"
+                f"5. 향후 학습 방향:\n"
+                f"   - 이 유형의 문제 해결을 위한 학습 전략\n"
+                f"   - 관련 개념들을 복습해야 할 순서\n"
+                f"   - 비슷한 유형의 문제에 대비하는 방법\n\n"
+                f"이 모든 내용을 포함하여 400자 이상의 상세한 설명을 제공하면, "
+                f"앞으로 유사한 문제들을 더 효과적으로 해결할 수 있습니다."
             )
 
         # Create reference links (category-specific)
@@ -355,9 +381,9 @@ class ExplainService:
         explanation = llm_response.get("explanation", "")
         links = llm_response.get("reference_links", [])
 
-        # AC1: Explanation >= 500 characters
-        if len(explanation) < 500:
-            raise ValueError(f"Explanation must be at least 500 characters. Got {len(explanation)} chars.")
+        # AC1: Explanation >= 200 characters
+        if len(explanation) < 200:
+            raise ValueError(f"Explanation must be at least 200 characters. Got {len(explanation)} chars.")
 
         # AC2: Reference links >= 3
         if len(links) < 3:

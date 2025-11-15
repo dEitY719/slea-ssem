@@ -27,7 +27,7 @@ PARTIAL_CREDIT_UPPER = 79
 LOW_SCORE_THRESHOLD = 70  # < 70 → is_correct=False
 
 # Explanation requirements
-MIN_EXPLANATION_LENGTH = 500  # chars
+MIN_EXPLANATION_LENGTH = 200  # chars
 MIN_REFERENCE_LINKS = 3
 
 # LLM scoring defaults

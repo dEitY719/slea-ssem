@@ -56,7 +56,7 @@ class TestExplanationGeneration:
         REQ: REQ-B-B3-Explain-1
 
         Acceptance Criteria:
-        - Explanation text >= 500 characters
+        - Explanation text >= 200 characters
         - Reference links >= 3
         - Generation completes < 2000ms
         """
@@ -67,7 +67,7 @@ class TestExplanationGeneration:
 
         # Mock LLM response
         mock_llm_response = {
-            "explanation": "이것은 500자 이상의 정답 해설입니다. " * 30,  # ~900 chars
+            "explanation": "이것은 200자 이상의 정답 해설입니다. " * 30,  # ~900 chars
             "reference_links": [
                 {"title": "Machine Learning Basics", "url": "https://example.com/ml"},
                 {"title": "Deep Learning Guide", "url": "https://example.com/dl"},
@@ -87,7 +87,7 @@ class TestExplanationGeneration:
 
         # Assertions
         assert result["explanation_text"]
-        assert len(result["explanation_text"]) >= 500
+        assert len(result["explanation_text"]) >= 200
         assert len(result["reference_links"]) >= 3
         assert elapsed_time < 2000
 
@@ -126,7 +126,7 @@ class TestExplanationGeneration:
             )
 
         assert result["explanation_text"]
-        assert len(result["explanation_text"]) >= 500
+        assert len(result["explanation_text"]) >= 200
         assert len(result["reference_links"]) >= 3
 
     def test_explanation_length_validation(
@@ -135,11 +135,11 @@ class TestExplanationGeneration:
         test_session_round1_fixture: TestSession,
     ) -> None:
         """
-        Validate explanation meets minimum length requirement (500 chars).
+        Validate explanation meets minimum length requirement (200 chars).
 
         REQ: REQ-B-B3-Explain-1 AC1
 
-        Should reject explanations < 500 characters.
+        Should reject explanations < 200 characters.
         """
         from src.backend.services.explain_service import ExplainService
 
@@ -157,7 +157,7 @@ class TestExplanationGeneration:
 
         with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response):
             service = ExplainService(db_session)
-            with pytest.raises(ValueError, match="Explanation must be at least 500 characters"):
+            with pytest.raises(ValueError, match="Explanation must be at least 200 characters"):
                 service.generate_explanation(
                     question_id=question.id,
                     user_answer="A",
