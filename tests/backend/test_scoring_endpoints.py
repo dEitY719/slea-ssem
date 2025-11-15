@@ -53,7 +53,7 @@ class TestScoringEndpoint:
         data = response.json()
         assert data["scored"] is True
         assert data["is_correct"] is True
-        assert data["score"] == 1.0
+        assert data["score"] == 100.0
 
     def test_score_tf_answer_endpoint_success(
         self, client: TestClient, db_session: Session, test_session_in_progress: TestSession
@@ -89,7 +89,7 @@ class TestScoringEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["is_correct"] is True
-        assert data["score"] == 1.0
+        assert data["score"] == 100.0
 
     def test_score_short_answer_endpoint_success(
         self, client: TestClient, db_session: Session, test_session_in_progress: TestSession

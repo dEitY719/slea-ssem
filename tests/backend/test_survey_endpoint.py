@@ -77,7 +77,7 @@ class TestPostSurveySubmit:
 
         assert response.status_code == 201
         data = response.json()
-        assert data["self_level"] == "intermediate"
+        assert data["self_level"] == "Intermediate"
         assert "survey_id" in data
         assert "user_id" in data
         assert "submitted_at" in data

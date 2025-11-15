@@ -98,6 +98,6 @@ class TestSurveySubmit:
         result = service.submit_survey(user_fixture.id, survey_data)
 
         assert result["user_id"] == user_fixture.id
-        assert result["self_level"] == "intermediate"
+        assert result["self_level"] == "Intermediate"
         assert "survey_id" in result
         assert "submitted_at" in result

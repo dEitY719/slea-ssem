@@ -1,7 +1,7 @@
 """CLI autosave command test."""
 from unittest.mock import MagicMock, patch
 from src.cli.actions.questions import autosave_answer
-from src.cli.context import CLIContext
+from src.cli.context import CLIContext, SessionState
 from rich.console import Console
 
 
@@ -20,16 +20,20 @@ def test_autosave_success():
     }
     mock_client.make_request.return_value = (200, mock_response, None)
 
-    # Create CLIContext with mocked components (without spec)
-    context = MagicMock()
+    # Create a mock for SessionState
+    mock_session = MagicMock(spec=SessionState)
+    mock_session.token = "fake-token"
+    mock_session.current_session_id = "test-session-123"
+
+    # Create CLIContext with mocked components
+    context = MagicMock(spec=CLIContext)
     context.console = mock_console
     context.client = mock_client
-    context.session.token = "fake-token"
-    context.session.current_session_id = "test-session-123"
+    context.session = mock_session
     context.logger = MagicMock()
     
     # Call autosave
-    autosave_answer(context, "test-question-456", "test answer")
+    autosave_answer(context, "--session-id", "test-session-123", "--question-id", "test-question-456", "--answer", "test answer")
     
     # Verify HTTP request was made correctly
     mock_client.make_request.assert_called_once()
@@ -43,7 +47,7 @@ def test_autosave_success():
     json_data = call_args[1]["json_data"]
     assert json_data["session_id"] == "test-session-123"
     assert json_data["question_id"] == "test-question-456"
-    assert json_data["user_answer"] == {"answer": "test answer"}
+    assert json_data["user_answer"] == {"text": "test answer"}
     assert json_data["response_time_ms"] == 0
     
     print("✅ CLI autosave test passed!")

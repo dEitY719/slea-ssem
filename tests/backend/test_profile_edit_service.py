@@ -127,7 +127,7 @@ class TestSurveyEditService:
         result = service.update_survey(user_fixture.id, survey_data)
 
         assert result["user_id"] == user_fixture.id
-        assert result["self_level"] == "intermediate"
+        assert result["self_level"] == "Intermediate"
         assert "survey_id" in result
         assert "submitted_at" in result
 
@@ -143,7 +143,7 @@ class TestSurveyEditService:
         }
         result = service.update_survey(user_fixture.id, survey_data)
 
-        assert result["self_level"] == "advanced"
+        assert result["self_level"] == "Advanced"
 
         # Verify in DB
         survey = db_session.query(UserProfileSurvey).filter_by(id=result["survey_id"]).first()
@@ -158,7 +158,7 @@ class TestSurveyEditService:
         result = service.update_survey(user_fixture.id, survey_data)
 
         survey = db_session.query(UserProfileSurvey).filter_by(id=result["survey_id"]).first()
-        assert survey.self_level == "beginner"
+        assert survey.self_level == "Beginner"
         assert survey.years_experience is None
         assert survey.job_role is None
 
@@ -180,8 +180,8 @@ class TestSurveyEditService:
 
         assert survey1 is not None
         assert survey2 is not None
-        assert survey1.self_level == "beginner"
-        assert survey2.self_level == "intermediate"
+        assert survey1.self_level == "Beginner"
+        assert survey2.self_level == "Intermediate"
 
     def test_update_survey_invalid_level(self, db_session: Session, user_fixture: User) -> None:
         """Input validation: Invalid self_level."""

@@ -270,7 +270,7 @@ class TestPreviousSurvey:
 
         assert survey is not None
         assert survey.user_id == authenticated_user.id
-        assert survey.self_level == "intermediate"
+        assert survey.self_level == "Intermediate"
 
     def test_get_previous_survey_no_history(self, db_session: Session, user_fixture):
         """
