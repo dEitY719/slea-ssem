@@ -205,6 +205,28 @@ def _format_user_answer(user_answer: str, question_type: str | None) -> dict[str
     return {"text": user_answer}
 
 
+def _get_answer_info(question_id: str | None) -> tuple[str | dict | None, bool | None]:
+    """
+    Get answer information for a question from database.
+
+    Returns: (user_answer, is_correct) tuple or (None, None) if not found
+    """
+    try:
+        if not question_id:
+            return None, None
+
+        db = SessionLocal()
+        answer = db.query(AttemptAnswer).filter_by(question_id=question_id).first()
+        db.close()
+
+        if not answer:
+            return None, None
+
+        return answer.user_answer, answer.is_correct
+    except Exception:
+        return None, None
+
+
 # ============================================================================
 # Help Functions
 # ============================================================================
@@ -341,6 +363,40 @@ def _print_resume_session_help(context: CLIContext) -> None:
     context.console.print()
     context.console.print("  # Show this help message")
     context.console.print("  questions session resume --help")
+    context.console.print()
+
+
+def _print_generate_explanation_help(context: CLIContext) -> None:
+    """Print help for questions explanation generate command."""
+    context.console.print()
+    context.console.print("╔═══════════════════════════════════════════════════════════════════════════════╗")
+    context.console.print("║  questions explanation generate - Generate Answer Explanation               ║")
+    context.console.print("╚═══════════════════════════════════════════════════════════════════════════════╝")
+    context.console.print()
+    context.console.print("[bold cyan]Usage:[/bold cyan]")
+    context.console.print("  questions explanation generate [question_id] [--help]")
+    context.console.print()
+    context.console.print("[bold cyan]Description:[/bold cyan]")
+    context.console.print("  Generate detailed explanation for a question based on user's answer")
+    context.console.print("  Automatically retrieves answer information from database")
+    context.console.print("  Returns explanation with reference links (≥3)")
+    context.console.print()
+    context.console.print("[bold cyan]Arguments:[/bold cyan]")
+    context.console.print("  question_id   Question ID to generate explanation for")
+    context.console.print("                (auto-uses latest if not provided)")
+    context.console.print()
+    context.console.print("[bold cyan]Options:[/bold cyan]")
+    context.console.print("  --help        Show this help message")
+    context.console.print()
+    context.console.print("[bold cyan]Examples:[/bold cyan]")
+    context.console.print("  # Generate explanation for latest question in session")
+    context.console.print("  questions explanation generate")
+    context.console.print()
+    context.console.print("  # Generate explanation for specific question")
+    context.console.print("  questions explanation generate 7b8a9c2d-1e3f-4c5a-8b7e-6d5c4a3b2a1f")
+    context.console.print()
+    context.console.print("  # Show this help message")
+    context.console.print("  questions explanation generate --help")
     context.console.print()
 
 
@@ -1100,23 +1156,66 @@ def calculate_round_score(context: CLIContext, *args: str) -> None:
 
 def generate_explanation(context: CLIContext, *args: str) -> None:
     """해설을 생성합니다."""
+    # Check for help first
+    if args and args[0] == "help":
+        _print_generate_explanation_help(context)
+        return
+
     if not context.session.token:
         context.console.print("[bold red]✗ Not authenticated[/bold red]")
         return
 
-    if not args:
-        context.console.print("[bold yellow]Usage:[/bold yellow] questions explanation generate [question_id]")
-        context.console.print("[bold cyan]Example:[/bold cyan] questions explanation generate q1")
+    # Parse arguments
+    question_id = None
+    i = 0
+    while i < len(args):
+        if args[i] == "--help":
+            _print_generate_explanation_help(context)
+            return
+        else:
+            # First non-flag argument is question_id
+            if not question_id:
+                question_id = args[i]
+            i += 1
+
+    # Auto-detect question_id from DB if not provided
+    if not question_id:
+        if not context.session.user_id:
+            context.console.print(
+                "[bold yellow]⚠ Cannot auto-detect question. Please specify question_id[/bold yellow]"
+            )
+            _print_generate_explanation_help(context)
+            return
+
+        question_id, question_info, _ = _get_latest_question(None)
+        if not question_id:
+            context.console.print("[bold yellow]⚠ No questions found in DB.[/bold yellow]")
+            context.console.print(
+                "[yellow]Tip: Use 'questions generate --survey-id <id> --domain <domain>' to generate questions[/yellow]"
+            )
+            return
+
+        context.console.print(f"[dim]Using latest question from DB: {question_info}[/dim]")
+
+    # Get answer information from DB
+    user_answer, is_correct = _get_answer_info(question_id)
+
+    if user_answer is None or is_correct is None:
+        context.console.print(f"[bold red]✗ No answer found for question {question_id}[/bold red]")
+        context.console.print("[yellow]Tip: Use 'questions answer autosave' to save an answer first[/yellow]")
         return
 
-    question_id = args[0]
-    context.console.print("[dim]Generating explanation...[/dim]")
+    context.console.print(f"[dim]Generating explanation for question {question_id}...[/dim]")
 
     # API 호출
     status_code, response, error = context.client.make_request(
         "POST",
         "/questions/explanations",
-        json_data={"question_id": question_id},
+        json_data={
+            "question_id": question_id,
+            "user_answer": user_answer,
+            "is_correct": is_correct,
+        },
     )
 
     if error:
@@ -1128,9 +1227,9 @@ def generate_explanation(context: CLIContext, *args: str) -> None:
         context.console.print(f"[bold red]✗ Generation failed (HTTP {status_code})[/bold red]")
         return
 
-    explanation = response.get("explanation", "")
+    explanation_text = response.get("explanation_text", "")
 
     context.console.print("[bold green]✓ Explanation generated[/bold green]")
-    if explanation:
-        context.console.print(f"[dim]{explanation[:100]}...[/dim]")
+    if explanation_text:
+        context.console.print(f"[dim]{explanation_text[:200]}...[/dim]")
     context.logger.info(f"Explanation generated for question {question_id}.")
