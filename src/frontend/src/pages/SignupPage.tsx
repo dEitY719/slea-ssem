@@ -1,4 +1,4 @@
-// REQ: REQ-F-A2-Signup-3, REQ-F-A2-Signup-4
+// REQ: REQ-F-A2-Signup-3, REQ-F-A2-Signup-4, REQ-F-A2-Signup-5
 import React, { useCallback, useMemo, useState } from 'react'
 import { useNicknameCheck } from '../hooks/useNicknameCheck'
 import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
@@ -9,6 +9,7 @@ import './SignupPage.css'
  *
  * REQ: REQ-F-A2-Signup-3 - 통합 회원가입 페이지에 닉네임 입력 섹션 표시
  * REQ: REQ-F-A2-Signup-4 - 통합 회원가입 페이지에 자기평가 입력 섹션 표시 (수준만)
+ * REQ: REQ-F-A2-Signup-5 - 닉네임 중복 확인 완료 + 모든 필수 필드 입력 시 "가입 완료" 버튼 활성화
  *
  * Features:
  * - Nickname input section (REQ-F-A2-Signup-3)
@@ -18,7 +19,9 @@ import './SignupPage.css'
  *   - Suggestions on duplicate (up to 3)
  * - Profile input section (REQ-F-A2-Signup-4)
  *   - Level slider (1-5)
- * - Submit button (REQ-F-A2-Signup-5/6, to be implemented)
+ * - Submit button activation (REQ-F-A2-Signup-5)
+ *   - Enabled when: checkStatus === 'available' AND level !== null
+ *   - Disabled otherwise
  *
  * Route: /signup
  */
@@ -84,6 +87,12 @@ const SignupPage: React.FC = () => {
 
   const isChecking = checkStatus === 'checking'
   const isCheckButtonDisabled = isChecking || nickname.length === 0
+
+  // REQ-F-A2-Signup-5: Submit button activation logic
+  // Enable when: nickname is available AND level is selected
+  const isSubmitDisabled = useMemo(() => {
+    return checkStatus !== 'available' || level === null
+  }, [checkStatus, level])
 
   return (
     <main className="signup-page">
@@ -192,12 +201,12 @@ const SignupPage: React.FC = () => {
           </InfoBox>
         </section>
 
-        {/* REQ-F-A2-Signup-5/6: Submit Button (to be implemented) */}
+        {/* REQ-F-A2-Signup-5/6: Submit Button */}
         <div className="form-actions">
           <button
             type="button"
             className="submit-button"
-            disabled={true}
+            disabled={isSubmitDisabled}
           >
             가입 완료
           </button>

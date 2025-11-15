@@ -375,3 +375,162 @@ describe('SignupPage - REQ-F-A2-Signup-4 (Level Radio Buttons)', () => {
     expect(screen.getByText(/다른 사람을 지도 가능/i)).toBeInTheDocument()
   })
 })
+
+describe('SignupPage - REQ-F-A2-Signup-5 (Submit Button Activation)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockNavigate.mockReset()
+  })
+
+  // Test 1: Happy path - all conditions met
+  test('enables submit button when nickname is available and level is selected', async () => {
+    // REQ: REQ-F-A2-Signup-5 - 닉네임 중복 확인 완료 + level 선택 시 버튼 활성화
+    const mockResponse = { available: true, suggestions: [] }
+    vi.mocked(transport.transport.post).mockResolvedValueOnce(mockResponse)
+
+    const user = userEvent.setup()
+    renderWithRouter(<SignupPage />)
+
+    // Step 1: Enter nickname and check availability
+    const nicknameInput = screen.getByLabelText(/닉네임/i)
+    const checkButton = screen.getByRole('button', { name: /중복 확인/i })
+
+    await user.type(nicknameInput, 'john_doe')
+    await user.click(checkButton)
+
+    await waitFor(() => {
+      expect(screen.getByText(/사용 가능한 닉네임입니다/i)).toBeInTheDocument()
+    })
+
+    // Step 2: Select level
+    const level3Radio = screen.getByLabelText(/3 - 중급/i)
+    await user.click(level3Radio)
+
+    // Assert: Submit button should be enabled
+    const submitButton = screen.getByRole('button', { name: /가입 완료/i })
+    expect(submitButton).not.toBeDisabled()
+  })
+
+  // Test 2: Initial state - button disabled
+  test('keeps submit button disabled on initial page load', () => {
+    // REQ: REQ-F-A2-Signup-5 - 초기 상태에서 버튼 비활성화
+    renderWithRouter(<SignupPage />)
+
+    const submitButton = screen.getByRole('button', { name: /가입 완료/i })
+    expect(submitButton).toBeDisabled()
+  })
+
+  // Test 3: Nickname not checked - button disabled
+  test('keeps submit button disabled when level is selected but nickname not checked', async () => {
+    // REQ: REQ-F-A2-Signup-5 - 닉네임 미확인 시 버튼 비활성화
+    const user = userEvent.setup()
+    renderWithRouter(<SignupPage />)
+
+    // Select level without checking nickname
+    const level2Radio = screen.getByLabelText(/2 - 초급/i)
+    await user.click(level2Radio)
+
+    // Assert: Submit button should still be disabled
+    const submitButton = screen.getByRole('button', { name: /가입 완료/i })
+    expect(submitButton).toBeDisabled()
+  })
+
+  // Test 4: Nickname taken - button disabled
+  test('keeps submit button disabled when nickname is taken even if level is selected', async () => {
+    // REQ: REQ-F-A2-Signup-5 - 닉네임 사용 불가 시 버튼 비활성화
+    const mockResponse = {
+      available: false,
+      suggestions: ['john_doe_1', 'john_doe_2'],
+    }
+    vi.mocked(transport.transport.post).mockResolvedValueOnce(mockResponse)
+
+    const user = userEvent.setup()
+    renderWithRouter(<SignupPage />)
+
+    // Step 1: Check nickname (taken)
+    const nicknameInput = screen.getByLabelText(/닉네임/i)
+    const checkButton = screen.getByRole('button', { name: /중복 확인/i })
+
+    await user.type(nicknameInput, 'john_doe')
+    await user.click(checkButton)
+
+    await waitFor(() => {
+      expect(screen.getByText(/이미 사용 중인 닉네임입니다/i)).toBeInTheDocument()
+    })
+
+    // Step 2: Select level
+    const level4Radio = screen.getByLabelText(/4 - 고급/i)
+    await user.click(level4Radio)
+
+    // Assert: Submit button should remain disabled
+    const submitButton = screen.getByRole('button', { name: /가입 완료/i })
+    expect(submitButton).toBeDisabled()
+  })
+
+  // Test 5: Level not selected - button disabled
+  test('keeps submit button disabled when nickname is available but level is not selected', async () => {
+    // REQ: REQ-F-A2-Signup-5 - level 미선택 시 버튼 비활성화
+    const mockResponse = { available: true, suggestions: [] }
+    vi.mocked(transport.transport.post).mockResolvedValueOnce(mockResponse)
+
+    const user = userEvent.setup()
+    renderWithRouter(<SignupPage />)
+
+    // Step 1: Check nickname (available)
+    const nicknameInput = screen.getByLabelText(/닉네임/i)
+    const checkButton = screen.getByRole('button', { name: /중복 확인/i })
+
+    await user.type(nicknameInput, 'john_doe')
+    await user.click(checkButton)
+
+    await waitFor(() => {
+      expect(screen.getByText(/사용 가능한 닉네임입니다/i)).toBeInTheDocument()
+    })
+
+    // Step 2: Do NOT select level
+
+    // Assert: Submit button should remain disabled
+    const submitButton = screen.getByRole('button', { name: /가입 완료/i })
+    expect(submitButton).toBeDisabled()
+  })
+
+  // Test 6: Real-time reactivity
+  test('updates submit button state in real-time when level selection changes', async () => {
+    // REQ: REQ-F-A2-Signup-5 - 조건 변경 시 실시간 반응
+    const mockResponse = { available: true, suggestions: [] }
+    vi.mocked(transport.transport.post).mockResolvedValueOnce(mockResponse)
+
+    const user = userEvent.setup()
+    renderWithRouter(<SignupPage />)
+
+    // Step 1: Check nickname (available)
+    const nicknameInput = screen.getByLabelText(/닉네임/i)
+    const checkButton = screen.getByRole('button', { name: /중복 확인/i })
+
+    await user.type(nicknameInput, 'john_doe')
+    await user.click(checkButton)
+
+    await waitFor(() => {
+      expect(screen.getByText(/사용 가능한 닉네임입니다/i)).toBeInTheDocument()
+    })
+
+    const submitButton = screen.getByRole('button', { name: /가입 완료/i })
+
+    // Initially disabled (no level selected)
+    expect(submitButton).toBeDisabled()
+
+    // Step 2: Select level 3
+    const level3Radio = screen.getByLabelText(/3 - 중급/i)
+    await user.click(level3Radio)
+
+    // Should be enabled now
+    expect(submitButton).not.toBeDisabled()
+
+    // Step 3: Select level 5 (change selection)
+    const level5Radio = screen.getByLabelText(/5 - 전문가/i)
+    await user.click(level5Radio)
+
+    // Should still be enabled (different level selected)
+    expect(submitButton).not.toBeDisabled()
+  })
+})
