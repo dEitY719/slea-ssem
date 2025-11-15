@@ -5,7 +5,8 @@ REQ: REQ-B-A2-Avail-1, REQ-B-A2-Avail-2, REQ-B-A2-Avail-3, REQ-B-A2-Avail-4,
      REQ-B-A2-Reg-1, REQ-B-A2-Reg-2, REQ-B-A2-Reg-3,
      REQ-B-A2-View-1, REQ-B-A2-View-2,
      REQ-B-A2-Edit-1, REQ-B-A2-Edit-2, REQ-B-A2-Edit-3, REQ-B-A2-Edit-4,
-     REQ-B-A2-Prof-1, REQ-B-A2-Prof-2, REQ-B-A2-Prof-3
+     REQ-B-A2-Prof-1, REQ-B-A2-Prof-2, REQ-B-A2-Prof-3,
+     REQ-B-A3-1, REQ-B-A3-2
 """
 
 import logging
@@ -103,6 +104,28 @@ class SurveyUpdateResponse(BaseModel):
     user_id: str = Field(..., description="User's knox_id")
     survey_id: str = Field(..., description="Survey record ID")
     updated_at: str = Field(..., description="Update timestamp")
+
+
+class ConsentStatusResponse(BaseModel):
+    """Response model for consent status."""
+
+    consented: bool = Field(..., description="Privacy consent status")
+    consent_at: str | None = Field(..., description="Consent timestamp (ISO format) or null")
+
+
+class ConsentUpdateRequest(BaseModel):
+    """Request model for consent update."""
+
+    consent: bool = Field(..., description="Consent status (true to grant, false to withdraw)")
+
+
+class ConsentUpdateResponse(BaseModel):
+    """Response model for consent update."""
+
+    success: bool = Field(..., description="Update success")
+    message: str = Field(..., description="Result message")
+    user_id: str = Field(..., description="User's knox_id")
+    consent_at: str | None = Field(..., description="Consent timestamp (ISO format) or null")
 
 
 # ============================================================================
@@ -336,3 +359,79 @@ def update_survey(
     except Exception as e:
         logger.exception("Error updating survey")
         raise HTTPException(status_code=500, detail="Failed to update survey") from e
+
+
+@router.get(
+    "/consent",
+    response_model=ConsentStatusResponse,
+    status_code=200,
+    summary="Get Privacy Consent Status",
+    description="Get current user's privacy consent status (requires JWT)",
+)
+def get_consent(
+    user: User = Depends(get_current_user),  # noqa: B008
+) -> dict[str, Any]:
+    """
+    Get current user's privacy consent status.
+
+    REQ: REQ-B-A3-1
+
+    Args:
+        user: Current authenticated user (from JWT)
+
+    Returns:
+        Response with user's consent status and timestamp
+
+    Raises:
+        HTTPException: 401 if not authenticated
+
+    """
+    return {
+        "consented": user.privacy_consent,
+        "consent_at": user.consent_at.isoformat() if user.consent_at else None,
+    }
+
+
+@router.post(
+    "/consent",
+    response_model=ConsentUpdateResponse,
+    status_code=200,
+    summary="Update Privacy Consent",
+    description="Update current user's privacy consent status (requires JWT)",
+)
+def update_consent(
+    request: ConsentUpdateRequest,
+    user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """
+    Update current user's privacy consent status.
+
+    REQ: REQ-B-A3-1, REQ-B-A3-2
+
+    Args:
+        request: Consent update request
+        user: Current authenticated user (from JWT)
+        db: Database session
+
+    Returns:
+        Response with update confirmation and timestamp
+
+    Raises:
+        HTTPException: 400 if validation fails, 401 if not authenticated
+
+    """
+    try:
+        profile_service = ProfileService(db)
+        result = profile_service.update_user_consent(user.id, request.consent)
+        return {
+            "success": result["success"],
+            "message": result["message"],
+            "user_id": user.knox_id,
+            "consent_at": result["consent_at"],
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.exception("Error updating consent")
+        raise HTTPException(status_code=500, detail="Failed to update consent") from e

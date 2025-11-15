@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column
 
 Base = declarative_base()
@@ -20,6 +20,8 @@ class User(Base):
         business_unit: Business unit
         email: Email address
         nickname: User's chosen nickname (UNIQUE, set during REQ-B-A2)
+        privacy_consent: User's privacy consent status (default: False, set during REQ-B-A3)
+        consent_at: Timestamp of privacy consent (nullable, set when user grants consent)
         last_login: Timestamp of last login
         created_at: Account creation timestamp
         updated_at: Timestamp of last update
@@ -35,6 +37,8 @@ class User(Base):
     business_unit: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     nickname: Mapped[str | None] = mapped_column(String(30), unique=True, nullable=True, index=True)
+    privacy_consent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
