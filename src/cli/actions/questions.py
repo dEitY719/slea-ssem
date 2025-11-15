@@ -278,29 +278,161 @@ def _print_score_answer_help(context: CLIContext) -> None:
     """Print help for questions answer score command."""
     context.console.print()
     context.console.print("╔═══════════════════════════════════════════════════════════════════════════════╗")
-    context.console.print("║  questions answer score - Score Answers (Single or Batch)                   ║")
+    context.console.print("║  questions answer score - Score Answers (Batch)                             ║")
     context.console.print("╚═══════════════════════════════════════════════════════════════════════════════╝")
     context.console.print()
     context.console.print("[bold cyan]Usage:[/bold cyan]")
-    context.console.print("  questions answer score [--help]")
-    context.console.print("  # Auto-batch score all unscored answers from latest session, then calculate round score")
+    context.console.print("  questions answer score [--session-id <id>] [--help]")
     context.console.print()
-    context.console.print("[bold cyan]Mode 1: Auto-Batch Scoring (Default)[/bold cyan]")
+    context.console.print("[bold cyan]Description:[/bold cyan]")
+    context.console.print("  Auto-batch score all unscored answers from a session")
+    context.console.print("  Then automatically calculates and saves round score")
+    context.console.print()
+    context.console.print("[bold cyan]Mode 1: Latest Session (Default)[/bold cyan]")
     context.console.print("  When run with no arguments:")
     context.console.print("  1. Detects all unscored answers in latest session")
     context.console.print("  2. Scores each answer using agent (Tool 6)")
     context.console.print("  3. Saves scores to database")
     context.console.print("  4. Calculates and saves round score")
     context.console.print()
+    context.console.print("[bold cyan]Mode 2: Specific Session[/bold cyan]")
+    context.console.print("  When --session-id is provided:")
+    context.console.print("  1. Detects all unscored answers in specified session")
+    context.console.print("  2. Scores each answer using agent (Tool 6)")
+    context.console.print("  3. Saves scores to database")
+    context.console.print("  4. Calculates and saves round score")
+    context.console.print()
     context.console.print("[bold cyan]Options:[/bold cyan]")
-    context.console.print("  --help    Show this help message")
+    context.console.print("  --session-id <id>  Score unscored answers from specific session")
+    context.console.print("  --help             Show this help message")
     context.console.print()
     context.console.print("[bold cyan]Examples:[/bold cyan]")
     context.console.print("  # Auto-batch score all unscored answers from latest session")
     context.console.print("  questions answer score")
     context.console.print()
+    context.console.print("  # Score unscored answers from specific session")
+    context.console.print("  questions answer score --session-id e7bff740-9b36-4501-a200-cdd5a5937bd3")
+    context.console.print()
     context.console.print("  # Show this help message")
     context.console.print("  questions answer score --help")
+    context.console.print()
+
+
+def _print_resume_session_help(context: CLIContext) -> None:
+    """Print help for questions session resume command."""
+    context.console.print()
+    context.console.print("╔═══════════════════════════════════════════════════════════════════════════════╗")
+    context.console.print("║  questions session resume - Resume Test Session                            ║")
+    context.console.print("╚═══════════════════════════════════════════════════════════════════════════════╝")
+    context.console.print()
+    context.console.print("[bold cyan]Usage:[/bold cyan]")
+    context.console.print("  questions session resume [--help]")
+    context.console.print()
+    context.console.print("[bold cyan]Description:[/bold cyan]")
+    context.console.print("  Resumes the latest test session from the database")
+    context.console.print("  Automatically loads session ID into current context")
+    context.console.print()
+    context.console.print("[bold cyan]Options:[/bold cyan]")
+    context.console.print("  --help    Show this help message")
+    context.console.print()
+    context.console.print("[bold cyan]Examples:[/bold cyan]")
+    context.console.print("  # Resume latest test session")
+    context.console.print("  questions session resume")
+    context.console.print()
+    context.console.print("  # Show this help message")
+    context.console.print("  questions session resume --help")
+    context.console.print()
+
+
+def _print_update_session_status_help(context: CLIContext) -> None:
+    """Print help for questions session status command."""
+    context.console.print()
+    context.console.print("╔═══════════════════════════════════════════════════════════════════════════════╗")
+    context.console.print("║  questions session status - Update Session Status                          ║")
+    context.console.print("╚═══════════════════════════════════════════════════════════════════════════════╝")
+    context.console.print()
+    context.console.print("[bold cyan]Usage:[/bold cyan]")
+    context.console.print("  questions session status [pause|resume] [--help]")
+    context.console.print()
+    context.console.print("[bold cyan]Description:[/bold cyan]")
+    context.console.print("  Changes the status of the current test session")
+    context.console.print("  Paused sessions stop the timer, resumed sessions continue")
+    context.console.print()
+    context.console.print("[bold cyan]Arguments:[/bold cyan]")
+    context.console.print("  pause     Pause the current session (stop timer)")
+    context.console.print("  resume    Resume the current session (continue timer)")
+    context.console.print()
+    context.console.print("[bold cyan]Options:[/bold cyan]")
+    context.console.print("  --help    Show this help message")
+    context.console.print()
+    context.console.print("[bold cyan]Examples:[/bold cyan]")
+    context.console.print("  # Pause current session")
+    context.console.print("  questions session status pause")
+    context.console.print()
+    context.console.print("  # Resume current session")
+    context.console.print("  questions session status resume")
+    context.console.print()
+    context.console.print("  # Show this help message")
+    context.console.print("  questions session status --help")
+    context.console.print()
+
+
+def _print_check_time_status_help(context: CLIContext) -> None:
+    """Print help for questions session time_status command."""
+    context.console.print()
+    context.console.print("╔═══════════════════════════════════════════════════════════════════════════════╗")
+    context.console.print("║  questions session time_status - Check Session Time Status                  ║")
+    context.console.print("╚═══════════════════════════════════════════════════════════════════════════════╝")
+    context.console.print()
+    context.console.print("[bold cyan]Usage:[/bold cyan]")
+    context.console.print("  questions session time_status [--help]")
+    context.console.print()
+    context.console.print("[bold cyan]Description:[/bold cyan]")
+    context.console.print("  Displays elapsed time and remaining time for current session")
+    context.console.print("  Shows warning if time limit has been exceeded")
+    context.console.print()
+    context.console.print("[bold cyan]Options:[/bold cyan]")
+    context.console.print("  --help    Show this help message")
+    context.console.print()
+    context.console.print("[bold cyan]Examples:[/bold cyan]")
+    context.console.print("  # Check time status for current session")
+    context.console.print("  questions session time_status")
+    context.console.print()
+    context.console.print("  # Show this help message")
+    context.console.print("  questions session time_status --help")
+    context.console.print()
+
+
+def _print_calculate_round_score_help(context: CLIContext) -> None:
+    """Print help for questions score command."""
+    context.console.print()
+    context.console.print("╔═══════════════════════════════════════════════════════════════════════════════╗")
+    context.console.print("║  questions score - Calculate Round Score                                   ║")
+    context.console.print("╚═══════════════════════════════════════════════════════════════════════════════╝")
+    context.console.print()
+    context.console.print("[bold cyan]Usage:[/bold cyan]")
+    context.console.print("  questions score [session_id] [--help]")
+    context.console.print()
+    context.console.print("[bold cyan]Description:[/bold cyan]")
+    context.console.print("  Calculates and saves the total score for a completed test round")
+    context.console.print("  Uses average of all question scores (0-100 scale)")
+    context.console.print("  Session must have all answers scored before calling this")
+    context.console.print()
+    context.console.print("[bold cyan]Arguments:[/bold cyan]")
+    context.console.print("  session_id    Session ID (auto-uses latest if not provided)")
+    context.console.print()
+    context.console.print("[bold cyan]Options:[/bold cyan]")
+    context.console.print("  --help        Show this help message")
+    context.console.print()
+    context.console.print("[bold cyan]Examples:[/bold cyan]")
+    context.console.print("  # Calculate score for latest session")
+    context.console.print("  questions score")
+    context.console.print()
+    context.console.print("  # Calculate score for specific session")
+    context.console.print("  questions score e7bff740-9b36-4501-a200-cdd5a5937bd3")
+    context.console.print()
+    context.console.print("  # Show this help message")
+    context.console.print("  questions score --help")
     context.console.print()
 
 
@@ -447,10 +579,26 @@ def resume_session(context: CLIContext, *args: str) -> None:
         context.console.print("[yellow]Please login first: auth login [username][/yellow]")
         return
 
+    # Check for --help flag
+    if args and args[0] == "--help":
+        _print_resume_session_help(context)
+        return
+
     context.console.print("[dim]Resuming test session...[/dim]")
 
+    # Get latest session from DB
+    session_id, session_info = _get_latest_session(context.session.user_id)
+    if not session_id:
+        context.console.print("[bold yellow]⚠️  No session found[/bold yellow]")
+        context.console.print("[dim]Create a new session first with: questions generate[/dim]")
+        return
+
+    context.console.print(f"[dim]Session: {session_id} {session_info}[/dim]")
+
     # API 호출
-    status_code, response, error = context.client.make_request("GET", "/questions/resume")
+    status_code, response, error = context.client.make_request(
+        "GET", "/questions/resume", params={"session_id": session_id}
+    )
 
     if error:
         context.console.print("[bold red]✗ Resume failed[/bold red]")
@@ -480,6 +628,11 @@ def update_session_status(context: CLIContext, *args: str) -> None:
 
     if not context.session.current_session_id:
         context.console.print("[bold red]✗ No active session[/bold red]")
+        return
+
+    # Check for --help flag
+    if args and args[0] == "--help":
+        _print_update_session_status_help(context)
         return
 
     if not args:
@@ -518,6 +671,11 @@ def check_time_status(context: CLIContext, *args: str) -> None:
 
     if not context.session.current_session_id:
         context.console.print("[bold red]✗ No active session[/bold red]")
+        return
+
+    # Check for --help flag
+    if args and args[0] == "--help":
+        _print_check_time_status_help(context)
         return
 
     context.console.print("[dim]Checking time status...[/dim]")
@@ -787,11 +945,12 @@ def autosave_answer(context: CLIContext, *args: str) -> None:
 
 def score_answer(context: CLIContext, *args: str) -> None:
     """
-    Score answers: auto-batch score unscored attempts from latest session.
+    Score answers: auto-batch score unscored attempts from specified or latest session.
 
     When called with --help: Show usage
     When called with no args: Auto-detect unscored answers from latest session
                               and batch score them using agent (Tool 6)
+    When called with --session-id <id>: Score unscored answers from specified session
     """
     if not context.session.token:
         context.console.print("[bold red]✗ Not authenticated[/bold red]")
@@ -802,74 +961,83 @@ def score_answer(context: CLIContext, *args: str) -> None:
         _print_score_answer_help(context)
         return
 
-    # Auto-batch scoring mode: no args provided
-    if not args:
-        context.console.print("[dim]Starting auto-batch scoring...[/dim]")
+    # Parse --session-id argument
+    session_id = None
+    if args:
+        # Look for --session-id flag
+        for i, arg in enumerate(args):
+            if arg == "--session-id" and i + 1 < len(args):
+                session_id = args[i + 1]
+                break
 
-        # Get latest session
+    # Get session_id: either from args or from latest session
+    if not session_id:
+        context.console.print("[dim]Starting auto-batch scoring...[/dim]")
         session_id, session_info = _get_latest_session(context.session.user_id)
         if not session_id:
             context.console.print("[bold yellow]⚠️  No session found[/bold yellow]")
             return
-
         context.console.print(f"[cyan]Session: {session_id} {session_info}[/cyan]")
+    else:
+        context.console.print("[dim]Starting batch scoring for specified session...[/dim]")
+        context.console.print(f"[cyan]Session: {session_id}[/cyan]")
 
-        # Get unscored answers
-        unscored_answers = _get_unscored_answers(session_id)
-        if not unscored_answers:
-            context.console.print("[bold yellow]⚠️  No unscored answers found[/bold yellow]")
-            context.console.print("[dim]All answers are already scored.[/dim]")
-            return
+    # Get unscored answers (moved outside if-else block)
+    unscored_answers = _get_unscored_answers(session_id)
+    if not unscored_answers:
+        context.console.print("[bold yellow]⚠️  No unscored answers found[/bold yellow]")
+        context.console.print("[dim]All answers are already scored.[/dim]")
+        return
 
-        context.console.print(f"[cyan]Found {len(unscored_answers)} unscored answer(s)[/cyan]")
-        context.console.print()
+    context.console.print(f"[cyan]Found {len(unscored_answers)} unscored answer(s)[/cyan]")
+    context.console.print()
 
-        # Batch score each answer
-        scored_count = 0
-        failed_count = 0
+    # Batch score each answer
+    scored_count = 0
+    failed_count = 0
 
-        for i, answer_data in enumerate(unscored_answers, 1):
-            question_id = answer_data["question_id"]
+    for i, answer_data in enumerate(unscored_answers, 1):
+        question_id = answer_data["question_id"]
 
-            context.console.print(f"[dim][{i}/{len(unscored_answers)}] Scoring question {question_id[:12]}...[/dim]")
+        context.console.print(f"[dim][{i}/{len(unscored_answers)}] Scoring question {question_id[:12]}...[/dim]")
 
-            # Call agent.score_and_explain (Tool 6) via backend
-            # POST /questions/answer/score endpoint
-            # Note: answer is already in DB from autosave, only need session_id + question_id
-            status_code, response, error = context.client.make_request(
-                "POST",
-                "/questions/answer/score",
-                json_data={
-                    "session_id": session_id,
-                    "question_id": question_id,
-                },
-            )
+        # Call agent.score_and_explain (Tool 6) via backend
+        # POST /questions/answer/score endpoint
+        # Note: answer is already in DB from autosave, only need session_id + question_id
+        status_code, response, error = context.client.make_request(
+            "POST",
+            "/questions/answer/score",
+            json_data={
+                "session_id": session_id,
+                "question_id": question_id,
+            },
+        )
 
-            if error:
-                context.console.print(f"[red]  ✗ Error: {error}[/red]")
-                failed_count += 1
-                continue
+        if error:
+            context.console.print(f"[red]  ✗ Error: {error}[/red]")
+            failed_count += 1
+            continue
 
-            if status_code not in (200, 201):
-                context.console.print(f"[red]  ✗ Failed (HTTP {status_code})[/red]")
-                failed_count += 1
-                continue
+        if status_code not in (200, 201):
+            context.console.print(f"[red]  ✗ Failed (HTTP {status_code})[/red]")
+            failed_count += 1
+            continue
 
-            score = response.get("score", 0)
-            is_correct = response.get("is_correct", False)
-            context.console.print(f"[green]  ✓ Scored: {score}% ({'Correct' if is_correct else 'Incorrect'})[/green]")
-            scored_count += 1
+        score = response.get("score", 0)
+        is_correct = response.get("is_correct", False)
+        context.console.print(f"[green]  ✓ Scored: {score}% ({'Correct' if is_correct else 'Incorrect'})[/green]")
+        scored_count += 1
 
-        context.console.print()
-        context.console.print("[bold cyan]Batch Scoring Summary[/bold cyan]")
-        context.console.print(f"[dim]  Scored: {scored_count}/{len(unscored_answers)}[/dim]")
-        if failed_count > 0:
-            context.console.print(f"[dim]  Failed: {failed_count}[/dim]")
+    context.console.print()
+    context.console.print("[bold cyan]Batch Scoring Summary[/bold cyan]")
+    context.console.print(f"[dim]  Scored: {scored_count}/{len(unscored_answers)}[/dim]")
+    if failed_count > 0:
+        context.console.print(f"[dim]  Failed: {failed_count}[/dim]")
 
-        # Calculate round score
-        context.console.print()
-        context.console.print("[dim]Calculating round score...[/dim]")
-        calculate_round_score(context, session_id)
+    # Calculate round score
+    context.console.print()
+    context.console.print("[dim]Calculating round score...[/dim]")
+    calculate_round_score(context, session_id)
 
 
 def calculate_round_score(context: CLIContext, *args: str) -> None:
@@ -883,6 +1051,11 @@ def calculate_round_score(context: CLIContext, *args: str) -> None:
     """
     if not context.session.token:
         context.console.print("[bold red]✗ Not authenticated[/bold red]")
+        return
+
+    # Check for --help flag
+    if args and args[0] == "--help":
+        _print_calculate_round_score_help(context)
         return
 
     # Get session_id: either from args or from latest session

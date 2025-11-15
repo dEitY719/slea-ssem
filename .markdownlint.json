@@ -4,6 +4,7 @@
     "MD013": false,       // disable line length rule
     "MD024": false,       // disable duplicate heading rule - natural for multi-scenario docs
     "MD025": false,       // disable single H1 rule - docs have multiple sections
+    "MD028": false,       // allow blank lines in blockquotes
     "MD029": false,       // allow sequential numbering in ordered lists
     "MD033": false,       // disable inline HTML rule - necessary for table multiline content
     "MD036": false,       // disable emphasis as heading - intentional styling for subsections
