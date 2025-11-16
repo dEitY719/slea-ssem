@@ -72,6 +72,23 @@ describe('ProfileReviewPage', () => {
       })
   })
 
+    test('displays cached nickname when API returns null', async () => {
+      mockLocationState = { level: 3, surveyId: 'test_survey' }
+      localStorage.setItem('lastNickname', 'cached_user')
+      setMockData('/api/profile/nickname', {
+        user_id: 'test@samsung.com',
+        nickname: null,
+        registered_at: null,
+        updated_at: null,
+      })
+
+      renderWithRouter(<ProfileReviewPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText(/cached_user/i)).toBeInTheDocument()
+      })
+    })
+
   test('displays level information passed via navigation state', async () => {
     // REQ: REQ-F-A2-2-4
     renderWithRouter(<ProfileReviewPage />)

@@ -51,7 +51,9 @@ const ProfileReviewPage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const state = location.state as LocationState
-  const [nickname, setNickname] = useState<string | null>(null)
+  const [nickname, setNickname] = useState<string | null>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('lastNickname') : null
+  )
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cachedLevel, setCachedLevel] = useState<number | null>(
@@ -88,7 +90,22 @@ const ProfileReviewPage: React.FC = () => {
       setError(null)
       try {
         const response = await profileService.getNickname()
-        setNickname(response.nickname)
+
+        if (response.nickname) {
+          setNickname(response.nickname)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('lastNickname', response.nickname)
+          }
+        } else if (typeof window !== 'undefined') {
+          const savedNickname = localStorage.getItem('lastNickname')
+          if (savedNickname) {
+            setNickname(savedNickname)
+          } else {
+            setNickname(null)
+          }
+        } else {
+          setNickname(null)
+        }
       } catch (err) {
         const message =
           err instanceof Error ? err.message : '닉네임 정보를 불러오는데 실패했습니다.'
