@@ -24,21 +24,25 @@ vi.mock('react-router-dom', async () => {
 
 // Use mockTransport instead of vi.mock - set mock mode via environment
 // mockTransport already handles validation and error cases
-  beforeEach(() => {
-    // Enable mock mode for tests
-    localStorage.setItem('slea_ssem_api_mock', 'true')
-    localStorage.removeItem('slea_ssem_cached_nickname')
-    // Fast responses for tests
-    mockConfig.delay = 0
-    mockConfig.simulateError = false
-    clearMockRequests()
-    clearMockErrors()
-  })
+beforeEach(() => {
+  // Enable mock mode for tests
+  localStorage.setItem('slea_ssem_api_mock', 'true')
+  localStorage.removeItem('slea_ssem_cached_nickname')
+  localStorage.removeItem('lastSurveyId')
+  localStorage.removeItem('lastSurveyLevel')
+  // Fast responses for tests
+  mockConfig.delay = 0
+  mockConfig.simulateError = false
+  clearMockRequests()
+  clearMockErrors()
+})
 
-  afterEach(() => {
-    localStorage.removeItem('slea_ssem_api_mock')
-    localStorage.removeItem('slea_ssem_cached_nickname')
-  })
+afterEach(() => {
+  localStorage.removeItem('slea_ssem_api_mock')
+  localStorage.removeItem('slea_ssem_cached_nickname')
+  localStorage.removeItem('lastSurveyId')
+  localStorage.removeItem('lastSurveyLevel')
+})
 
 const renderWithRouter = (component: React.ReactElement) => {
   return render(<BrowserRouter>{component}</BrowserRouter>)

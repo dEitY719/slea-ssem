@@ -2,6 +2,9 @@ import { LEVEL_MAPPING } from '../../constants/profileLevels'
 import { profileService } from '../../services'
 import { setCachedNickname } from '../../utils/nicknameCache'
 
+const LAST_SURVEY_ID_KEY = 'lastSurveyId'
+const LAST_SURVEY_LEVEL_KEY = 'lastSurveyLevel'
+
 type BaseProfileInput = {
   level: number
   career?: number
@@ -12,6 +15,14 @@ type CompleteSignupInput = BaseProfileInput & {
   nickname: string
 }
 
+const persistSurveyProgress = (level: number, surveyId: string) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  localStorage.setItem(LAST_SURVEY_ID_KEY, surveyId)
+  localStorage.setItem(LAST_SURVEY_LEVEL_KEY, String(level))
+}
+
 export async function submitProfileSurvey(input: BaseProfileInput) {
   const payload = {
     level: LEVEL_MAPPING[input.level],
@@ -20,6 +31,8 @@ export async function submitProfileSurvey(input: BaseProfileInput) {
   }
 
   const response = await profileService.updateSurvey(payload)
+  persistSurveyProgress(input.level, response.survey_id)
+
   return {
     surveyId: response.survey_id,
     level: payload.level,
