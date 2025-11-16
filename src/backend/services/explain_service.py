@@ -216,9 +216,13 @@ class ExplainService:
 
         """
         try:
-            return self._generate_with_gemini(question, user_answer, is_correct)
+            logger.info("Attempting to generate explanation using Gemini LLM")
+            result = self._generate_with_gemini(question, user_answer, is_correct)
+            logger.info("✓ Gemini LLM successfully generated explanation")
+            return result
         except Exception as e:
-            logger.warning(f"Gemini API failed, falling back to Mock: {e}")
+            logger.error(f"✗ Gemini API failed with error: {type(e).__name__}: {e}")
+            logger.info("Falling back to Mock LLM for explanation")
             return self._generate_mock_explanation(question, user_answer, is_correct)
 
     def _generate_with_gemini(
@@ -255,9 +259,7 @@ class ExplainService:
 
         return self._parse_llm_response(response_text)
 
-    def _build_explanation_prompt(
-        self, question: Question, user_answer: str | dict, is_correct: bool
-    ) -> str:
+    def _build_explanation_prompt(self, question: Question, user_answer: str | dict, is_correct: bool) -> str:
         """
         Build LLM prompt with question context for explanation generation.
 
@@ -312,7 +314,7 @@ class ExplainService:
         # Add answer info
         prompt += f"""사용자 답변: {user_answer_str}
 정답: {correct_key}
-정오답: {'정답' if is_correct else '오답'}
+정오답: {"정답" if is_correct else "오답"}
 
 다음 JSON 포맷으로 해설을 작성해주세요. 괄호는 포함하지 마세요:
 {{
@@ -390,7 +392,7 @@ class ExplainService:
 
         except (json.JSONDecodeError, ValueError, KeyError) as e:
             logger.error(f"Failed to parse LLM response: {e}")
-            raise ValueError(f"Invalid LLM response format: {e}")
+            raise ValueError(f"Invalid LLM response format: {e}") from e
 
     def _generate_mock_explanation(
         self,
@@ -562,6 +564,7 @@ class ExplainService:
             user_answer: User's submitted answer
             correct_key: Correct answer (formatted)
             question_type: Type of question for context
+
         """
         explanations = {
             "LLM": (
@@ -762,9 +765,7 @@ class ExplainService:
         # Extract problem statement for display
         problem_statement = None
         if question:
-            problem_statement = self._extract_problem_statement(
-                question.stem, explanation.is_correct
-            )
+            problem_statement = self._extract_problem_statement(question.stem, explanation.is_correct)
 
         return {
             "id": explanation.id,
