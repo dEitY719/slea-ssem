@@ -145,10 +145,12 @@ const TestPage: React.FC = () => {
       }
 
       // Submit answer to backend
-      await questionService.autosave({
+        const responseTime = Date.now() - questionStartTime
+        await questionService.autosave({
         session_id: sessionId,
         question_id: currentQuestion.id,
-        user_answer: JSON.stringify(userAnswer),
+          user_answer: JSON.stringify(userAnswer),
+          response_time_ms: responseTime,
       })
 
       // Move to next question or finish

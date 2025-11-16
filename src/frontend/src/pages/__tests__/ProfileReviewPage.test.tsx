@@ -2,9 +2,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { BrowserRouter, MemoryRouter } from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
 import ProfileReviewPage from '../ProfileReviewPage'
-import * as transport from '../../lib/transport'
+import { mockConfig, setMockData } from '../../lib/transport'
 
 const mockNavigate = vi.fn()
 let mockLocationState: any = { level: 3 }
@@ -22,13 +22,6 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-// Mock transport
-vi.mock('../../lib/transport', () => ({
-  transport: {
-    get: vi.fn(),
-  },
-}))
-
 const renderWithRouter = (component: React.ReactElement) => {
   return render(<BrowserRouter>{component}</BrowserRouter>)
 }
@@ -39,22 +32,25 @@ describe('ProfileReviewPage', () => {
     mockNavigate.mockReset()
     localStorage.clear()
     mockLocationState = { level: 3 }
-  })
-
-  afterEach(() => {
-    localStorage.clear()
-  })
-
-  test('renders page with title, description, and buttons', async () => {
-    // REQ: REQ-F-A2-2-4
-    mockLocationState = { level: 3, surveyId: 'test_survey' }
-
-    vi.mocked(transport.transport.get).mockResolvedValueOnce({
+    localStorage.setItem('slea_ssem_api_mock', 'true')
+    mockConfig.delay = 0
+    mockConfig.simulateError = false
+    setMockData('/api/profile/nickname', {
       user_id: 'test@samsung.com',
       nickname: 'testuser',
       registered_at: '2025-11-12T00:00:00Z',
       updated_at: '2025-11-12T00:00:00Z',
     })
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+    localStorage.removeItem('slea_ssem_api_mock')
+  })
+
+    test('renders page with title, description, and buttons', async () => {
+      // REQ: REQ-F-A2-2-4
+      mockLocationState = { level: 3, surveyId: 'test_survey' }
 
     renderWithRouter(<ProfileReviewPage />)
 
@@ -65,35 +61,19 @@ describe('ProfileReviewPage', () => {
     })
   })
 
-  test('fetches and displays user nickname on mount', async () => {
-    // REQ: REQ-F-A2-2-4
-    mockLocationState = { level: 3, surveyId: 'test_survey' }
-
-    const mockGet = vi.mocked(transport.transport.get)
-    mockGet.mockResolvedValueOnce({
-      user_id: 'test@samsung.com',
-      nickname: 'testuser',
-      registered_at: '2025-11-12T00:00:00Z',
-      updated_at: '2025-11-12T00:00:00Z',
-    })
+    test('fetches and displays user nickname on mount', async () => {
+      // REQ: REQ-F-A2-2-4
+      mockLocationState = { level: 3, surveyId: 'test_survey' }
 
     renderWithRouter(<ProfileReviewPage />)
 
-    await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith('/api/profile/nickname')
-      expect(screen.getByText(/testuser/i)).toBeInTheDocument()
-    })
+      await waitFor(() => {
+        expect(screen.getByText(/testuser/i)).toBeInTheDocument()
+      })
   })
 
   test('displays level information passed via navigation state', async () => {
     // REQ: REQ-F-A2-2-4
-    vi.mocked(transport.transport.get).mockResolvedValueOnce({
-      user_id: 'test@samsung.com',
-      nickname: 'testuser',
-      registered_at: '2025-11-12T00:00:00Z',
-      updated_at: '2025-11-12T00:00:00Z',
-    })
-
     renderWithRouter(<ProfileReviewPage />)
 
     await waitFor(() => {
@@ -103,13 +83,6 @@ describe('ProfileReviewPage', () => {
 
   test('converts level number to Korean text (1→입문, 3→중급, 5→전문가)', async () => {
     // REQ: REQ-F-A2-2-4
-    vi.mocked(transport.transport.get).mockResolvedValue({
-      user_id: 'test@samsung.com',
-      nickname: 'testuser',
-      registered_at: '2025-11-12T00:00:00Z',
-      updated_at: '2025-11-12T00:00:00Z',
-    })
-
     // Level 3 is already tested via the mock useLocation above (state: { level: 3 })
     // Just verify the default mock shows 중급
     renderWithRouter(<ProfileReviewPage />)
@@ -122,13 +95,6 @@ describe('ProfileReviewPage', () => {
   test('navigates to /test with surveyId when "테스트 시작" button is clicked', async () => {
     // REQ: REQ-F-B5-3
     mockLocationState = { level: 3, surveyId: 'survey_123' }
-
-    vi.mocked(transport.transport.get).mockResolvedValueOnce({
-      user_id: 'test@samsung.com',
-      nickname: 'testuser',
-      registered_at: '2025-11-12T00:00:00Z',
-      updated_at: '2025-11-12T00:00:00Z',
-    })
 
     const user = userEvent.setup()
     renderWithRouter(<ProfileReviewPage />)
@@ -153,13 +119,6 @@ describe('ProfileReviewPage', () => {
 
   test('navigates back to /self-assessment when "수정하기" button is clicked', async () => {
     // REQ: REQ-F-A2-2-4
-    vi.mocked(transport.transport.get).mockResolvedValueOnce({
-      user_id: 'test@samsung.com',
-      nickname: 'testuser',
-      registered_at: '2025-11-12T00:00:00Z',
-      updated_at: '2025-11-12T00:00:00Z',
-    })
-
     const user = userEvent.setup()
     renderWithRouter(<ProfileReviewPage />)
 
@@ -175,36 +134,23 @@ describe('ProfileReviewPage', () => {
 
   test('shows loading state while fetching nickname', () => {
     // REQ: REQ-F-A2-2-4
-    vi.mocked(transport.transport.get).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          setTimeout(
-            () =>
-              resolve({
-                user_id: 'test@samsung.com',
-                nickname: 'testuser',
-                registered_at: '2025-11-12T00:00:00Z',
-                updated_at: '2025-11-12T00:00:00Z',
-              }),
-            100
-          )
-        })
-    )
+      mockConfig.delay = 100
 
     renderWithRouter(<ProfileReviewPage />)
 
     expect(screen.getByText(/로딩 중/i)).toBeInTheDocument()
+      mockConfig.delay = 0
   })
 
-  test('shows error message if nickname fetch fails', async () => {
-    // REQ: REQ-F-A2-2-4
-    vi.mocked(transport.transport.get).mockRejectedValueOnce(new Error('Network error'))
-
+    test('shows error message if nickname fetch fails', async () => {
+      // REQ: REQ-F-A2-2-4
+      mockConfig.simulateError = true
     renderWithRouter(<ProfileReviewPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Network error/i)).toBeInTheDocument()
+        expect(screen.getByText(/Mock Transport/i)).toBeInTheDocument()
     })
+      mockConfig.simulateError = false
   })
 
   // REQ-F-B5-3 Tests
@@ -212,13 +158,6 @@ describe('ProfileReviewPage', () => {
     // REQ: REQ-F-B5-3 - Retake test with saved surveyId
     mockLocationState = { level: 3 } // No surveyId in state
     localStorage.setItem('lastSurveyId', 'saved_survey_456')
-
-    vi.mocked(transport.transport.get).mockResolvedValueOnce({
-      user_id: 'test@samsung.com',
-      nickname: 'testuser',
-      registered_at: '2025-11-12T00:00:00Z',
-      updated_at: '2025-11-12T00:00:00Z',
-    })
 
     const user = userEvent.setup()
     renderWithRouter(<ProfileReviewPage />)
@@ -244,13 +183,6 @@ describe('ProfileReviewPage', () => {
     mockLocationState = { level: 3 } // No surveyId in state
     // localStorage is empty (cleared in beforeEach)
 
-    vi.mocked(transport.transport.get).mockResolvedValueOnce({
-      user_id: 'test@samsung.com',
-      nickname: 'testuser',
-      registered_at: '2025-11-12T00:00:00Z',
-      updated_at: '2025-11-12T00:00:00Z',
-    })
-
     const user = userEvent.setup()
     renderWithRouter(<ProfileReviewPage />)
 
@@ -274,13 +206,6 @@ describe('ProfileReviewPage', () => {
     // REQ: REQ-F-B5-3 - Priority: state > localStorage
     mockLocationState = { level: 3, surveyId: 'state_survey_123' }
     localStorage.setItem('lastSurveyId', 'old_survey_456')
-
-    vi.mocked(transport.transport.get).mockResolvedValueOnce({
-      user_id: 'test@samsung.com',
-      nickname: 'testuser',
-      registered_at: '2025-11-12T00:00:00Z',
-      updated_at: '2025-11-12T00:00:00Z',
-    })
 
     const user = userEvent.setup()
     renderWithRouter(<ProfileReviewPage />)

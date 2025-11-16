@@ -1,10 +1,10 @@
 // REQ: REQ-F-A2-Signup-3, REQ-F-A2-Signup-4, REQ-F-A2-Signup-5, REQ-F-A2-Signup-6
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import SignupPage from '../SignupPage'
-import { mockConfig, setMockScenario } from '../../lib/transport'
+import { mockConfig } from '../../lib/transport'
 
 const mockNavigate = vi.fn()
 

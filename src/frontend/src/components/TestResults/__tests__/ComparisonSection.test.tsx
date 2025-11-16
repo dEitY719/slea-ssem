@@ -23,7 +23,8 @@ describe('ComparisonSection - REQ-F-B5-1', () => {
     // 등급 변화 확인
     expect(screen.getByText('Beginner')).toBeInTheDocument()
     expect(screen.getByText('Intermediate')).toBeInTheDocument()
-    const upArrows = screen.getAllByText('↑')
+    // SVG 아이콘 확인 (arrow-up class)
+    const upArrows = document.querySelectorAll('.arrow-up')
     expect(upArrows.length).toBe(2) // 등급, 점수 각각
 
     // 점수 변화 확인
@@ -50,8 +51,8 @@ describe('ComparisonSection - REQ-F-B5-1', () => {
       />
     )
 
-    // 등급 하락 확인
-    const downArrows = screen.getAllByText('↓')
+    // 등급 하락 확인 (SVG 아이콘)
+    const downArrows = document.querySelectorAll('.arrow-down')
     expect(downArrows.length).toBe(2) // 등급, 점수 각각
 
     // 점수 하락 확인
@@ -76,8 +77,8 @@ describe('ComparisonSection - REQ-F-B5-1', () => {
       />
     )
 
-    // 변동 없음 표시 확인
-    expect(screen.getAllByText('→').length).toBeGreaterThan(0)
+    // 변동 없음 표시 확인 (SVG 아이콘)
+    expect(document.querySelectorAll('.arrow-right').length).toBeGreaterThan(0)
     expect(screen.getAllByText('(변동 없음)').length).toBe(2) // 등급, 점수 각각
 
     // 변동 없음 메시지 확인
@@ -102,10 +103,10 @@ describe('ComparisonSection - REQ-F-B5-1', () => {
     expect(screen.getByText('현재 점수:')).toBeInTheDocument()
     expect(screen.getByText('75점')).toBeInTheDocument()
 
-    // 비교 정보는 없어야 함
-    expect(screen.queryByText('→')).not.toBeInTheDocument()
-    expect(screen.queryByText('↑')).not.toBeInTheDocument()
-    expect(screen.queryByText('↓')).not.toBeInTheDocument()
+    // 비교 정보는 없어야 함 (SVG 아이콘 없음)
+    expect(document.querySelectorAll('.arrow-right').length).toBe(0)
+    expect(document.querySelectorAll('.arrow-up').length).toBe(0)
+    expect(document.querySelectorAll('.arrow-down').length).toBe(0)
   })
 
   test('이전 테스트 날짜 표시', () => {
@@ -153,8 +154,8 @@ describe('ComparisonSection - REQ-F-B5-1', () => {
     expect(screen.getByText('75점')).toBeInTheDocument()
     expect(screen.getByText('(+5점)')).toBeInTheDocument()
 
-    // 점수 상승 아이콘 (등급은 →, 점수만 ↑)
-    const upArrows = screen.getAllByText('↑')
+    // 점수 상승 아이콘 (등급은 →, 점수만 ↑) - SVG 아이콘
+    const upArrows = document.querySelectorAll('.arrow-up')
     expect(upArrows.length).toBe(1) // 점수만 상승
 
     // 개선 메시지

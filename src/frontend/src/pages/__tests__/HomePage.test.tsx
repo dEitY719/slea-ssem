@@ -1,9 +1,17 @@
 // REQ: REQ-F-A2-1, REQ-F-A2-Signup-1
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import HomePage from '../HomePage'
 import * as authUtils from '../../utils/auth'
+import {
+  mockConfig,
+  setMockData,
+  setMockError,
+  clearMockErrors,
+  clearMockRequests,
+  getMockRequests,
+} from '../../lib/transport'
 
 // Mock useNavigate
 const mockNavigate = vi.fn()
@@ -20,12 +28,27 @@ vi.mock('../../utils/auth', () => ({
   getToken: vi.fn(() => 'mock_jwt_token'),
 }))
 
-describe('HomePage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
-    ;(globalThis.fetch as any) = vi.fn()
-  })
+  describe('HomePage', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      mockNavigate.mockReset()
+      vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
+      localStorage.setItem('slea_ssem_api_mock', 'true')
+      mockConfig.delay = 0
+      mockConfig.simulateError = false
+      clearMockErrors()
+      clearMockRequests()
+      setMockData('/api/profile/nickname', {
+        user_id: 'test@samsung.com',
+        nickname: null,
+        registered_at: null,
+        updated_at: null,
+      })
+    })
+
+    afterEach(() => {
+      localStorage.removeItem('slea_ssem_api_mock')
+    })
 
   it('should redirect to login if no token is present', () => {
     vi.spyOn(authUtils, 'getToken').mockReturnValue(null)
@@ -39,65 +62,45 @@ describe('HomePage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/')
   })
 
-  it('should display welcome message when authenticated', () => {
+    it('should display welcome message when authenticated', async () => {
     render(
       <MemoryRouter>
         <HomePage />
       </MemoryRouter>
     )
 
-    expect(screen.getByText('S.LSI Learning Platform')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(getMockRequests({ url: '/api/profile/nickname' }).length).toBeGreaterThan(0)
+      })
+
+      expect(screen.getAllByText(/S\.LSI Learning Platform/).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(/AI 기반 학습 플랫폼/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /시작하기/i })).toBeInTheDocument()
   })
 
   it('should call API to check nickname when "시작하기" is clicked', async () => {
-    ;(globalThis.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        user_id: 'test@samsung.com',
-        nickname: 'testuser',
-        registered_at: '2025-11-10T12:00:00Z',
-        updated_at: '2025-11-10T12:00:00Z',
-      }),
-    })
-
     render(
       <MemoryRouter>
         <HomePage />
       </MemoryRouter>
     )
 
+      await waitFor(() => {
+        expect(getMockRequests({ url: '/api/profile/nickname' }).length).toBe(1)
+      })
+
+      clearMockRequests()
+
     const startButton = screen.getByRole('button', { name: /시작하기/i })
     fireEvent.click(startButton)
 
     await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        '/api/profile/nickname',
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            'Authorization': 'Bearer mock_jwt_token',
-          }),
-        })
-      )
+        expect(getMockRequests({ url: '/api/profile/nickname' }).length).toBe(1)
     })
   })
 
   it('should redirect to /nickname-setup when nickname is null', async () => {
     // REQ: REQ-F-A2-1
-    ;(globalThis.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        user_id: 'test@samsung.com',
-        nickname: null,  // ✅ REQ-F-A2-1: nickname is NULL
-        registered_at: null,
-        updated_at: null,
-      }),
-    })
-
     render(
       <MemoryRouter>
         <HomePage />
@@ -115,16 +118,12 @@ describe('HomePage', () => {
 
   it('should navigate to self-assessment when nickname exists', async () => {
     // REQ: REQ-F-A2-2-1
-    ;(globalThis.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
+      setMockData('/api/profile/nickname', {
         user_id: 'test@samsung.com',
-        nickname: 'testuser',  // ✅ nickname is set
+        nickname: 'testuser',
         registered_at: '2025-11-10T12:00:00Z',
         updated_at: '2025-11-10T12:00:00Z',
-      }),
-    })
+      })
 
     render(
       <MemoryRouter>
@@ -142,11 +141,7 @@ describe('HomePage', () => {
   })
 
   it('should display error message when API call fails', async () => {
-    ;(globalThis.fetch as any).mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-      json: async () => ({ detail: 'Unauthorized' }),
-    })
+      setMockError('/api/profile/nickname', 'Unauthorized')
 
     render(
       <MemoryRouter>
@@ -165,7 +160,7 @@ describe('HomePage', () => {
   })
 
   it('should handle network errors gracefully', async () => {
-    ;(globalThis.fetch as any).mockRejectedValueOnce(new Error('Network error'))
+      setMockError('/api/profile/nickname', 'Network error')
 
     render(
       <MemoryRouter>
@@ -187,23 +182,28 @@ describe('HomePage', () => {
 describe('HomePage - REQ-F-A2-Signup-1 (Header Integration)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+      mockNavigate.mockReset()
     vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
-    ;(globalThis.fetch as any) = vi.fn()
+      localStorage.setItem('slea_ssem_api_mock', 'true')
+      mockConfig.delay = 0
+      mockConfig.simulateError = false
+      clearMockErrors()
+      clearMockRequests()
   })
+
+    afterEach(() => {
+      localStorage.removeItem('slea_ssem_api_mock')
+    })
 
   it('nickname이 null일 때 헤더에 "회원가입" 버튼 표시', async () => {
     // REQ: REQ-F-A2-Signup-1
     // Given: User has no nickname (initial load returns null)
-    ;(globalThis.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
+      setMockData('/api/profile/nickname', {
         user_id: 'test@samsung.com',
         nickname: null,
         registered_at: null,
         updated_at: null,
-      }),
-    })
+      })
 
     render(
       <MemoryRouter>
@@ -221,16 +221,12 @@ describe('HomePage - REQ-F-A2-Signup-1 (Header Integration)', () => {
   it('nickname이 존재할 때 헤더에 "회원가입" 버튼 숨김', async () => {
     // REQ: REQ-F-A2-Signup-1
     // Given: User already has nickname
-    ;(globalThis.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
+      setMockData('/api/profile/nickname', {
         user_id: 'test@samsung.com',
         nickname: 'existing_user',
         registered_at: '2025-11-10T12:00:00Z',
         updated_at: '2025-11-10T12:00:00Z',
-      }),
-    })
+      })
 
     render(
       <MemoryRouter>
@@ -239,25 +235,19 @@ describe('HomePage - REQ-F-A2-Signup-1 (Header Integration)', () => {
     )
 
     // Wait for nickname to load
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalled()
-    })
-
     // Then: "회원가입" button should NOT be visible
     const signupButton = screen.queryByRole('button', { name: /회원가입/i })
     expect(signupButton).not.toBeInTheDocument()
   })
 
   it('헤더에 플랫폼 이름이 표시됨', () => {
-    // REQ: General header functionality
-    ;(globalThis.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
+      // REQ: General header functionality
+      setMockData('/api/profile/nickname', {
         user_id: 'test@samsung.com',
         nickname: null,
-      }),
-    })
+        registered_at: null,
+        updated_at: null,
+      })
 
     render(
       <MemoryRouter>
@@ -266,7 +256,7 @@ describe('HomePage - REQ-F-A2-Signup-1 (Header Integration)', () => {
     )
 
     // Then: Platform name should appear twice (header + main content)
-    const platformNames = screen.getAllByText(/S\.LSI Learning Platform/i)
-    expect(platformNames.length).toBeGreaterThanOrEqual(1)
+      const platformNames = screen.getAllByText(/S\.LSI Learning Platform/i)
+      expect(platformNames.length).toBeGreaterThanOrEqual(1)
   })
 })

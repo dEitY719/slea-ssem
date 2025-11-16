@@ -34,11 +34,34 @@ export function getTransport(): HttpTransport {
 }
 
 /**
- * Default transport instance
- * Import this in your hooks/components
+ * Lazy transport proxy that always delegates to the active transport.
+ * This allows tests to toggle mock mode (e.g., via localStorage) even
+ * after modules have been imported.
  */
-export const transport = getTransport()
+export const transport: HttpTransport = {
+  get<T>(url: string, config) {
+    return getTransport().get<T>(url, config)
+  },
+  post<T>(url: string, data, config) {
+    return getTransport().post<T>(url, data, config)
+  },
+  put<T>(url: string, data, config) {
+    return getTransport().put<T>(url, data, config)
+  },
+  delete<T>(url: string, config) {
+    return getTransport().delete<T>(url, config)
+  },
+}
 
 // Re-export types and utilities
 export type { HttpTransport, RequestConfig } from './types'
-export { setMockScenario, setMockData, mockConfig } from './mockTransport'
+export {
+  setMockScenario,
+  setMockData,
+  mockConfig,
+  getMockData,
+  getMockRequests,
+  clearMockRequests,
+  setMockError,
+  clearMockErrors,
+} from './mockTransport'
