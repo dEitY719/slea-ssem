@@ -308,15 +308,14 @@ class MockTransport implements HttpTransport {
     }
 
     // Handle auth login endpoint
-    if (normalizedUrl === API_AUTH_LOGIN && method === 'POST') {
-      const response = mockData[API_AUTH_LOGIN]
-      if (!response) {
-        throw new Error('Mock login response not configured')
+      if (normalizedUrl === API_AUTH_LOGIN && method === 'POST') {
+        const response = mockData[API_AUTH_LOGIN]
+        if (!response) {
+          throw new Error('Mock login response not configured')
+        }
+        console.log('[Mock Transport] Response:', response)
+        return response as T
       }
-        resetResultProgression()
-      console.log('[Mock Transport] Response:', response)
-      return response as T
-    }
 
     // Handle nickname check endpoint
     if (normalizedUrl === API_PROFILE_NICKNAME_CHECK && method === 'POST' && requestData?.nickname) {
