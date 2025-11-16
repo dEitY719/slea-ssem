@@ -55,4 +55,13 @@ export const transport: HttpTransport = {
 
 // Re-export types and utilities
 export type { HttpTransport, RequestConfig } from './types'
-export { setMockScenario, setMockData, mockConfig } from './mockTransport'
+export {
+  setMockScenario,
+  setMockData,
+  mockConfig,
+  getMockData,
+  getMockRequests,
+  clearMockRequests,
+  setMockError,
+  clearMockErrors,
+} from './mockTransport'

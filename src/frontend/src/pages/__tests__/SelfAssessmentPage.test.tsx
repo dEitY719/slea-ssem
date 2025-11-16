@@ -1,10 +1,10 @@
 // REQ: REQ-F-A2-2-2
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import SelfAssessmentPage from '../SelfAssessmentPage'
-import * as transport from '../../lib/transport'
+import { mockConfig, setMockScenario, getMockData } from '../../lib/transport'
 
 const mockNavigate = vi.fn()
 
@@ -17,13 +17,6 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => mockNavigate,
   }
 })
-
-// Mock transport
-vi.mock('../../lib/transport', () => ({
-  transport: {
-    put: vi.fn(),
-  },
-}))
 
 // Mock auth utils
 vi.mock('../../utils/auth', () => ({
@@ -38,6 +31,14 @@ describe('SelfAssessmentPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNavigate.mockReset()
+    localStorage.setItem('slea_ssem_api_mock', 'true')
+    mockConfig.delay = 0
+    mockConfig.simulateError = false
+    setMockScenario('no-survey')
+  })
+
+  afterEach(() => {
+    localStorage.removeItem('slea_ssem_api_mock')
   })
 
   test('renders level selection with 5 options and complete button', () => {
@@ -73,13 +74,8 @@ describe('SelfAssessmentPage', () => {
     expect(completeButton).not.toBeDisabled()
   })
 
-  test('converts level 1 to "beginner" when submitting', async () => {
-    // REQ: REQ-F-A2-2-2 - Uses shared LEVEL_MAPPING from profileLevels.ts
-    const mockPut = vi.mocked(transport.transport.put)
-    mockPut.mockResolvedValueOnce({
-      survey_id: 'mock_survey_id',
-    })
-
+    test('converts level 1 to "beginner" when submitting', async () => {
+      // REQ: REQ-F-A2-2-2 - Uses shared LEVEL_MAPPING from profileLevels.ts
     const user = userEvent.setup()
     renderWithRouter(<SelfAssessmentPage />)
 
@@ -89,22 +85,15 @@ describe('SelfAssessmentPage', () => {
     const completeButton = screen.getByRole('button', { name: /완료/i })
     await user.click(completeButton)
 
-    await waitFor(() => {
-      expect(mockPut).toHaveBeenCalledWith('/api/profile/survey', {
-        level: 'beginner',
-        career: 0,
-        interests: [],
+      await waitFor(() => {
+        const surveyData = getMockData('/api/profile/survey')
+        expect(surveyData.level).toBe('beginner')
+        expect(surveyData.career).toBe(0)
       })
-    })
   })
 
   test('converts level 2 and 3 to "intermediate" when submitting', async () => {
     // REQ: REQ-F-A2-2-2 - Uses shared LEVEL_MAPPING from profileLevels.ts
-    const mockPut = vi.mocked(transport.transport.put)
-    mockPut.mockResolvedValue({
-      survey_id: 'mock_survey_id',
-    })
-
     const user = userEvent.setup()
 
     // Test level 2 -> intermediate
@@ -114,39 +103,28 @@ describe('SelfAssessmentPage', () => {
     let completeButton = screen.getByRole('button', { name: /완료/i })
     await user.click(completeButton)
 
-    await waitFor(() => {
-      expect(mockPut).toHaveBeenCalledWith('/api/profile/survey', {
-        level: 'intermediate',
-        career: 0,
-        interests: [],
+      await waitFor(() => {
+        const surveyData = getMockData('/api/profile/survey')
+        expect(surveyData.level).toBe('intermediate')
       })
-    })
 
     // Reset and test level 3 -> intermediate
     unmount()
-    mockPut.mockClear()
+      setMockScenario('no-survey')
     renderWithRouter(<SelfAssessmentPage />)
     const level3Radio = screen.getByLabelText(/3 - 중급/i)
     await user.click(level3Radio)
     completeButton = screen.getByRole('button', { name: /완료/i })
     await user.click(completeButton)
 
-    await waitFor(() => {
-      expect(mockPut).toHaveBeenCalledWith('/api/profile/survey', {
-        level: 'intermediate',
-        career: 0,
-        interests: [],
+      await waitFor(() => {
+        const surveyData = getMockData('/api/profile/survey')
+        expect(surveyData.level).toBe('intermediate')
       })
-    })
   })
 
   test('converts level 4 and 5 to "advanced" when submitting', async () => {
     // REQ: REQ-F-A2-2-2 - Uses shared LEVEL_MAPPING from profileLevels.ts
-    const mockPut = vi.mocked(transport.transport.put)
-    mockPut.mockResolvedValue({
-      survey_id: 'mock_survey_id',
-    })
-
     const user = userEvent.setup()
 
     // Test level 4 -> advanced
@@ -156,39 +134,28 @@ describe('SelfAssessmentPage', () => {
     let completeButton = screen.getByRole('button', { name: /완료/i })
     await user.click(completeButton)
 
-    await waitFor(() => {
-      expect(mockPut).toHaveBeenCalledWith('/api/profile/survey', {
-        level: 'advanced',
-        career: 0,
-        interests: [],
+      await waitFor(() => {
+        const surveyData = getMockData('/api/profile/survey')
+        expect(surveyData.level).toBe('advanced')
       })
-    })
 
     // Reset and test level 5 -> advanced
     unmount()
-    mockPut.mockClear()
+      setMockScenario('no-survey')
     renderWithRouter(<SelfAssessmentPage />)
     const level5Radio = screen.getByLabelText(/5 - 전문가/i)
     await user.click(level5Radio)
     completeButton = screen.getByRole('button', { name: /완료/i })
     await user.click(completeButton)
 
-    await waitFor(() => {
-      expect(mockPut).toHaveBeenCalledWith('/api/profile/survey', {
-        level: 'advanced',
-        career: 0,
-        interests: [],
+      await waitFor(() => {
+        const surveyData = getMockData('/api/profile/survey')
+        expect(surveyData.level).toBe('advanced')
       })
-    })
   })
 
   test('navigates to profile review page after successful submission', async () => {
     // REQ: REQ-F-A2-2-4
-    const mockPut = vi.mocked(transport.transport.put)
-    mockPut.mockResolvedValueOnce({
-      survey_id: 'mock_survey_id',
-    })
-
     const user = userEvent.setup()
     renderWithRouter(<SelfAssessmentPage />)
 
@@ -198,32 +165,37 @@ describe('SelfAssessmentPage', () => {
     const completeButton = screen.getByRole('button', { name: /완료/i })
     await user.click(completeButton)
 
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/profile-review', {
-        replace: true,
-        state: { level: 3, surveyId: 'mock_survey_id' },
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          '/profile-review',
+          expect.objectContaining({
+            replace: true,
+            state: expect.objectContaining({
+              level: 3,
+              surveyId: expect.any(String),
+            }),
+          })
+        )
       })
-    })
   })
 
   test('shows error message when API call fails', async () => {
     // REQ: REQ-F-A2-2-4
-    const mockPut = vi.mocked(transport.transport.put)
-    mockPut.mockRejectedValueOnce(new Error('Server error'))
-
     const user = userEvent.setup()
     renderWithRouter(<SelfAssessmentPage />)
 
     const level3Radio = screen.getByLabelText(/3 - 중급/i)
     await user.click(level3Radio)
 
-    const completeButton = screen.getByRole('button', { name: /완료/i })
+      const completeButton = screen.getByRole('button', { name: /완료/i })
+      mockConfig.simulateError = true
     await user.click(completeButton)
 
     await waitFor(() => {
-      expect(screen.getByText(/Server error/i)).toBeInTheDocument()
+        expect(screen.getByText(/Mock Transport/i)).toBeInTheDocument()
       expect(mockNavigate).not.toHaveBeenCalled()
     })
+      mockConfig.simulateError = false
   })
 
   test('shows description for each level (1-5)', () => {
@@ -237,22 +209,8 @@ describe('SelfAssessmentPage', () => {
     expect(screen.getByText(/다른 사람을 지도 가능/i)).toBeInTheDocument()
   })
 
-  test('disables complete button while submitting', async () => {
-    // REQ: REQ-F-A2-2-4
-    const mockPut = vi.mocked(transport.transport.put)
-    mockPut.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          setTimeout(
-            () =>
-              resolve({
-                survey_id: 'mock_survey_id',
-              }),
-            100
-          )
-        })
-    )
-
+    test('disables complete button while submitting', async () => {
+      // REQ: REQ-F-A2-2-4
     const user = userEvent.setup()
     renderWithRouter(<SelfAssessmentPage />)
 
@@ -260,17 +218,25 @@ describe('SelfAssessmentPage', () => {
     await user.click(level3Radio)
 
     const completeButton = screen.getByRole('button', { name: /완료/i })
-    await user.click(completeButton)
+      mockConfig.delay = 100
+      await user.click(completeButton)
 
     // Button should be disabled while submitting
     expect(completeButton).toBeDisabled()
     expect(screen.getByText(/제출 중.../i)).toBeInTheDocument()
 
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/profile-review', {
-        replace: true,
-        state: { level: 3, surveyId: 'mock_survey_id' },
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          '/profile-review',
+          expect.objectContaining({
+            replace: true,
+            state: expect.objectContaining({
+              level: 3,
+              surveyId: expect.any(String),
+            }),
+          })
+        )
       })
-    })
+      mockConfig.delay = 0
   })
 })

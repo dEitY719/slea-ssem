@@ -119,6 +119,15 @@ const mockData: Record<string, any> = {
 // Track taken nicknames for mock: 이미 사용 중인 닉네임 목록
 const takenNicknames = new Set(['admin', 'test', 'mockuser', 'existing_user'])
 
+type RequestLogEntry = {
+  url: string
+  method: string
+  body?: any
+}
+
+const requestLog: RequestLogEntry[] = []
+const endpointErrors = new Map<string, string>()
+
 // Mock configuration: 네트워크 지연, 에러 여부 등 시뮬레이션 설정
 export const mockConfig = {
   delay: 500,           // Network delay in ms
@@ -130,11 +139,18 @@ export const mockConfig = {
 class MockTransport implements HttpTransport {
   private async mockRequest<T>(url: string, method: string, requestData?: any): Promise<T> {
     const normalizedUrl = ensureApiPath(url)
+    requestLog.push({ url: normalizedUrl, method, body: requestData })
     console.log(`[Mock Transport] ${method} ${normalizedUrl}`, requestData)
 
     // Simulate network delay
     const delay = mockConfig.slowNetwork ? 3000 : mockConfig.delay
     await new Promise(resolve => setTimeout(resolve, delay))
+
+    // Endpoint-specific error override
+    const endpointError = endpointErrors.get(normalizedUrl)
+    if (endpointError) {
+      throw new Error(endpointError)
+    }
 
     // Simulate error
     if (mockConfig.simulateError) {
@@ -287,37 +303,42 @@ class MockTransport implements HttpTransport {
 
     // Handle GET /api/results/{sessionId} endpoint
     if (normalizedUrl.startsWith('/api/results/') && method === 'GET') {
-      const sessionId = normalizedUrl.split('/').pop()
-      console.log('[Mock Transport] Fetching results for session:', sessionId)
-
-      // Mock result data (REQ: REQ-F-B4-1, REQ-F-B4-3)
-      const mockResultData = {
-        user_id: 1,
-        grade: 'Advanced',
-        score: 82.5,
-        rank: 3,
-        total_cohort_size: 506,
-        percentile: 72.0,
-        percentile_confidence: 'high',
-        percentile_description: '상위 28%',
-        // REQ: REQ-F-B4-3 - Grade distribution data
-        grade_distribution: [
-          { grade: 'Beginner', count: 102, percentage: 20.2 },
-          { grade: 'Intermediate', count: 156, percentage: 30.8 },
-          { grade: 'Intermediate-Advanced', count: 98, percentage: 19.4 },
-          { grade: 'Advanced', count: 95, percentage: 18.8 },
-          { grade: 'Elite', count: 55, percentage: 10.8 },
-        ],
+      const storedResult = mockData[normalizedUrl]
+      if (typeof storedResult !== 'undefined') {
+        console.log('[Mock Transport] Response:', storedResult)
+        return storedResult as T
       }
 
-      console.log('[Mock Transport] Response:', mockResultData)
-      return mockResultData as T
+      const sessionId = normalizedUrl.split('/').pop()
+      if (sessionId && sessionId !== 'previous') {
+        console.log('[Mock Transport] Fetching results for session:', sessionId)
+        const mockResultData = {
+          user_id: 1,
+          grade: 'Advanced',
+          score: 82.5,
+          rank: 3,
+          total_cohort_size: 506,
+          percentile: 72.0,
+          percentile_confidence: 'high',
+          percentile_description: '상위 28%',
+          grade_distribution: [
+            { grade: 'Beginner', count: 102, percentage: 20.2 },
+            { grade: 'Intermediate', count: 156, percentage: 30.8 },
+            { grade: 'Intermediate-Advanced', count: 98, percentage: 19.4 },
+            { grade: 'Advanced', count: 95, percentage: 18.8 },
+            { grade: 'Elite', count: 55, percentage: 10.8 },
+          ],
+        }
+
+        console.log('[Mock Transport] Response:', mockResultData)
+        return mockResultData as T
+      }
     }
 
     // Find mock data for this endpoint
     const data = mockData[normalizedUrl]
 
-    if (!data) {
+    if (typeof data === 'undefined') {
       throw new Error(`Mock data not found for: ${normalizedUrl}`)
     }
 
@@ -347,6 +368,39 @@ export const mockTransport = new MockTransport()
 // Helper to update mock data at runtime
 export function setMockData(endpoint: string, data: any) {
   mockData[ensureApiPath(endpoint)] = data
+}
+
+// Helper to read mock data (useful for assertions in tests)
+export function getMockData(endpoint: string) {
+  return mockData[ensureApiPath(endpoint)]
+}
+
+export function getMockRequests(filter?: { url?: string; method?: string }) {
+  return requestLog.filter((entry) => {
+    if (filter?.url && ensureApiPath(filter.url) !== entry.url) {
+      return false
+    }
+    if (filter?.method && filter.method.toUpperCase() !== entry.method.toUpperCase()) {
+      return false
+    }
+    return true
+  })
+}
+
+export function clearMockRequests() {
+  requestLog.length = 0
+}
+
+export function setMockError(endpoint: string, message: string) {
+  endpointErrors.set(ensureApiPath(endpoint), message)
+}
+
+export function clearMockErrors(endpoint?: string) {
+  if (endpoint) {
+    endpointErrors.delete(ensureApiPath(endpoint))
+  } else {
+    endpointErrors.clear()
+  }
 }
 
 // Helper to simulate different scenarios

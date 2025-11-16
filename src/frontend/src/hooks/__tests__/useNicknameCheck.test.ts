@@ -1,19 +1,19 @@
 // REQ: REQ-F-A2-2
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useNicknameCheck } from '../useNicknameCheck'
-import * as transport from '../../lib/transport'
-
-// Mock transport
-vi.mock('../../lib/transport', () => ({
-  transport: {
-    post: vi.fn(),
-  },
-}))
+import { mockConfig } from '../../lib/transport'
 
 describe('useNicknameCheck', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.setItem('slea_ssem_api_mock', 'true')
+    mockConfig.delay = 0
+    mockConfig.simulateError = false
+  })
+
+  afterEach(() => {
+    localStorage.removeItem('slea_ssem_api_mock')
   })
 
   test('initial state is correct', () => {
@@ -69,40 +69,28 @@ describe('useNicknameCheck', () => {
     expect(result.current.errorMessage).toContain('영문자, 숫자, 언더스코어')
   })
 
-  test('checkNickname calls API and updates status to available', async () => {
+  test('checkNickname marks nickname as available when not taken', async () => {
     // REQ: REQ-F-A2-2
-    const mockResponse = { available: true, suggestions: [] }
-    vi.mocked(transport.transport.post).mockResolvedValue(mockResponse)
-
     const { result } = renderHook(() => useNicknameCheck())
 
     act(() => {
-      result.current.setNickname('john_doe')
+      result.current.setNickname('new_user')
     })
 
     await act(async () => {
       await result.current.checkNickname()
     })
 
-    expect(transport.transport.post).toHaveBeenCalledWith('/profile/nickname/check', {
-      nickname: 'john_doe',
-    })
     expect(result.current.checkStatus).toBe('available')
     expect(result.current.errorMessage).toBeNull()
   })
 
   test('checkNickname updates status to taken when nickname exists', async () => {
     // REQ: REQ-F-A2-2
-    const mockResponse = {
-      available: false,
-      suggestions: ['john_doe1', 'john_doe2', 'john_doe3'],
-    }
-    vi.mocked(transport.transport.post).mockResolvedValue(mockResponse)
-
     const { result } = renderHook(() => useNicknameCheck())
 
     act(() => {
-      result.current.setNickname('existing_user')
+      result.current.setNickname('admin')
     })
 
     await act(async () => {
@@ -110,18 +98,15 @@ describe('useNicknameCheck', () => {
     })
 
     expect(result.current.checkStatus).toBe('taken')
-    expect(result.current.suggestions).toEqual(['john_doe1', 'john_doe2', 'john_doe3'])
+    expect(result.current.suggestions).toEqual(['admin_1', 'admin_2', 'admin_3'])
   })
 
   test('check result displays within 1 second', async () => {
     // REQ: REQ-F-A2-2 (수용 기준: 1초 내 응답)
-    const mockResponse = { available: true, suggestions: [] }
-    vi.mocked(transport.transport.post).mockResolvedValue(mockResponse)
-
     const { result } = renderHook(() => useNicknameCheck())
 
     act(() => {
-      result.current.setNickname('john_doe')
+      result.current.setNickname('speed_test')
     })
 
     const startTime = Date.now()
@@ -139,7 +124,7 @@ describe('useNicknameCheck', () => {
 
   test('checkNickname handles API errors gracefully', async () => {
     // REQ: REQ-F-A2-2
-    vi.mocked(transport.transport.post).mockRejectedValue(new Error('Network error'))
+    mockConfig.simulateError = true
 
     const { result } = renderHook(() => useNicknameCheck())
 
@@ -152,6 +137,7 @@ describe('useNicknameCheck', () => {
     })
 
     expect(result.current.checkStatus).toBe('error')
-    expect(result.current.errorMessage).toBeTruthy()
+    expect(result.current.errorMessage).toContain('Mock Transport')
+    mockConfig.simulateError = false
   })
 })

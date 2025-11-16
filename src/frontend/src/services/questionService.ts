@@ -44,6 +44,7 @@ export interface AutosaveRequest {
   session_id: string
   question_id: string
   user_answer: string
+  response_time_ms?: number
 }
 
 /**
