@@ -41,6 +41,8 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
     navigate('/signup')
   }
 
+  const shouldRenderControls = !isLoading || nickname !== null
+
   return (
     <header className="app-header">
       <div className="header-container">
@@ -49,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
         </div>
 
         <div className="header-right">
-          {!isLoading && (
+          {shouldRenderControls && (
             <>
               {/* REQ-F-A2-Signup-1: Show "회원가입" button only when nickname is null */}
               {nickname === null && (

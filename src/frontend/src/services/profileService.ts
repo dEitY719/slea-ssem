@@ -109,4 +109,5 @@ export const profileService = {
   async updateSurvey(surveyData: SurveyUpdateRequest): Promise<SurveyUpdateResponse> {
     return transport.put<SurveyUpdateResponse>('/api/profile/survey', surveyData)
   },
+
 }

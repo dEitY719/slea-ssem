@@ -56,6 +56,15 @@ const ProfileReviewPage: React.FC = () => {
   const state = location.state as LocationState
 
   useEffect(() => {
+    if (typeof state?.surveyId === 'string' && typeof window !== 'undefined') {
+      localStorage.setItem('lastSurveyId', state.surveyId)
+    }
+    if (typeof state?.level === 'number' && typeof window !== 'undefined') {
+      localStorage.setItem('lastSurveyLevel', String(state.level))
+    }
+  }, [state?.surveyId, state?.level])
+
+  useEffect(() => {
     const fetchNickname = async () => {
       setIsLoading(true)
       setError(null)

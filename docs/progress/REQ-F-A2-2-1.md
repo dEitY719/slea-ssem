@@ -249,27 +249,18 @@ User clicks "시작하기" on HomePage
 
 ## 🎓 Implementation Notes
 
-### ⚠️ Current Limitation
+### ✅ Current Behavior (2025-11-16 업데이트)
 
-- **No profile check**: Backend에 profile 확인 API가 없어, nickname만으로 분기
-- **Temporary behavior**: nickname 있으면 무조건 `/self-assessment`로 이동
-  - 이미 profile 작성한 사용자도 self-assessment 페이지로 이동됨
-  - 향후 profile check API 추가 시 개선 필요
+- 자기평가 저장 시 `lastSurveyId`/`lastSurveyLevel`을 localStorage에 보존합니다.
+- 홈 화면 "시작하기" 버튼 분기:
+  1. `nickname === null` → `/nickname-setup`
+  2. `nickname !== null && lastSurveyId 없음` → `/self-assessment`
+  3. `nickname !== null && lastSurveyId 존재` → `/profile-review` (state에 surveyId/level 전달)
+- 따라서 닉네임과 자기평가를 완료한 사용자는 더 이상 `/self-assessment`로 돌아가지 않습니다.
 
 ### 🚀 Future Enhancement
 
-```typescript
-// When profile check API is available:
-const { nickname, hasProfile } = await checkProfile()
-
-if (!nickname) {
-  navigate('/nickname-setup')
-} else if (!hasProfile) {
-  navigate('/self-assessment')  // REQ-F-A2-2-1
-} else {
-  navigate('/test')  // REQ-F-B2 (향후 구현)
-}
-```
+- 백엔드 프로필 조회 API가 준비되면 localStorage 대신 실시간 프로필 상태를 기반으로 `/test` 진입을 허용하도록 확장합니다.
 
 ---
 

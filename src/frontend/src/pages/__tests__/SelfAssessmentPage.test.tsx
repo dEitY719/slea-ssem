@@ -28,18 +28,22 @@ const renderWithRouter = (component: React.ReactElement) => {
 }
 
 describe('SelfAssessmentPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockNavigate.mockReset()
-    localStorage.setItem('slea_ssem_api_mock', 'true')
-    mockConfig.delay = 0
-    mockConfig.simulateError = false
-    setMockScenario('no-survey')
-  })
+    beforeEach(() => {
+      vi.clearAllMocks()
+      mockNavigate.mockReset()
+      localStorage.setItem('slea_ssem_api_mock', 'true')
+      localStorage.removeItem('lastSurveyId')
+      localStorage.removeItem('lastSurveyLevel')
+      mockConfig.delay = 0
+      mockConfig.simulateError = false
+      setMockScenario('no-survey')
+    })
 
-  afterEach(() => {
-    localStorage.removeItem('slea_ssem_api_mock')
-  })
+    afterEach(() => {
+      localStorage.removeItem('slea_ssem_api_mock')
+      localStorage.removeItem('lastSurveyId')
+      localStorage.removeItem('lastSurveyLevel')
+    })
 
   test('renders level selection with 5 options and complete button', () => {
     // REQ: REQ-F-A2-2-2

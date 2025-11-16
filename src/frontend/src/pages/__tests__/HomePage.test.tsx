@@ -28,27 +28,33 @@ vi.mock('../../utils/auth', () => ({
   getToken: vi.fn(() => 'mock_jwt_token'),
 }))
 
-  describe('HomePage', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-      mockNavigate.mockReset()
-      vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
-      localStorage.setItem('slea_ssem_api_mock', 'true')
-      mockConfig.delay = 0
-      mockConfig.simulateError = false
-      clearMockErrors()
-      clearMockRequests()
-      setMockData('/api/profile/nickname', {
-        user_id: 'test@samsung.com',
-        nickname: null,
-        registered_at: null,
-        updated_at: null,
+    describe('HomePage', () => {
+      beforeEach(() => {
+        vi.clearAllMocks()
+        mockNavigate.mockReset()
+        vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
+        localStorage.setItem('slea_ssem_api_mock', 'true')
+        localStorage.removeItem('slea_ssem_cached_nickname')
+        localStorage.removeItem('lastSurveyId')
+        localStorage.removeItem('lastSurveyLevel')
+        mockConfig.delay = 0
+        mockConfig.simulateError = false
+        clearMockErrors()
+        clearMockRequests()
+        setMockData('/api/profile/nickname', {
+          user_id: 'test@samsung.com',
+          nickname: null,
+          registered_at: null,
+          updated_at: null,
+        })
       })
-    })
 
-    afterEach(() => {
-      localStorage.removeItem('slea_ssem_api_mock')
-    })
+      afterEach(() => {
+        localStorage.removeItem('slea_ssem_api_mock')
+        localStorage.removeItem('slea_ssem_cached_nickname')
+        localStorage.removeItem('lastSurveyId')
+        localStorage.removeItem('lastSurveyLevel')
+      })
 
   it('should redirect to login if no token is present', () => {
     vi.spyOn(authUtils, 'getToken').mockReturnValue(null)
@@ -140,6 +146,38 @@ vi.mock('../../utils/auth', () => ({
     })
   })
 
+    it('should navigate to profile-review when survey progress exists', async () => {
+      setMockData('/api/profile/nickname', {
+        user_id: 'test@samsung.com',
+        nickname: 'testuser',
+        registered_at: '2025-11-10T12:00:00Z',
+        updated_at: '2025-11-10T12:00:00Z',
+      })
+      localStorage.setItem('lastSurveyId', 'saved_survey_789')
+      localStorage.setItem('lastSurveyLevel', '4')
+
+      render(
+        <MemoryRouter>
+          <HomePage />
+        </MemoryRouter>
+      )
+
+      const startButton = screen.getByRole('button', { name: /시작하기/i })
+      fireEvent.click(startButton)
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          '/profile-review',
+          expect.objectContaining({
+            state: expect.objectContaining({
+              surveyId: 'saved_survey_789',
+              level: 4,
+            }),
+          })
+        )
+      })
+    })
+
   it('should display error message when API call fails', async () => {
       setMockError('/api/profile/nickname', 'Unauthorized')
 
@@ -179,20 +217,26 @@ vi.mock('../../utils/auth', () => ({
   })
 })
 
-describe('HomePage - REQ-F-A2-Signup-1 (Header Integration)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  describe('HomePage - REQ-F-A2-Signup-1 (Header Integration)', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
       mockNavigate.mockReset()
-    vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
+      vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
       localStorage.setItem('slea_ssem_api_mock', 'true')
+      localStorage.removeItem('slea_ssem_cached_nickname')
+      localStorage.removeItem('lastSurveyId')
+      localStorage.removeItem('lastSurveyLevel')
       mockConfig.delay = 0
       mockConfig.simulateError = false
       clearMockErrors()
       clearMockRequests()
-  })
+    })
 
     afterEach(() => {
       localStorage.removeItem('slea_ssem_api_mock')
+      localStorage.removeItem('slea_ssem_cached_nickname')
+      localStorage.removeItem('lastSurveyId')
+      localStorage.removeItem('lastSurveyLevel')
     })
 
   it('nickname이 null일 때 헤더에 "회원가입" 버튼 표시', async () => {
@@ -259,4 +303,25 @@ describe('HomePage - REQ-F-A2-Signup-1 (Header Integration)', () => {
       const platformNames = screen.getAllByText(/S\.LSI Learning Platform/i)
       expect(platformNames.length).toBeGreaterThanOrEqual(1)
   })
+
+    it('캐시된 닉네임이 있을 때 즉시 회원가입 버튼을 숨김', async () => {
+      localStorage.setItem('slea_ssem_cached_nickname', 'cached_user')
+      setMockData('/api/profile/nickname', {
+        user_id: 'test@samsung.com',
+        nickname: 'cached_user',
+        registered_at: '2025-11-10T12:00:00Z',
+        updated_at: '2025-11-10T12:00:00Z',
+      })
+
+      render(
+        <MemoryRouter>
+          <HomePage />
+        </MemoryRouter>
+      )
+
+      expect(screen.queryByRole('button', { name: /회원가입/i })).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText('cached_user')).toBeInTheDocument()
+      })
+    })
 })

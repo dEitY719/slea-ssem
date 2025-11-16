@@ -1,8 +1,7 @@
 // REQ: REQ-F-A2-2-2
 import React, { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { profileService } from '../services'
-import { LEVEL_MAPPING } from '../constants/profileLevels'
+import { submitProfileSurvey } from '../features/profile/profileSubmission'
 import LevelSelector from '../components/LevelSelector'
 import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
 import './SelfAssessmentPage.css'
@@ -46,19 +45,14 @@ const SelfAssessmentPage: React.FC = () => {
     setIsSubmitting(true)
     setErrorMessage(null)
 
-    try {
-      // Use shared LEVEL_MAPPING for backend conversion
-      const response = await profileService.updateSurvey({
-        level: LEVEL_MAPPING[level],
-        career: 0,
-        interests: [],
-      })
+      try {
+        const response = await submitProfileSurvey({ level })
 
-      setIsSubmitting(false)
-      navigate('/profile-review', {
-        replace: true,
-        state: { level, surveyId: response.survey_id },
-      })
+        setIsSubmitting(false)
+        navigate('/profile-review', {
+          replace: true,
+          state: { level, surveyId: response.surveyId },
+        })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : '자기평가 정보 저장에 실패했습니다.'

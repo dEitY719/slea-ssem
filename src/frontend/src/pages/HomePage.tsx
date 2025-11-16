@@ -7,6 +7,25 @@ import { useUserProfile } from '../hooks/useUserProfile'
 import { Header } from '../components/Header'
 import './HomePage.css'
 
+type SurveyProgress = {
+  surveyId: string | null
+  level: number | null
+}
+
+const getSurveyProgress = (): SurveyProgress => {
+  if (typeof window === 'undefined') {
+    return { surveyId: null, level: null }
+  }
+
+  const surveyId = localStorage.getItem('lastSurveyId')
+  const levelRaw = localStorage.getItem('lastSurveyLevel')
+
+  return {
+    surveyId,
+    level: levelRaw ? Number(levelRaw) : null,
+  }
+}
+
 const HomePage: React.FC = () => {
   const navigate = useNavigate()
   const { nickname, loading: nicknameLoading, checkNickname } = useUserProfile()
@@ -26,30 +45,36 @@ const HomePage: React.FC = () => {
     loadNickname()
   }, [checkNickname])
 
-  const handleStart = async () => {
-    // REQ-F-A2-1: Check if user has set nickname before proceeding
-    try {
-      const currentNickname = await checkNickname()
+    const handleStart = async () => {
+      // REQ-F-A2-1: Check if user has set nickname before proceeding
+      try {
+        const currentNickname = await checkNickname()
+        const { surveyId, level } = getSurveyProgress()
 
-      if (currentNickname === null) {
-        // User hasn't set nickname yet, redirect to nickname setup
-        navigate('/nickname-setup')
-      } else {
-        // User has nickname, proceed to self-assessment
-        // REQ-F-A2-2-1: Navigate to /self-assessment
-        // TODO: When profile check API is available, check if user has completed profile
-        // and navigate to /test if profile exists
-        navigate('/self-assessment')
+        if (currentNickname === null) {
+          // User hasn't set nickname yet, redirect to nickname setup
+          navigate('/nickname-setup')
+        } else if (surveyId) {
+          // User completed profile, show review page for final confirmation/test entry
+          navigate('/profile-review', {
+            state: {
+              surveyId,
+              level: level ?? undefined,
+            },
+          })
+        } else {
+          // User has nickname but no profile yet, proceed to self-assessment
+          navigate('/self-assessment')
+        }
+      } catch (err) {
+        // Log detailed error for debugging
+        console.error('Failed to check user profile:', err)
+
+        // Show user-friendly error message with hint
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+        setErrorMessage(`프로필 정보를 불러오는데 실패했습니다: ${errorMsg}`)
       }
-    } catch (err) {
-      // Log detailed error for debugging
-      console.error('Failed to check user profile:', err)
-
-      // Show user-friendly error message with hint
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error'
-      setErrorMessage(`프로필 정보를 불러오는데 실패했습니다: ${errorMsg}`)
     }
-  }
 
   // Verify user is authenticated
   const token = getToken()

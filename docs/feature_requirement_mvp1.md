@@ -634,9 +634,9 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 
 ---
 
-## REQ-B-A2-Signup: 통합 회원가입 API (닉네임 + 프로필 한 번에 저장)
+## REQ-B-A2-Signup: 통합 회원가입 (닉네임 + 프로필 저장)
 
-**Note**: 헤더 "회원가입" 버튼을 통한 통합 가입 플로우를 위한 API입니다. 닉네임 등록(users.nickname 업데이트)과 자기평가 정보 저장(user_profile_surveys 생성)을 한 트랜잭션으로 처리합니다.
+**Note**: 헤더 "회원가입" 버튼을 통한 통합 가입 플로우입니다. 프론트엔드에서는 기존 API(`POST /api/profile/register`, `PUT /api/profile/survey`)를 순차 호출하여 닉네임 등록과 자기평가 저장을 처리하며, 추후 단일 트랜잭션 API가 준비되면 교체할 수 있도록 구조화되어 있습니다.
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
@@ -646,46 +646,12 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 | **REQ-B-A2-Signup-4** | 트랜잭션 실패 시 롤백하고, 적절한 에러 메시지를 반환해야 한다. | **M** |
 | **REQ-B-A2-Signup-5** | 통합 회원가입 API는 2초 내에 응답해야 한다. (DB 트랜잭션 포함) | **M** |
 
-**API 엔드포인트**: `POST /api/signup` (인증 필수: Authorization 헤더의 JWT)
+**현재 구현 경로 (MVP)**:
 
-**요청**:
+1. `POST /api/profile/register` – 닉네임 검증 및 저장  
+2. `PUT /api/profile/survey` – LEVEL_MAPPING 적용 후 자기평가 저장  
 
-```json
-{
-  "nickname": "정민마케터",
-  "profile": {
-    "level": 3,
-    "career": 2,
-    "job_role": "마케팅",
-    "duty": "AI 제품 마케팅",
-    "interests": ["AI", "마케팅"]
-  }
-}
-```
-
-**응답 (성공)**:
-
-```json
-{
-  "success": true,
-  "message": "회원가입 완료",
-  "user_id": 123,
-  "nickname": "정민마케터",
-  "survey_id": 456,
-  "created_at": "2025-11-14T15:30:00Z"
-}
-```
-
-**응답 (닉네임 중복)**:
-
-```json
-{
-  "success": false,
-  "error": "NICKNAME_ALREADY_EXISTS",
-  "message": "이미 사용 중인 닉네임입니다.",
-  "suggestions": ["정민마케터1", "정민마케터2", "정민_마케터"]
-}
-```
+> 두 API가 모두 성공해야 홈으로 리다이렉트되며, 실패 시 각각의 오류를 사용자에게 노출합니다. 단일 `/api/signup` 엔드포인트가 준비되면 위 단계들을 대체하는 형태로 연결할 수 있습니다.
 
 **수용 기준**:
 
@@ -695,24 +661,7 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 - "트랜잭션 실패 시 둘 다 롤백됨"
 - "통합 회원가입 API는 2초 내에 응답함"
 
-**트랜잭션 설계**:
-
-```sql
-BEGIN TRANSACTION;
-
--- 1. 닉네임 중복 확인
-SELECT COUNT(*) FROM users WHERE nickname = ?;
--- 중복 시 ROLLBACK + 400 에러
-
--- 2. users.nickname 업데이트
-UPDATE users SET nickname = ? WHERE id = ?;
-
--- 3. user_profile_surveys 생성
-INSERT INTO user_profile_surveys (user_id, level, career, job_role, duty, interests, created_at)
-VALUES (?, ?, ?, ?, ?, ?, NOW());
-
-COMMIT;
-```
+**향후 과제(백엔드)**: 닉네임 + 프로필을 하나의 트랜잭션으로 처리하는 `/api/signup` 신설. 실패 시 롤백 및 2초 이내 응답을 보장해야 합니다.
 
 ---
 

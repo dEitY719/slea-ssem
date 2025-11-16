@@ -106,20 +106,20 @@ const mockData: Record<string, any> = {
         choices: null,
         difficulty: 6,
         category: 'ML Fundamentals',
-      },
-    ],
-  },
-  [API_QUESTIONS_AUTOSAVE]: {
-    saved: true,
-    session_id: 'mock_session_123',
-    question_id: '',
-    saved_at: new Date().toISOString(),
-  },
-  [API_RESULTS_PREVIOUS]: {
-    grade: 'Beginner',
-    score: 65,
-    test_date: '2025-01-10T10:00:00Z',
-  },
+        },
+      ],
+    },
+    [API_QUESTIONS_AUTOSAVE]: {
+      saved: true,
+      session_id: 'mock_session_123',
+      question_id: '',
+      saved_at: new Date().toISOString(),
+    },
+    [API_RESULTS_PREVIOUS]: {
+      grade: 'Beginner',
+      score: 65,
+      test_date: '2025-01-10T10:00:00Z',
+    },
   // Add more mock endpoints here
 }
 
@@ -192,7 +192,7 @@ class MockTransport implements HttpTransport {
       return response as T
     }
 
-    // Handle nickname register endpoint
+      // Handle nickname register endpoint
     if (normalizedUrl === API_PROFILE_REGISTER && method === 'POST' && requestData?.nickname) {
       const nickname: string = requestData.nickname
 

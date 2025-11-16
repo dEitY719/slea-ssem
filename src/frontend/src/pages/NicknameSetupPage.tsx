@@ -3,6 +3,7 @@ import React, { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useNicknameCheck } from '../hooks/useNicknameCheck'
 import { profileService } from '../services'
+import { setCachedNickname } from '../utils/nicknameCache'
 import NicknameInputSection from '../components/NicknameInputSection'
 import './NicknameSetupPage.css'
 
@@ -41,10 +42,11 @@ const NicknameSetupPage: React.FC = () => {
     }
 
     setIsSubmitting(true)
-    try {
-      await profileService.registerNickname(nickname)
-      setIsSubmitting(false)
-      navigate('/self-assessment', { replace: true })
+      try {
+        await profileService.registerNickname(nickname)
+        setCachedNickname(nickname)
+        setIsSubmitting(false)
+        navigate('/self-assessment', { replace: true })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : '닉네임 등록에 실패했습니다.'

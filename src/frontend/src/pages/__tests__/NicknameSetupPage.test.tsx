@@ -28,17 +28,19 @@ const renderWithRouter = (component: React.ReactElement) => {
 }
 
 describe('NicknameSetupPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockNavigate.mockReset()
-    localStorage.setItem('slea_ssem_api_mock', 'true')
-    mockConfig.delay = 0
-    mockConfig.simulateError = false
-  })
+    beforeEach(() => {
+      vi.clearAllMocks()
+      mockNavigate.mockReset()
+      localStorage.setItem('slea_ssem_api_mock', 'true')
+      localStorage.removeItem('slea_ssem_cached_nickname')
+      mockConfig.delay = 0
+      mockConfig.simulateError = false
+    })
 
-  afterEach(() => {
-    localStorage.removeItem('slea_ssem_api_mock')
-  })
+    afterEach(() => {
+      localStorage.removeItem('slea_ssem_api_mock')
+      localStorage.removeItem('slea_ssem_cached_nickname')
+    })
 
   test('renders nickname input field, check button, and next button', () => {
     // REQ: REQ-F-A2-2
@@ -168,7 +170,7 @@ describe('NicknameSetupPage', () => {
     mockConfig.delay = 0
   })
 
-  test('submits nickname and navigates to self assessment after success', async () => {
+    test('submits nickname, caches it, and navigates to self assessment after success', async () => {
     // REQ: REQ-F-A2-7
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
@@ -187,9 +189,10 @@ describe('NicknameSetupPage', () => {
 
     await user.click(nextButton)
 
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/self-assessment', { replace: true })
-    })
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/self-assessment', { replace: true })
+      })
+      expect(localStorage.getItem('slea_ssem_cached_nickname')).toBe('signup_user1')
   })
 
   test('shows error message when nickname registration fails', async () => {
