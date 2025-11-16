@@ -104,8 +104,7 @@ const TestResultsPage: React.FC = () => {
   }
 
   // Show confidence warning for small cohort
-  const showConfidenceWarning =
-    resultData.total_cohort_size < 100 || resultData.percentile_confidence === 'medium'
+  const showConfidenceWarning = resultData.total_cohort_size < 100
 
   return (
     <main className="results-page">
