@@ -236,14 +236,18 @@ class ExplainService:
         # Build context from question
         stem = question.stem
         category = question.category
+        question_type = question.item_type or "unknown"
         answer_schema = question.answer_schema or {}
 
         # Generate mock explanation based on correctness
         if is_correct:
             explanation_text = self._generate_correct_answer_explanation(stem, category, answer_schema)
         else:
-            correct_key = answer_schema.get("correct_key", "정답")
-            explanation_text = self._generate_incorrect_answer_explanation(stem, category, user_answer, correct_key)
+            # Get correct answer from schema, with proper fallback
+            correct_key = self._extract_correct_answer_key(answer_schema, question_type)
+            explanation_text = self._generate_incorrect_answer_explanation(
+                stem, category, user_answer, correct_key, question_type
+            )
 
         # Create reference links (category-specific)
         reference_links = self._generate_mock_references(category, is_correct)
@@ -305,17 +309,77 @@ class ExplainService:
             f"[향후 학습] 관련 심화 개념들을 학습하면 더욱 폭넓은 이해가 가능합니다.",
         )
 
+    def _extract_correct_answer_key(self, answer_schema: dict[str, Any], question_type: str) -> str:
+        """
+        Extract correct answer from answer_schema with proper fallback handling.
+
+        For True/False questions, returns formatted string ("참" or "거짓").
+        For multiple choice, returns the choice key.
+        For short answer, returns the expected text.
+
+        Args:
+            answer_schema: Question's answer schema
+            question_type: Type of question (true_false, multiple_choice, short_answer)
+
+        Returns:
+            Formatted correct answer string
+
+        """
+        # Try correct_key first (use 'is not None' to handle False values)
+        correct_key = answer_schema.get("correct_key")
+        if correct_key is not None:
+            # Handle boolean values for true/false questions
+            if isinstance(correct_key, bool):
+                return "참" if correct_key else "거짓"
+            if isinstance(correct_key, str):
+                key_lower = correct_key.lower().strip()
+                if key_lower == "true":
+                    return "참"
+                elif key_lower == "false":
+                    return "거짓"
+            # Ensure non-empty string
+            key_str = str(correct_key).strip()
+            if key_str:
+                return key_str
+
+        # Try correct_answer field (use 'is not None' to handle False values)
+        correct_answer = answer_schema.get("correct_answer")
+        if correct_answer is not None:
+            if isinstance(correct_answer, bool):
+                return "참" if correct_answer else "거짓"
+            answer_str = str(correct_answer).strip()
+            if answer_str:
+                return answer_str
+
+        # Fallback based on question type - use generic message instead of placeholder
+        if question_type == "true_false":
+            return "참"  # Safe default for true/false
+        elif question_type == "multiple_choice":
+            return "[정답]"  # Clear marker that answer info is missing
+        elif question_type == "short_answer":
+            return "[예상 답변]"  # Clear marker that answer info is missing
+        else:
+            return "[정답]"  # Generic marker for unknown types
+
     def _generate_incorrect_answer_explanation(
         self,
         stem: str,
         category: str,
         user_answer: str | dict,
         correct_key: str,
+        question_type: str = "unknown",
     ) -> str:
         """
         Generate mock explanation for incorrect answer.
 
         Returns actual explanation content (simulating LLM output).
+
+        Args:
+            stem: Question text
+            category: Question category
+            user_answer: User's submitted answer
+            correct_key: Correct answer (formatted)
+            question_type: Type of question for context
         """
         explanations = {
             "LLM": (

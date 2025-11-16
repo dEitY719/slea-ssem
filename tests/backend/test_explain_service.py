@@ -591,3 +591,63 @@ class TestLLMIntegration:
             assert result["explanation_text"]
             assert len(result["reference_links"]) >= 3
             assert result["is_correct"] is False
+
+    def test_extract_correct_answer_with_missing_schema(
+        self,
+        db_session: Session,
+        test_session_round1_fixture: TestSession,
+    ) -> None:
+        """
+        Test _extract_correct_answer_key with missing or incomplete answer_schema.
+
+        REQ: REQ-B-B3-Explain-1
+
+        Should handle cases where answer_schema lacks correct_key or correct_answer.
+        For True/False questions, should return "참" as safe default.
+        For Multiple Choice, should return "[정답]" clear marker.
+        """
+        from src.backend.services.explain_service import ExplainService
+
+        service = ExplainService(db_session)
+
+        # Test True/False with missing schema
+        result = service._extract_correct_answer_key({}, "true_false")
+        assert result == "참", "True/False should default to '참'"
+
+        # Test Multiple Choice with missing schema
+        result = service._extract_correct_answer_key({}, "multiple_choice")
+        assert result == "[정답]", "Multiple choice should show clear marker"
+
+        # Test with boolean correct_key
+        result = service._extract_correct_answer_key(
+            {"correct_key": True}, "true_false"
+        )
+        assert result == "참"
+
+        result = service._extract_correct_answer_key(
+            {"correct_key": False}, "true_false"
+        )
+        assert result == "거짓"
+
+        # Test with string correct_key
+        result = service._extract_correct_answer_key(
+            {"correct_key": "true"}, "true_false"
+        )
+        assert result == "참"
+
+        result = service._extract_correct_answer_key(
+            {"correct_key": "false"}, "true_false"
+        )
+        assert result == "거짓"
+
+        # Test with regular correct_key
+        result = service._extract_correct_answer_key(
+            {"correct_key": "B"}, "multiple_choice"
+        )
+        assert result == "B"
+
+        # Test with correct_answer fallback
+        result = service._extract_correct_answer_key(
+            {"correct_answer": "Expected answer"}, "short_answer"
+        )
+        assert result == "Expected answer"
