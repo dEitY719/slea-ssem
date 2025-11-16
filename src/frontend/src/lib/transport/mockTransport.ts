@@ -189,6 +189,9 @@ const sessionResultsCache = new Map<string, GradeResultMock>()
 const completedResultsHistory: PreviousResultSummary[] = []
 let nextPreviousResult: PreviousResultSummary | null = null
 
+// Track recent generate requests to prevent StrictMode double-calls
+const recentGenerateRequests = new Map<string, { sessionId: string; timestamp: number }>()
+
 const hasMockOverride = (endpoint: string): boolean =>
   Object.prototype.hasOwnProperty.call(mockData, endpoint)
 
@@ -262,6 +265,7 @@ const resetResultProgression = () => {
   sessionResultsCache.clear()
   completedResultsHistory.length = 0
   nextPreviousResult = null
+  recentGenerateRequests.clear()
 }
 
 const overriddenEndpoints = new Set<string>()
@@ -441,12 +445,34 @@ class MockTransport implements HttpTransport {
           throw new Error('Mock questions response not configured')
         }
 
+        // Check for recent duplicate request (StrictMode protection)
+        const surveyId = requestData?.survey_id || 'default'
+        const requestKey = `${surveyId}_${requestData?.round || 1}`
+        const recentRequest = recentGenerateRequests.get(requestKey)
+        const now = Date.now()
+
+        // If same request within 2 seconds, return cached session
+        if (recentRequest && now - recentRequest.timestamp < 2000) {
+          console.log('[Mock Transport] Returning cached session for duplicate request:', recentRequest.sessionId)
+          const response = {
+            ...template,
+            session_id: recentRequest.sessionId,
+            questions: cloneQuestions(template.questions || []),
+          }
+          console.log('[Mock Transport] Response (cached):', response)
+          return response as T
+        }
+
         const attemptIndex = beginAttempt()
         const preferredSessionId = isEndpointOverridden(API_QUESTIONS_GENERATE)
           ? template.session_id
           : undefined
         const sessionId = preferredSessionId ?? buildSessionId(attemptIndex)
         registerSessionAttempt(sessionId, attemptIndex)
+
+        // Cache this request
+        recentGenerateRequests.set(requestKey, { sessionId, timestamp: now })
+
         const response = {
           ...template,
           session_id: sessionId,

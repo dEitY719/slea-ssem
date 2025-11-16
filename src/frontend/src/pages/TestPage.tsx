@@ -63,9 +63,18 @@ const TestPage: React.FC = () => {
 
   // Load questions on mount
   useEffect(() => {
+    // Prevent duplicate calls (React Strict Mode calls useEffect twice in dev)
+    let cancelled = false
+
     const generateQuestions = async () => {
       if (!state?.surveyId) {
         setLoadingError('자기평가 정보가 없습니다. 프로필 리뷰 페이지로 돌아가주세요.')
+        setIsLoading(false)
+        return
+      }
+
+      // Skip if already loaded (prevents StrictMode double-call issue)
+      if (sessionId && questions.length > 0) {
         setIsLoading(false)
         return
       }
@@ -80,22 +89,32 @@ const TestPage: React.FC = () => {
           domain: 'AI',
         })
 
-        setSessionId(response.session_id)
-        setQuestions(response.questions)
-        setQuestionStartTime(Date.now())
-        setIsLoading(false)
+        // Only update state if not cancelled
+        if (!cancelled) {
+          setSessionId(response.session_id)
+          setQuestions(response.questions)
+          setQuestionStartTime(Date.now())
+          setIsLoading(false)
+        }
       } catch (err) {
-        const message =
-          err instanceof Error
-            ? err.message
-            : '문제 생성에 실패했습니다. 다시 시도해주세요.'
-        setLoadingError(message)
-        setIsLoading(false)
+        if (!cancelled) {
+          const message =
+            err instanceof Error
+              ? err.message
+              : '문제 생성에 실패했습니다. 다시 시도해주세요.'
+          setLoadingError(message)
+          setIsLoading(false)
+        }
       }
     }
 
     generateQuestions()
-  }, [state?.surveyId, state?.round])
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      cancelled = true
+    }
+  }, [state?.surveyId, state?.round, sessionId, questions.length])
 
   // Reset state when moving to next question
   useEffect(() => {
