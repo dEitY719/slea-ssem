@@ -2,6 +2,7 @@
 
 import { HttpTransport, RequestConfig } from './types'
 
+const API_AUTH_LOGIN = '/api/auth/login'
 const API_PROFILE_NICKNAME = '/api/profile/nickname'
 const API_PROFILE_NICKNAME_CHECK = '/api/profile/nickname/check'
 const API_PROFILE_REGISTER = '/api/profile/register'
@@ -30,6 +31,12 @@ const ensureApiPath = (url: string): string => {
 
 // Mock data storage: 엔드포인트별로 미리 정의된 가짜 데이터 저장
 const mockData: Record<string, any> = {
+  [API_AUTH_LOGIN]: {
+    access_token: 'mock_access_token',
+    token_type: 'bearer',
+    user_id: 'mock_user@samsung.com',
+    is_new_user: true,
+  },
   [API_PROFILE_NICKNAME]: {
     user_id: 'mock_user@samsung.com',
     nickname: null,  // Change to 'mockuser' to test nickname exists
@@ -155,6 +162,16 @@ class MockTransport implements HttpTransport {
     // Simulate error
     if (mockConfig.simulateError) {
       throw new Error('Mock Transport: Simulated API error')
+    }
+
+    // Handle auth login endpoint
+    if (normalizedUrl === API_AUTH_LOGIN && method === 'POST') {
+      const response = mockData[API_AUTH_LOGIN]
+      if (!response) {
+        throw new Error('Mock login response not configured')
+      }
+      console.log('[Mock Transport] Response:', response)
+      return response as T
     }
 
     // Handle nickname check endpoint
