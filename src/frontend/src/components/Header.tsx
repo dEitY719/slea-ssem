@@ -1,7 +1,7 @@
-// REQ: REQ-F-A2-Signup-1, REQ-F-A2-Profile-Access-1, REQ-F-A2-Profile-Access-2
-import React from 'react'
+// REQ: REQ-F-A2-Signup-1, REQ-F-A2-Profile-Access-1, REQ-F-A2-Profile-Access-2, REQ-F-A2-Profile-Access-3
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UserPlusIcon, UserCircleIcon } from '@heroicons/react/24/outline'
+import { UserPlusIcon, UserCircleIcon, PencilSquareIcon } from '@heroicons/react/24/outline'
 import './Header.css'
 
 interface HeaderProps {
@@ -25,6 +25,10 @@ interface HeaderProps {
  * REQ-F-A2-Signup-1: Display "회원가입" button in header when nickname is null
  * REQ-F-A2-Profile-Access-1: Display user's nickname in header when nickname is not null
  * REQ-F-A2-Profile-Access-2: Make nickname clickable with visual feedback (hover/active)
+ * REQ-F-A2-Profile-Access-3: Show dropdown menu when nickname is clicked
+ * REQ-F-A2-Profile-Access-4: Dropdown contains "프로필 수정" menu item
+ * REQ-F-A2-Profile-Access-5: Navigate to /profile/edit when "프로필 수정" is clicked
+ * REQ-F-A2-Profile-Access-6: Close dropdown when clicking outside
  *
  * Displays site header with conditional content in header-right:
  * - nickname === null: Show "회원가입" button (user hasn't signed up)
@@ -36,6 +40,8 @@ interface HeaderProps {
  */
 export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) => {
   const navigate = useNavigate()
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const handleSignupClick = () => {
     // REQ-F-A2-Signup-2: Navigate to /signup page
@@ -43,9 +49,32 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
   }
 
   const handleNicknameClick = () => {
-    // REQ-F-A2-Profile-Access-2: Placeholder for dropdown menu (will be implemented in REQ-F-A2-Profile-Access-3)
-    console.log('Nickname clicked - dropdown menu will be implemented in REQ-F-A2-Profile-Access-3')
+    // REQ-F-A2-Profile-Access-3: Toggle dropdown menu
+    setIsDropdownOpen(prev => !prev)
   }
+
+  const handleEditProfileClick = () => {
+    // REQ-F-A2-Profile-Access-5: Navigate to profile edit page
+    navigate('/profile/edit')
+    setIsDropdownOpen(false)
+  }
+
+  // REQ-F-A2-Profile-Access-6: Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+
+    if (isDropdownOpen) {
+      document.addEventListener('click', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [isDropdownOpen])
 
   const shouldRenderControls = !isLoading
 
@@ -71,19 +100,37 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
                 </button>
               )}
 
-              {/* REQ-F-A2-Profile-Access-2: Show nickname as clickable button */}
+              {/* REQ-F-A2-Profile-Access-3: Show nickname as clickable button with dropdown */}
               {nickname !== null && (
-                <button
-                  type="button"
-                  className="nickname-display"
-                  onClick={handleNicknameClick}
-                  aria-label={`프로필 메뉴 열기 - 현재 로그인: ${nickname}`}
-                >
-                  <div className="profile-icon">
-                    <UserCircleIcon />
-                  </div>
-                  <span className="nickname-text">{nickname}</span>
-                </button>
+                <div className="profile-menu-container" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    className="nickname-display"
+                    onClick={handleNicknameClick}
+                    aria-label={`프로필 메뉴 열기 - 현재 로그인: ${nickname}`}
+                    aria-expanded={isDropdownOpen}
+                  >
+                    <div className="profile-icon">
+                      <UserCircleIcon />
+                    </div>
+                    <span className="nickname-text">{nickname}</span>
+                  </button>
+
+                  {/* REQ-F-A2-Profile-Access-3: Dropdown menu */}
+                  {isDropdownOpen && (
+                    <div className="dropdown-menu" role="menu">
+                      <button
+                        type="button"
+                        className="dropdown-item"
+                        onClick={handleEditProfileClick}
+                        role="menuitem"
+                      >
+                        <PencilSquareIcon className="menu-icon" />
+                        프로필 수정
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </>
           )}

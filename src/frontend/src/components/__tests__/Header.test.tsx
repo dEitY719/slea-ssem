@@ -208,22 +208,18 @@ describe('Header - REQ-F-A2-Profile-Access-2', () => {
   })
 
   test('닉네임 클릭 시 이벤트 핸들러가 호출된다', async () => {
-    // REQ: REQ-F-A2-Profile-Access-2
+    // REQ: REQ-F-A2-Profile-Access-2, REQ-F-A2-Profile-Access-3
     // Given: nickname exists
     const user = userEvent.setup()
-    const consoleLogSpy = vi.spyOn(console, 'log')
     renderWithRouter(<Header nickname="민준" />)
 
     // When: User clicks nickname button
     const nicknameButton = screen.getByRole('button', { name: /프로필 메뉴/i })
     await user.click(nicknameButton)
 
-    // Then: onClick handler should be called
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Nickname clicked')
-    )
-
-    consoleLogSpy.mockRestore()
+    // Then: onClick handler should be called (dropdown opens as proof)
+    // REQ-F-A2-Profile-Access-3: Dropdown should appear
+    expect(screen.getByRole('menu')).toBeInTheDocument()
   })
 
   test('닉네임 버튼에 적절한 aria-label 제공', () => {
@@ -244,5 +240,97 @@ describe('Header - REQ-F-A2-Profile-Access-2', () => {
     // Then: Nickname button should not exist
     const nicknameButton = screen.queryByRole('button', { name: /프로필 메뉴/i })
     expect(nicknameButton).not.toBeInTheDocument()
+  })
+})
+
+describe('Header - REQ-F-A2-Profile-Access-3-6 (Dropdown)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockNavigate.mockReset()
+  })
+
+  test('닉네임 클릭 시 드롭다운 메뉴가 표시된다', async () => {
+    // REQ: REQ-F-A2-Profile-Access-3
+    // Given: nickname exists
+    const user = userEvent.setup()
+    renderWithRouter(<Header nickname="태호" />)
+
+    // When: User clicks nickname button
+    const nicknameButton = screen.getByRole('button', { name: /프로필 메뉴/i })
+    await user.click(nicknameButton)
+
+    // Then: Dropdown menu should be visible
+    const dropdownMenu = screen.getByRole('menu')
+    expect(dropdownMenu).toBeInTheDocument()
+  })
+
+  test('드롭다운 메뉴에 "프로필 수정" 항목이 표시된다', async () => {
+    // REQ: REQ-F-A2-Profile-Access-4
+    // Given: dropdown is open
+    const user = userEvent.setup()
+    renderWithRouter(<Header nickname="민준" />)
+    const nicknameButton = screen.getByRole('button', { name: /프로필 메뉴/i })
+    await user.click(nicknameButton)
+
+    // Then: "프로필 수정" menu item should exist
+    const editProfileItem = screen.getByRole('menuitem', { name: /프로필 수정/i })
+    expect(editProfileItem).toBeInTheDocument()
+  })
+
+  test('"프로필 수정" 클릭 시 /profile/edit로 이동한다', async () => {
+    // REQ: REQ-F-A2-Profile-Access-5
+    // Given: dropdown is open
+    const user = userEvent.setup()
+    renderWithRouter(<Header nickname="유진" />)
+    const nicknameButton = screen.getByRole('button', { name: /프로필 메뉴/i })
+    await user.click(nicknameButton)
+
+    // When: User clicks "프로필 수정"
+    const editProfileItem = screen.getByRole('menuitem', { name: /프로필 수정/i })
+    await user.click(editProfileItem)
+
+    // Then: Should navigate to /profile/edit
+    expect(mockNavigate).toHaveBeenCalledWith('/profile/edit')
+  })
+
+  test('드롭다운 외부 클릭 시 메뉴가 닫힌다', async () => {
+    // REQ: REQ-F-A2-Profile-Access-6
+    // Given: dropdown is open
+    const user = userEvent.setup()
+    renderWithRouter(<Header nickname="서연" />)
+    const nicknameButton = screen.getByRole('button', { name: /프로필 메뉴/i })
+    await user.click(nicknameButton)
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    // When: User clicks outside dropdown
+    await user.click(document.body)
+
+    // Then: Dropdown should be closed
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  test('닉네임 재클릭 시 드롭다운이 닫힌다 (토글)', async () => {
+    // REQ: REQ-F-A2-Profile-Access-3
+    // Given: dropdown is open
+    const user = userEvent.setup()
+    renderWithRouter(<Header nickname="지훈" />)
+    const nicknameButton = screen.getByRole('button', { name: /프로필 메뉴/i })
+    await user.click(nicknameButton)
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    // When: User clicks nickname again
+    await user.click(nicknameButton)
+
+    // Then: Dropdown should be closed
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  test('초기 상태에서는 드롭다운이 표시되지 않는다', () => {
+    // REQ: REQ-F-A2-Profile-Access-3
+    // Given: nickname exists
+    renderWithRouter(<Header nickname="태호" />)
+
+    // Then: Dropdown should not be visible initially
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 })

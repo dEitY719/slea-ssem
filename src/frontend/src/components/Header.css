@@ -105,6 +105,69 @@
   outline-offset: 2px;
 }
 
+/* REQ-F-A2-Profile-Access-3: Profile menu container */
+.profile-menu-container {
+  position: relative;
+  display: inline-block;
+}
+
+/* REQ-F-A2-Profile-Access-3: Dropdown menu */
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 180px;
+  background-color: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0;
+  z-index: 1000;
+  animation: dropdown-fade-in 0.2s ease;
+}
+
+@keyframes dropdown-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* REQ-F-A2-Profile-Access-4: Dropdown menu item */
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: var(--text-primary, #1f2937);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background-color: var(--color-hover, #f3f4f6);
+}
+
+.dropdown-item:active {
+  background-color: var(--color-active, #e5e7eb);
+}
+
+.dropdown-item .menu-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--text-secondary, #6b7280);
+}
+
 /* Profile icon circle */
 .profile-icon {
   width: 2rem;
