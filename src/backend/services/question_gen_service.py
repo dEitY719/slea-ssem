@@ -7,6 +7,7 @@ REQ: REQ-A-Agent-Backend-1 (Real Agent Integration)
 Implementation: Async service with Real Agent integration for LLM-based question generation.
 """
 
+import asyncio
 import logging
 from typing import Any
 from uuid import uuid4
@@ -256,7 +257,7 @@ class QuestionGenerationService:
         domain: str = "AI",
     ) -> dict[str, Any]:
         """
-        Generate questions using Real Agent (async).
+        Generate questions using Real Agent (async) with automatic retry on failure.
 
         REQ: REQ-B-B2-Gen-1, REQ-B-B2-Gen-2, REQ-B-B2-Gen-3
         REQ: REQ-A-Agent-Backend-1 (Real Agent Integration)
@@ -265,7 +266,9 @@ class QuestionGenerationService:
         1. Validate survey exists and retrieve context
         2. Create TestSession with in_progress status
         3. Retrieve previous round answers (for adaptive difficulty)
-        4. Call Real Agent (ItemGenAgent) via GenerateQuestionsRequest
+        4. Call Real Agent (ItemGenAgent) via GenerateQuestionsRequest with automatic retry
+           - Max 3 attempts with exponential backoff (1s, 2s, 4s)
+           - Retries on: no tool results extracted, agent execution failure
         5. Save generated items to DB as Question records
         6. Return backwards-compatible dict response
 
@@ -281,11 +284,16 @@ class QuestionGenerationService:
             Dictionary with:
                 - session_id (str): TestSession UUID
                 - questions (list): List of question dictionaries with all fields
+                - attempt (int): Number of attempts made (metadata)
 
         Raises:
-            Exception: If survey not found
+            Exception: If survey not found or max retries exceeded
 
         """
+        # Auto-retry configuration
+        max_retries = 3
+        retry_delays = [1, 2, 4]  # Exponential backoff in seconds
+
         try:
             # Step 1: Validate survey and get context
             survey = self.session.query(UserProfileSurvey).filter_by(user_id=user_id, id=survey_id).first()
@@ -313,52 +321,86 @@ class QuestionGenerationService:
                 prev_answers = self._get_previous_answers(user_id, round_num - 1)
                 logger.debug(f"✓ Previous answers retrieved: count={len(prev_answers) if prev_answers else 0}")
 
-            # Step 4: Call Real Agent
-            logger.debug("📡 Creating Agent and calling generate_questions...")
-            agent = await create_agent()
-            logger.debug("✓ Agent created successfully")
+            # Step 4: Call Real Agent with automatic retry
+            agent_response = None
+            last_error = None
 
-            agent_request = GenerateQuestionsRequest(
-                session_id=session_id,
-                survey_id=survey_id,
-                round_idx=round_num,
-                prev_answers=prev_answers,
-                question_count=question_count,
-                question_types=question_types,
-                domain=domain,
-            )
-            logger.debug(
-                f"✓ GenerateQuestionsRequest created: session_id={session_id}, count={question_count}, types={question_types}"
-            )
+            for attempt in range(max_retries):
+                try:
+                    logger.debug(f"Question generation attempt {attempt + 1}/{max_retries}")
 
-            agent_response = await agent.generate_questions(agent_request)
-            logger.debug(
-                f"Agent response received: {len(agent_response.items)} items, tokens={agent_response.total_tokens}"
-            )
+                    agent = await create_agent()
+                    logger.debug("✓ Agent created successfully")
+
+                    agent_request = GenerateQuestionsRequest(
+                        session_id=session_id,
+                        survey_id=survey_id,
+                        round_idx=round_num,
+                        prev_answers=prev_answers,
+                        question_count=question_count,
+                        question_types=question_types,
+                        domain=domain,
+                    )
+                    logger.debug(f"✓ GenerateQuestionsRequest created: session_id={session_id}, count={question_count}")
+
+                    agent_response = await agent.generate_questions(agent_request)
+                    logger.debug(
+                        f"Agent response received: {len(agent_response.items)} items, tokens={agent_response.total_tokens}"
+                    )
+
+                    # Check if agent generated any questions
+                    if agent_response.items:
+                        logger.debug(
+                            f"✓ Agent generated {len(agent_response.items)} questions on attempt {attempt + 1}"
+                        )
+                        break  # Success, exit retry loop
+                    else:
+                        # No tool results extracted, retry
+                        last_error = f"No tool results extracted (attempt {attempt + 1}/{max_retries})"
+                        if attempt < max_retries - 1:
+                            logger.warning(
+                                f"⚠️  Attempt {attempt + 1}: No results. Retrying in {retry_delays[attempt]}s..."
+                            )
+                            await asyncio.sleep(retry_delays[attempt])
+                            continue
+                        else:
+                            logger.error(f"❌ Final attempt {attempt + 1}: No results after {max_retries} attempts")
+                            raise Exception(last_error)
+
+                except Exception as e:
+                    last_error = str(e)
+                    if attempt == max_retries - 1:
+                        logger.error(f"❌ Final attempt {attempt + 1} failed: {e}")
+                        raise
+                    logger.warning(f"⚠️  Attempt {attempt + 1} failed: {e}. Retrying in {retry_delays[attempt]}s...")
+                    await asyncio.sleep(retry_delays[attempt])
 
             # Step 5: Save generated items to DB
             questions_list = []
-            for item in agent_response.items:
-                # Handle both Pydantic model and dict for answer_schema
-                answer_schema_value = (
-                    item.answer_schema.model_dump() if hasattr(item.answer_schema, "model_dump") else item.answer_schema
-                )
-                question = Question(
-                    id=item.id,
-                    session_id=session_id,
-                    item_type=item.type,
-                    stem=item.stem,
-                    choices=item.choices,
-                    answer_schema=answer_schema_value,
-                    difficulty=item.difficulty,
-                    category=item.category,
-                    round=round_num,
-                )
-                self.session.add(question)
-                questions_list.append(question)
-                logger.debug(f"Saved question: id={item.id}, type={item.type}")
+            if agent_response and agent_response.items:
+                for item in agent_response.items:
+                    # Handle both Pydantic model and dict for answer_schema
+                    answer_schema_value = (
+                        item.answer_schema.model_dump()
+                        if hasattr(item.answer_schema, "model_dump")
+                        else item.answer_schema
+                    )
+                    question = Question(
+                        id=item.id,
+                        session_id=session_id,
+                        item_type=item.type,
+                        stem=item.stem,
+                        choices=item.choices,
+                        answer_schema=answer_schema_value,
+                        difficulty=item.difficulty,
+                        category=item.category,
+                        round=round_num,
+                    )
+                    self.session.add(question)
+                    questions_list.append(question)
+                    logger.debug(f"Saved question: id={item.id}, type={item.type}")
 
-            self.session.commit()
+                self.session.commit()
 
             # Step 6: Format and return response (backwards compatible dict format)
             response = {
@@ -375,17 +417,22 @@ class QuestionGenerationService:
                     }
                     for q in questions_list
                 ],
+                "attempt": attempt + 1,  # Include attempt count in response
             }
-            logger.info(f"✅ Generated {len(questions_list)} questions (tokens: {agent_response.total_tokens})")
+            logger.info(
+                f"✅ Generated {len(questions_list)} questions "
+                f"(tokens: {agent_response.total_tokens}, attempt: {attempt + 1}/{max_retries})"
+            )
             return response
 
         except Exception as e:
-            logger.error(f"❌ Question generation failed: {e}")
+            logger.error(f"❌ Question generation failed after {max_retries} attempts: {e}")
             # Return error response with empty questions (graceful degradation)
             return {
                 "session_id": f"error_{uuid4().hex[:8]}",
                 "questions": [],
                 "error": str(e),
+                "attempt": max_retries,
             }
 
     def _get_previous_answers(self, user_id: int, round_num: int) -> list[dict] | None:
