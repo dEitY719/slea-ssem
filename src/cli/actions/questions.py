@@ -838,7 +838,8 @@ def generate_questions(context: CLIContext, *args: str) -> None:
         return
 
     session_id = response.get("session_id")
-    questions_count = response.get("questions_count", 0)
+    questions_list = response.get("questions", [])
+    questions_count = len(questions_list)
     context.session.current_session_id = session_id
     context.session.current_round = round_num
 
@@ -876,8 +877,10 @@ def generate_adaptive_questions(context: CLIContext, *args: str) -> None:
         context.console.print(f"[bold red]✗ Generation failed (HTTP {status_code})[/bold red]")
         return
 
-    questions_count = response.get("questions_count", 0)
-    difficulty = response.get("difficulty_level", "Unknown")
+    questions_list = response.get("questions", [])
+    questions_count = len(questions_list)
+    adaptive_params = response.get("adaptive_params", {})
+    difficulty = adaptive_params.get("adjusted_difficulty", "Unknown")
     context.session.current_round = 2
 
     context.console.print("[bold green]✓ Adaptive questions generated[/bold green]")
