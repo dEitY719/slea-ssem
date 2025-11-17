@@ -253,6 +253,16 @@ def save_generated_question(  # noqa: ANN201
             "round_id": round_id,
             "saved_at": datetime.now(UTC).isoformat(),
             "success": True,
+            # Pass through the input values to simulate returning the created object
+            "item_type": item_type,
+            "stem": stem,
+            "difficulty": difficulty,
+            "category": categories[0] if categories else "general",
+            "choices": choices,
+            "correct_key": correct_key,
+            "correct_keywords": correct_keywords,
+            "validation_score": validation_score,
+            "explanation": explanation,
         }
         logger.info("Tool 5: Question saved successfully")
         return result
