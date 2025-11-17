@@ -37,6 +37,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-A2-Signup-7 | 가입 완료 후 홈화면 재진입 시 "회원가입" 버튼 숨김 | 4 | ✅ Done | 14 tests (Header), Commit: 8b9c70c, Progress: docs/progress/REQ-F-A2-Signup-7.md |
 | REQ-F-A2-Profile-Access | 헤더 닉네임 표시 및 드롭다운 메뉴 | 1 | 🚧 In Progress | 8개 sub-tasks (닉네임 표시 → 드롭다운 → 프로필 수정) |
 | REQ-F-A2-Profile-Access-1 | 헤더에 닉네임 표시 (nickname != null) | 4 | ✅ Done | 8 tests (100%), Commit: 16bbf7f, Progress: docs/progress/REQ-F-A2-Profile-Access-1.md |
+| REQ-F-A2-Profile-Access-2 | 헤더 닉네임 클릭 가능 버튼 (호버 피드백) | 4 | ✅ Done | 4 tests (100%), Commit: (pending), Progress: docs/progress/REQ-F-A2-Profile-Access-2.md |
 | REQ-F-A2-Edit | 프로필 수정 화면 | 0 | ⏳ Backlog | 6개 sub-tasks |
 | REQ-F-A2-Edit-1 | 프로필 리뷰 화면에 "프로필 수정" 버튼 제공 | 4 | ✅ Done | Commit: d401eed, Progress: docs/progress/REQ-F-A2-Edit-1.md |
 | REQ-F-A3 | 개인정보 수집 및 이용 동의 | 0 | ⏳ Backlog | 5개 sub-tasks |

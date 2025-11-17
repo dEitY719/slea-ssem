@@ -189,3 +189,60 @@ describe('Header - REQ-F-A2-Profile-Access-1', () => {
     expect(screen.queryByRole('button', { name: /회원가입/i })).not.toBeInTheDocument()
   })
 })
+
+describe('Header - REQ-F-A2-Profile-Access-2', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockNavigate.mockReset()
+  })
+
+  test('닉네임이 클릭 가능한 button으로 렌더링된다', () => {
+    // REQ: REQ-F-A2-Profile-Access-2
+    // Given: nickname exists
+    renderWithRouter(<Header nickname="태호" />)
+
+    // Then: Nickname should be rendered as a button element
+    const nicknameButton = screen.getByRole('button', { name: /프로필 메뉴/i })
+    expect(nicknameButton).toBeInTheDocument()
+    expect(nicknameButton).toHaveTextContent('태호')
+  })
+
+  test('닉네임 클릭 시 이벤트 핸들러가 호출된다', async () => {
+    // REQ: REQ-F-A2-Profile-Access-2
+    // Given: nickname exists
+    const user = userEvent.setup()
+    const consoleLogSpy = vi.spyOn(console, 'log')
+    renderWithRouter(<Header nickname="민준" />)
+
+    // When: User clicks nickname button
+    const nicknameButton = screen.getByRole('button', { name: /프로필 메뉴/i })
+    await user.click(nicknameButton)
+
+    // Then: onClick handler should be called
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Nickname clicked')
+    )
+
+    consoleLogSpy.mockRestore()
+  })
+
+  test('닉네임 버튼에 적절한 aria-label 제공', () => {
+    // REQ: REQ-F-A2-Profile-Access-2
+    // Given: nickname exists
+    renderWithRouter(<Header nickname="태호" />)
+
+    // Then: Button should have aria-label indicating it's clickable
+    const nicknameButton = screen.getByRole('button', { name: /프로필 메뉴 열기.*태호/i })
+    expect(nicknameButton).toBeInTheDocument()
+  })
+
+  test('nickname이 null일 때 닉네임 버튼이 렌더링되지 않는다', () => {
+    // REQ: REQ-F-A2-Profile-Access-2
+    // Given: nickname is null
+    renderWithRouter(<Header nickname={null} />)
+
+    // Then: Nickname button should not exist
+    const nicknameButton = screen.queryByRole('button', { name: /프로필 메뉴/i })
+    expect(nicknameButton).not.toBeInTheDocument()
+  })
+})

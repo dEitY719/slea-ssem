@@ -1,4 +1,4 @@
-// REQ: REQ-F-A2-Signup-1, REQ-F-A2-Profile-Access-1
+// REQ: REQ-F-A2-Signup-1, REQ-F-A2-Profile-Access-1, REQ-F-A2-Profile-Access-2
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { UserPlusIcon, UserCircleIcon } from '@heroicons/react/24/outline'
@@ -24,10 +24,11 @@ interface HeaderProps {
  *
  * REQ-F-A2-Signup-1: Display "회원가입" button in header when nickname is null
  * REQ-F-A2-Profile-Access-1: Display user's nickname in header when nickname is not null
+ * REQ-F-A2-Profile-Access-2: Make nickname clickable with visual feedback (hover/active)
  *
  * Displays site header with conditional content in header-right:
  * - nickname === null: Show "회원가입" button (user hasn't signed up)
- * - nickname !== null: Show user's nickname (user already signed up)
+ * - nickname !== null: Show user's nickname as clickable button (user already signed up)
  * - isLoading === true: Show nothing (prevent flickering)
  *
  * @param nickname - User's nickname (null if not set)
@@ -39,6 +40,11 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
   const handleSignupClick = () => {
     // REQ-F-A2-Signup-2: Navigate to /signup page
     navigate('/signup')
+  }
+
+  const handleNicknameClick = () => {
+    // REQ-F-A2-Profile-Access-2: Placeholder for dropdown menu (will be implemented in REQ-F-A2-Profile-Access-3)
+    console.log('Nickname clicked - dropdown menu will be implemented in REQ-F-A2-Profile-Access-3')
   }
 
   const shouldRenderControls = !isLoading
@@ -65,14 +71,19 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
                 </button>
               )}
 
-              {/* REQ-F-A2-Profile-Access-1: Show nickname when not null */}
+              {/* REQ-F-A2-Profile-Access-2: Show nickname as clickable button */}
               {nickname !== null && (
-                <div className="nickname-display" aria-label={`현재 로그인: ${nickname}`}>
+                <button
+                  type="button"
+                  className="nickname-display"
+                  onClick={handleNicknameClick}
+                  aria-label={`프로필 메뉴 열기 - 현재 로그인: ${nickname}`}
+                >
                   <div className="profile-icon">
                     <UserCircleIcon />
                   </div>
                   <span className="nickname-text">{nickname}</span>
-                </div>
+                </button>
               )}
             </>
           )}

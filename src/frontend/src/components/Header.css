@@ -71,16 +71,38 @@
   height: 1.25rem;
 }
 
-/* REQ-F-A2-Profile-Access-1: Nickname display styling */
+/* REQ-F-A2-Profile-Access-2: Nickname display as clickable button */
 .nickname-display {
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
   color: var(--text-white);
-  padding: 0.25rem 0.5rem;
+  padding: 0.5rem 1rem;
   font-size: 1rem;
   font-weight: 500;
-  cursor: default;
+  cursor: pointer;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+/* Hover effect */
+.nickname-display:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Active (clicked) effect */
+.nickname-display:active {
+  background-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(0);
+}
+
+/* Focus state for accessibility */
+.nickname-display:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 /* Profile icon circle */
