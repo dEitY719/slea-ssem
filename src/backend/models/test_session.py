@@ -46,13 +46,13 @@ class TestSession(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     user_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("users.id"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     survey_id: Mapped[str] = mapped_column(
         String(36),
-        ForeignKey("user_profile_surveys.id"),
+        ForeignKey("user_profile_surveys.id", ondelete="CASCADE"),
         nullable=False,
     )
     round: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

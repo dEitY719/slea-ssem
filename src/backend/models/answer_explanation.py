@@ -42,13 +42,13 @@ class AnswerExplanation(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     question_id: Mapped[str] = mapped_column(
         String(36),
-        ForeignKey("questions.id"),
+        ForeignKey("questions.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     attempt_answer_id: Mapped[str | None] = mapped_column(
         String(36),
-        ForeignKey("attempt_answers.id"),
+        ForeignKey("attempt_answers.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )
