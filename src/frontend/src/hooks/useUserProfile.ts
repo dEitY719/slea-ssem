@@ -1,6 +1,7 @@
 // REQ: REQ-F-A2-1
 import { useState, useCallback } from 'react'
-import { profileService, type UserProfileResponse } from '../services'
+import { profileService } from '../services'
+import { clearCachedNickname, getCachedNickname, setCachedNickname } from '../utils/nicknameCache'
 
 /**
  * Hook for fetching and managing user profile information
@@ -25,7 +26,7 @@ import { profileService, type UserProfileResponse } from '../services'
  * ```
  */
 export function useUserProfile() {
-  const [nickname, setNickname] = useState<string | null>(null)
+  const [nickname, setNickname] = useState<string | null>(() => getCachedNickname())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,7 +38,12 @@ export function useUserProfile() {
       // Use service layer for API calls
       const data = await profileService.getNickname()
 
-      setNickname(data.nickname)
+        setNickname(data.nickname)
+        if (data.nickname) {
+          setCachedNickname(data.nickname)
+        } else {
+          clearCachedNickname()
+        }
       setLoading(false)
       return data.nickname
     } catch (err) {

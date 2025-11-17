@@ -1,9 +1,9 @@
 // REQ: REQ-F-B4-1
 import React from 'react'
+import { ChartBarIcon, TrophyIcon, SparklesIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { formatDecimal } from '../../utils/gradeHelpers'
 
 interface BaseMetricCardProps {
-  icon: string
   title: string
 }
 
@@ -32,12 +32,15 @@ type MetricCardProps = ScoreCardProps | RankCardProps | PercentileCardProps
  * Displays score, rank, or percentile information
  */
 export const MetricCard: React.FC<MetricCardProps> = (props) => {
-  const { icon, title, type } = props
+  const { title, type } = props
+
+  // Select icon based on type
+  const IconComponent = type === 'score' ? ChartBarIcon : type === 'rank' ? TrophyIcon : SparklesIcon
 
   return (
     <div className="metric-card">
       <div className="metric-header">
-        <span className="metric-icon">{icon}</span>
+        <IconComponent className="metric-icon" />
         <h2 className="metric-title">{title}</h2>
       </div>
 
@@ -66,7 +69,10 @@ export const MetricCard: React.FC<MetricCardProps> = (props) => {
           </p>
           <p className="metric-description">전체 응시자 중</p>
           {props.showConfidenceWarning && (
-            <p className="confidence-warning">⚠️ 분포 신뢰도 낮음 (참고용)</p>
+            <p className="confidence-warning">
+              <ExclamationTriangleIcon className="warning-icon" />
+              분포 신뢰도 낮음 (참고용)
+            </p>
           )}
         </>
       )}

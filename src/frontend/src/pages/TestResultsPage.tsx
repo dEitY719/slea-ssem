@@ -1,6 +1,7 @@
 // REQ: REQ-F-B4-1, REQ-F-B4-3, REQ-F-B4-4, REQ-F-B5-1
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { ArrowPathIcon, HomeIcon } from '@heroicons/react/24/outline'
 import { useTestResults } from '../hooks/useTestResults'
 import { GradeBadge, MetricCard, ActionButtons, GradeDistributionChart, ComparisonSection } from '../components/TestResults'
 import { resultService, type PreviousResult } from '../services/resultService'
@@ -74,6 +75,7 @@ const TestResultsPage: React.FC = () => {
           <div className="error-container">
             <p className="error-message">{error}</p>
             <button type="button" className="retry-button" onClick={retry}>
+              <ArrowPathIcon className="button-icon" />
               다시 시도
             </button>
             <button
@@ -81,6 +83,7 @@ const TestResultsPage: React.FC = () => {
               className="back-button"
               onClick={() => navigate('/home')}
             >
+              <HomeIcon className="button-icon" />
               홈화면으로 돌아가기
             </button>
           </div>
@@ -101,8 +104,7 @@ const TestResultsPage: React.FC = () => {
   }
 
   // Show confidence warning for small cohort
-  const showConfidenceWarning =
-    resultData.total_cohort_size < 100 || resultData.percentile_confidence === 'medium'
+  const showConfidenceWarning = resultData.total_cohort_size < 100
 
   return (
     <main className="results-page">
@@ -114,11 +116,10 @@ const TestResultsPage: React.FC = () => {
 
         {/* Metrics Grid */}
         <div className="metrics-grid">
-          <MetricCard type="score" icon="📊" title="점수" score={resultData.score} />
+          <MetricCard type="score" title="점수" score={resultData.score} />
 
           <MetricCard
             type="rank"
-            icon="📈"
             title="순위"
             rank={resultData.rank}
             totalCohortSize={resultData.total_cohort_size}
@@ -127,7 +128,6 @@ const TestResultsPage: React.FC = () => {
 
           <MetricCard
             type="percentile"
-            icon="🎯"
             title="백분위"
             percentileDescription={resultData.percentile_description}
             percentile={resultData.percentile}

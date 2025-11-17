@@ -1,3 +1,65 @@
+/* ========================================
+   CSS Variables - Global Color Scheme
+   ======================================== */
+:root {
+  /* Background Colors */
+  --bg-page: #f9f9f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8f9fa;
+  --bg-info: #ede9fe;
+  --bg-suggestion: #f8f9fa;
+  
+  /* Border Colors */
+  --border-card: #e5e7eb;
+  --border-default: #ddd;
+  --border-light: #e0e0e0;
+  
+  /* Gradient */
+  --gradient-primary: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  --gradient-accent: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  
+  /* Primary Colors (Orange) - Main Action Buttons */
+  --color-primary: #FF9900;
+  --color-primary-hover: #e68a00;
+  --color-primary-disabled: #ffd699;
+  --color-primary-shadow: rgba(255, 153, 0, 0.3);
+  
+  /* Secondary Colors (Mint) - Secondary Action Buttons */
+  --color-secondary: #00C7B7;
+  --color-secondary-hover: #00b3a5;
+  --color-secondary-light: #e6f7f5;
+  
+  /* Accent Colors (Purple) - Highlights & Selections */
+  --color-accent: #667eea;
+  --color-accent-dark: #5568d3;
+  --color-accent-light: #ede9fe;
+  --color-accent-hover: #5568d3;
+  
+  /* Text Colors */
+  --text-primary: #333;
+  --text-secondary: #666;
+  --text-tertiary: #888;
+  --text-white: #ffffff;
+  --text-dark: #1a1a1a;
+  
+  /* Status Colors */
+  --color-success: #d4edda;
+  --color-success-text: #155724;
+  --color-success-border: #c3e6cb;
+  
+  --color-error: #f8d7da;
+  --color-error-text: #721c24;
+  --color-error-border: #f5c6cb;
+  
+  --color-warning: #fff3cd;
+  --color-warning-text: #856404;
+  
+  /* Shadow */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --shadow-button: 0 2px 8px rgba(255, 153, 0, 0.3);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -5,9 +67,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: "Pretendard Variable", "Noto Sans KR", "Inter", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

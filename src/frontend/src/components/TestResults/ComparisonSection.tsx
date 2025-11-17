@@ -1,5 +1,12 @@
 // REQ: REQ-F-B5-1
 import React from 'react'
+import { 
+  ChartBarIcon, 
+  SparklesIcon, 
+  ArrowUpIcon, 
+  ArrowDownIcon, 
+  ArrowRightIcon 
+} from '@heroicons/react/24/outline'
 import { Grade, PreviousResult } from '../../services/resultService'
 import './ComparisonSection.css'
 
@@ -24,9 +31,15 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({
   if (!previousResult) {
     return (
       <div className="comparison-section">
-        <h2 className="comparison-title">📊 성적 비교</h2>
+        <h2 className="comparison-title">
+          <ChartBarIcon className="section-icon" />
+          성적 비교
+        </h2>
         <div className="first-attempt">
-          <p className="first-attempt-message">🎉 첫 응시입니다</p>
+          <p className="first-attempt-message">
+            <SparklesIcon className="message-icon" />
+            첫 응시입니다
+          </p>
           <div className="current-only">
             <div className="metric">
               <span className="metric-label">현재 등급:</span>
@@ -72,7 +85,10 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({
 
   return (
     <div className="comparison-section">
-      <h2 className="comparison-title">📊 성적 비교</h2>
+      <h2 className="comparison-title">
+        <ChartBarIcon className="section-icon" />
+        성적 비교
+      </h2>
       <p className="previous-test-date">이전 테스트: {formattedDate}</p>
 
       <div className="comparison-content">
@@ -82,13 +98,17 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({
           {gradeChanged ? (
             <div className="comparison-change">
               <span className="old-value">{previousResult.grade}</span>
-              <span className="arrow">{gradeImproved ? '↑' : '↓'}</span>
+              {gradeImproved ? (
+                <ArrowUpIcon className="arrow arrow-up" />
+              ) : (
+                <ArrowDownIcon className="arrow arrow-down" />
+              )}
               <span className="new-value">{currentGrade}</span>
             </div>
           ) : (
             <div className="comparison-unchanged">
               <span className="value">{currentGrade}</span>
-              <span className="arrow">→</span>
+              <ArrowRightIcon className="arrow arrow-right" />
               <span className="status">(변동 없음)</span>
             </div>
           )}
@@ -100,7 +120,11 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({
           {scoreChanged ? (
             <div className="comparison-change">
               <span className="old-value">{previousResult.score}점</span>
-              <span className="arrow">{improved ? '↑' : '↓'}</span>
+              {improved ? (
+                <ArrowUpIcon className="arrow arrow-up" />
+              ) : (
+                <ArrowDownIcon className="arrow arrow-down" />
+              )}
               <span className="new-value">{currentScore}점</span>
               <span className={`diff ${improved ? 'positive' : 'negative'}`}>
                 ({scoreDiff > 0 ? '+' : ''}{scoreDiff}점)
@@ -109,7 +133,7 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({
           ) : (
             <div className="comparison-unchanged">
               <span className="value">{currentScore}점</span>
-              <span className="arrow">→</span>
+              <ArrowRightIcon className="arrow arrow-right" />
               <span className="status">(변동 없음)</span>
             </div>
           )}
@@ -119,7 +143,8 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({
       {/* Summary message */}
       {improved && (
         <div className="summary-message improved">
-          ✨ 이전보다 {Math.abs(scoreDiff)}점 향상되었습니다!
+          <SparklesIcon className="summary-icon" />
+          이전보다 {Math.abs(scoreDiff)}점 향상되었습니다!
         </div>
       )}
       {declined && (

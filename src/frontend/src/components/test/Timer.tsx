@@ -2,6 +2,7 @@
 // REQ: REQ-F-B2-2, REQ-F-B2-5
 
 import React from 'react'
+import { ClockIcon } from '@heroicons/react/24/outline'
 import './Timer.css'
 
 interface TimerProps {
@@ -41,7 +42,7 @@ export const Timer: React.FC<TimerProps> = ({ timeRemaining }) => {
 
   return (
     <div className={`timer timer-${color}`}>
-      <span className="timer-icon">⏱</span>
+      <ClockIcon className="timer-icon" />
       <span className="timer-text">{formattedTime}</span>
     </div>
   )

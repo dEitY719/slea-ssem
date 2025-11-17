@@ -1,7 +1,9 @@
 // REQ: REQ-F-A2-2-4
 import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { PencilIcon, PlayIcon } from '@heroicons/react/24/outline'
 import { profileService } from '../services'
+import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
 import './ProfileReviewPage.css'
 
 /**
@@ -46,12 +48,41 @@ const getLevelText = (level: number | undefined): string => {
 }
 
 const ProfileReviewPage: React.FC = () => {
-  const [nickname, setNickname] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const location = useLocation()
   const state = location.state as LocationState
+  const [nickname, setNickname] = useState<string | null>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('lastNickname') : null
+  )
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [cachedLevel, setCachedLevel] = useState<number | null>(
+    typeof state?.level === 'number' ? state.level : null
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (typeof state?.surveyId === 'string') {
+      localStorage.setItem('lastSurveyId', state.surveyId)
+    }
+
+    if (typeof state?.level === 'number') {
+      localStorage.setItem('lastSurveyLevel', String(state.level))
+      setCachedLevel(state.level)
+      return
+    }
+
+    const savedLevel = localStorage.getItem('lastSurveyLevel')
+    if (savedLevel) {
+      const parsedLevel = Number(savedLevel)
+      if (!Number.isNaN(parsedLevel)) {
+        setCachedLevel(parsedLevel)
+      }
+    }
+  }, [state?.surveyId, state?.level])
 
   useEffect(() => {
     const fetchNickname = async () => {
@@ -59,7 +90,22 @@ const ProfileReviewPage: React.FC = () => {
       setError(null)
       try {
         const response = await profileService.getNickname()
-        setNickname(response.nickname)
+
+        if (response.nickname) {
+          setNickname(response.nickname)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('lastNickname', response.nickname)
+          }
+        } else if (typeof window !== 'undefined') {
+          const savedNickname = localStorage.getItem('lastNickname')
+          if (savedNickname) {
+            setNickname(savedNickname)
+          } else {
+            setNickname(null)
+          }
+        } else {
+          setNickname(null)
+        }
       } catch (err) {
         const message =
           err instanceof Error ? err.message : '닉네임 정보를 불러오는데 실패했습니다.'
@@ -139,7 +185,9 @@ const ProfileReviewPage: React.FC = () => {
 
           <div className="profile-item">
             <span className="profile-label">기술 수준</span>
-            <span className="profile-value">{getLevelText(state?.level)}</span>
+            <span className="profile-value">
+              {getLevelText(state?.level ?? cachedLevel ?? undefined)}
+            </span>
           </div>
         </div>
 
@@ -149,6 +197,7 @@ const ProfileReviewPage: React.FC = () => {
             className="edit-button"
             onClick={handleEditClick}
           >
+            <PencilIcon className="button-icon" />
             수정하기
           </button>
           <button
@@ -156,17 +205,17 @@ const ProfileReviewPage: React.FC = () => {
             className="start-button"
             onClick={handleStartClick}
           >
+            <PlayIcon className="button-icon" />
             테스트 시작
           </button>
         </div>
 
-        <div className="info-box">
-          <p className="info-title">다음 단계</p>
+        <InfoBox title="다음 단계" icon={InfoBoxIcons.arrowRight}>
           <p className="info-text">
             "테스트 시작"을 클릭하면 AI 역량 레벨 테스트가 시작됩니다.
             1차 문제 5개가 생성되며, 약 10분이 소요됩니다.
           </p>
-        </div>
+        </InfoBox>
       </div>
     </main>
   )

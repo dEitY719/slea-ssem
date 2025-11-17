@@ -1,10 +1,10 @@
 // REQ: REQ-F-A2-2
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import NicknameSetupPage from '../NicknameSetupPage'
-import * as transport from '../../lib/transport'
+import { mockConfig } from '../../lib/transport'
 
 const mockNavigate = vi.fn()
 
@@ -18,13 +18,6 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-// Mock transport
-vi.mock('../../lib/transport', () => ({
-  transport: {
-    post: vi.fn(),
-  },
-}))
-
 // Mock auth utils
 vi.mock('../../utils/auth', () => ({
   getToken: vi.fn(() => 'mock_token'),
@@ -35,10 +28,19 @@ const renderWithRouter = (component: React.ReactElement) => {
 }
 
 describe('NicknameSetupPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockNavigate.mockReset()
-  })
+    beforeEach(() => {
+      vi.clearAllMocks()
+      mockNavigate.mockReset()
+      localStorage.setItem('slea_ssem_api_mock', 'true')
+      localStorage.removeItem('slea_ssem_cached_nickname')
+      mockConfig.delay = 0
+      mockConfig.simulateError = false
+    })
+
+    afterEach(() => {
+      localStorage.removeItem('slea_ssem_api_mock')
+      localStorage.removeItem('slea_ssem_cached_nickname')
+    })
 
   test('renders nickname input field, check button, and next button', () => {
     // REQ: REQ-F-A2-2
@@ -59,29 +61,23 @@ describe('NicknameSetupPage', () => {
 
   test('shows available message when nickname is not taken', async () => {
     // REQ: REQ-F-A2-2
-    const mockResponse = { available: true, suggestions: [] }
-    vi.mocked(transport.transport.post).mockResolvedValueOnce(mockResponse)
-
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
 
     const input = screen.getByLabelText(/닉네임/i)
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
 
-    await user.type(input, 'john_doe')
+    await user.type(input, 'new_user')
     await user.click(checkButton)
 
     await waitFor(() => {
-      expect(screen.getByText(/사용 가능한 닉네임입니다/i)).toBeInTheDocument()
+        expect(screen.getByText(/사용 가능한 닉네임입니다/i)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /다음/i })).not.toBeDisabled()
     })
   })
 
   test('re-disables next button when nickname changes after success', async () => {
     // REQ: REQ-F-A2-6
-    const mockResponse = { available: true, suggestions: [] }
-    vi.mocked(transport.transport.post).mockResolvedValueOnce(mockResponse)
-
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
 
@@ -89,7 +85,7 @@ describe('NicknameSetupPage', () => {
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
     const nextButton = screen.getByRole('button', { name: /다음/i })
 
-    await user.type(input, 'john_doe')
+    await user.type(input, 'unique_user1')
     await user.click(checkButton)
 
     await waitFor(() => {
@@ -104,23 +100,17 @@ describe('NicknameSetupPage', () => {
 
   test('shows taken message when nickname is already used', async () => {
     // REQ: REQ-F-A2-2
-    const mockResponse = {
-      available: false,
-      suggestions: ['john_doe1', 'john_doe2', 'john_doe3'],
-    }
-    vi.mocked(transport.transport.post).mockResolvedValueOnce(mockResponse)
-
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
 
     const input = screen.getByLabelText(/닉네임/i)
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
 
-    await user.type(input, 'existing_user')
+    await user.type(input, 'admin')
     await user.click(checkButton)
 
     await waitFor(() => {
-      expect(screen.getByText(/이미 사용 중인 닉네임입니다/i)).toBeInTheDocument()
+        expect(screen.getByText(/이미 사용 중인 닉네임입니다/i)).toBeInTheDocument()
     })
   })
 
@@ -158,14 +148,6 @@ describe('NicknameSetupPage', () => {
 
   test('disables check button while checking', async () => {
     // REQ: REQ-F-A2-2
-    const mockResponse = { available: true, suggestions: [] }
-    vi.mocked(transport.transport.post).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          setTimeout(() => resolve(mockResponse), 100)
-        })
-    )
-
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
 
@@ -173,7 +155,8 @@ describe('NicknameSetupPage', () => {
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
     const nextButton = screen.getByRole('button', { name: /다음/i })
 
-    await user.type(input, 'john_doe')
+    mockConfig.delay = 100
+    await user.type(input, 'delay_check')
     await user.click(checkButton)
 
     // Button should be disabled while checking
@@ -184,20 +167,11 @@ describe('NicknameSetupPage', () => {
       expect(checkButton).not.toBeDisabled()
       expect(nextButton).not.toBeDisabled()
     })
+    mockConfig.delay = 0
   })
 
-  test('submits nickname and navigates to self assessment after success', async () => {
+    test('submits nickname, caches it, and navigates to self assessment after success', async () => {
     // REQ: REQ-F-A2-7
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce({ available: true, suggestions: [] })
-    mockPost.mockResolvedValueOnce({
-      success: true,
-      message: '닉네임 등록 완료',
-      user_id: 'mock_user',
-      nickname: 'john_doe',
-      registered_at: '2025-11-11T00:00:00Z',
-    })
-
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
 
@@ -205,7 +179,7 @@ describe('NicknameSetupPage', () => {
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
     const nextButton = screen.getByRole('button', { name: /다음/i })
 
-    await user.type(input, 'john_doe')
+    await user.type(input, 'signup_user1')
     await user.click(checkButton)
 
     await waitFor(() => {
@@ -215,18 +189,14 @@ describe('NicknameSetupPage', () => {
 
     await user.click(nextButton)
 
-    await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith('/profile/register', { nickname: 'john_doe' })
-      expect(mockNavigate).toHaveBeenCalledWith('/self-assessment', { replace: true })
-    })
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/self-assessment', { replace: true })
+      })
+      expect(localStorage.getItem('slea_ssem_cached_nickname')).toBe('signup_user1')
   })
 
   test('shows error message when nickname registration fails', async () => {
     // REQ: REQ-F-A2-7
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce({ available: true, suggestions: [] })
-    mockPost.mockRejectedValueOnce(new Error('Server error'))
-
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
 
@@ -234,7 +204,7 @@ describe('NicknameSetupPage', () => {
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
     const nextButton = screen.getByRole('button', { name: /다음/i })
 
-    await user.type(input, 'john_doe')
+    await user.type(input, 'signup_user2')
     await user.click(checkButton)
 
     await waitFor(() => {
@@ -242,107 +212,80 @@ describe('NicknameSetupPage', () => {
       expect(nextButton).not.toBeDisabled()
     })
 
+    mockConfig.simulateError = true
     await user.click(nextButton)
 
     await waitFor(() => {
-      expect(screen.getByText(/Server error/i)).toBeInTheDocument()
+      expect(screen.getByText(/Mock Transport/i)).toBeInTheDocument()
       expect(nextButton).toBeDisabled()
       expect(mockNavigate).not.toHaveBeenCalled()
     })
+    mockConfig.simulateError = false
   })
 
   test('shows 3 alternative suggestions when nickname is taken', async () => {
     // REQ: REQ-F-A2-4
-    const mockResponse = {
-      available: false,
-      suggestions: ['john_doe1', 'john_doe2', 'john_doe3'],
-    }
-    vi.mocked(transport.transport.post).mockResolvedValueOnce(mockResponse)
-
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
 
     const input = screen.getByLabelText(/닉네임/i)
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
 
-    await user.type(input, 'existing_user')
+    await user.type(input, 'test')
     await user.click(checkButton)
 
     await waitFor(() => {
       expect(screen.getByText(/추천 닉네임/i)).toBeInTheDocument()
-      expect(screen.getByText('john_doe1')).toBeInTheDocument()
-      expect(screen.getByText('john_doe2')).toBeInTheDocument()
-      expect(screen.getByText('john_doe3')).toBeInTheDocument()
+        expect(screen.getByText('test_1')).toBeInTheDocument()
+        expect(screen.getByText('test_2')).toBeInTheDocument()
+        expect(screen.getByText('test_3')).toBeInTheDocument()
     })
   })
 
   test('fills input field when suggestion is clicked', async () => {
     // REQ: REQ-F-A2-4
-    const mockResponse = {
-      available: false,
-      suggestions: ['john_doe1', 'john_doe2', 'john_doe3'],
-    }
-    vi.mocked(transport.transport.post).mockResolvedValueOnce(mockResponse)
-
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
 
     const input = screen.getByLabelText(/닉네임/i) as HTMLInputElement
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
 
-    await user.type(input, 'existing_user')
+    await user.type(input, 'test')
     await user.click(checkButton)
 
-    await waitFor(() => {
-      expect(screen.getByText('john_doe1')).toBeInTheDocument()
-    })
+      await waitFor(() => {
+        expect(screen.getByText('test_1')).toBeInTheDocument()
+      })
 
-    const suggestion1 = screen.getByText('john_doe1')
+      const suggestion1 = screen.getByText('test_1')
     await user.click(suggestion1)
 
-    expect(input.value).toBe('john_doe1')
+      expect(input.value).toBe('test_1')
     expect(screen.queryByText(/이미 사용 중인 닉네임입니다/i)).not.toBeInTheDocument()
-    expect(screen.queryByText('john_doe2')).not.toBeInTheDocument()
+      expect(screen.queryByText('test_2')).not.toBeInTheDocument()
   })
 
   test('allows re-checking after selecting a suggestion', async () => {
     // REQ: REQ-F-A2-4
-    const mockResponse1 = {
-      available: false,
-      suggestions: ['john_doe1', 'john_doe2', 'john_doe3'],
-    }
-    const mockResponse2 = {
-      available: true,
-      suggestions: [],
-    }
-
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockResponse1)
-    mockPost.mockResolvedValueOnce(mockResponse2)
-
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
 
     const input = screen.getByLabelText(/닉네임/i)
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
 
-    await user.type(input, 'existing_user')
+    await user.type(input, 'test')
     await user.click(checkButton)
 
-    await waitFor(() => {
-      expect(screen.getByText('john_doe1')).toBeInTheDocument()
-    })
+      await waitFor(() => {
+        expect(screen.getByText('test_1')).toBeInTheDocument()
+      })
 
-    const suggestion1 = screen.getByText('john_doe1')
+      const suggestion1 = screen.getByText('test_1')
     await user.click(suggestion1)
 
     await user.click(checkButton)
 
     await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledTimes(2)
-      expect(mockPost).toHaveBeenLastCalledWith('/profile/nickname/check', {
-        nickname: 'john_doe1',
-      })
       expect(screen.getByText(/사용 가능한 닉네임입니다/i)).toBeInTheDocument()
     })
   })

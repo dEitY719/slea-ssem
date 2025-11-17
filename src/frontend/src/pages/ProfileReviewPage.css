@@ -4,30 +4,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
+  background-color: var(--bg-page);
   padding: 2rem;
 }
 
 .profile-review-container {
-  background: white;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
   border-radius: 8px;
   padding: 3rem;
   max-width: 600px;
   width: 100%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-card);
 }
 
 .page-title {
   font-size: 2rem;
   font-weight: bold;
   margin-bottom: 0.5rem;
-  color: #333;
+  color: var(--text-primary);
   text-align: center;
 }
 
 .page-description {
   font-size: 1rem;
-  color: #666;
+  color: var(--text-secondary);
   margin-bottom: 2rem;
   text-align: center;
 }
@@ -71,29 +72,37 @@
 
 .edit-button {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   padding: 0.9rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #007bff;
-  background-color: white;
-  border: 2px solid #007bff;
+  color: var(--color-secondary);
+  background-color: var(--bg-card);
+  border: 2px solid var(--color-secondary);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .edit-button:hover {
-  background-color: #007bff;
-  color: white;
+  background-color: var(--color-secondary);
+  color: var(--text-white);
 }
 
 .start-button {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   padding: 0.9rem;
   font-size: 1rem;
   font-weight: 600;
-  color: white;
-  background-color: #28a745;
+  color: var(--text-white);
+  background-color: var(--color-primary);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -101,43 +110,30 @@
 }
 
 .start-button:hover {
-  background-color: #1c7c32;
+  background-color: var(--color-primary-hover);
 }
 
-.info-box {
-  padding: 1rem;
-  background-color: #e7f3ff;
-  border-left: 4px solid #007bff;
-  border-radius: 4px;
+/* Button icons */
+.button-icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
-.info-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 0.5rem;
-}
-
-.info-text {
-  font-size: 0.85rem;
-  color: #666;
-  margin: 0;
-  line-height: 1.5;
-}
+/* InfoBox styles moved to components/InfoBox.css */
 
 .loading-message {
   text-align: center;
   font-size: 1rem;
-  color: #666;
+  color: var(--text-secondary);
   padding: 2rem;
 }
 
 .error-message {
   text-align: center;
   font-size: 1rem;
-  color: #d9534f;
+  color: var(--color-error-text);
   padding: 1rem;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
+  background-color: var(--color-error);
+  border: 1px solid var(--color-error-border);
   border-radius: 4px;
 }

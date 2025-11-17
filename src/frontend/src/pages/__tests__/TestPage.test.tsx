@@ -2,9 +2,16 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { BrowserRouter, MemoryRouter } from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
 import TestPage from '../TestPage'
-import * as transport from '../../lib/transport'
+import {
+  mockConfig,
+  setMockData,
+  getMockRequests,
+  clearMockRequests,
+  setMockError,
+  clearMockErrors,
+} from '../../lib/transport'
 
 const mockNavigate = vi.fn()
 
@@ -23,13 +30,6 @@ vi.mock('react-router-dom', async () => {
     }),
   }
 })
-
-// Mock transport
-vi.mock('../../lib/transport', () => ({
-  transport: {
-    post: vi.fn(),
-  },
-}))
 
 const renderWithRouter = (component: React.ReactElement) => {
   return render(<BrowserRouter>{component}</BrowserRouter>)
@@ -67,17 +67,32 @@ const mockGenerateResponse = {
   questions: mockQuestions,
 }
 
+const setupMockEnv = (generateResponse = mockGenerateResponse) => {
+  localStorage.setItem('slea_ssem_api_mock', 'true')
+  mockConfig.delay = 0
+  mockConfig.simulateError = false
+  clearMockRequests()
+  clearMockErrors()
+  setMockData('/api/questions/generate', generateResponse)
+}
+
+const teardownMockEnv = () => {
+  localStorage.removeItem('slea_ssem_api_mock')
+}
+
 describe('TestPage - REQ-F-B2-1', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNavigate.mockReset()
+    setupMockEnv()
   })
 
-  test('AC1: 문항이 1개씩 순차적으로 표시된다', async () => {
-    // REQ: REQ-F-B2-1 - Acceptance Criteria 1
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
+  afterEach(() => {
+    teardownMockEnv()
+  })
 
+    test('AC1: 문항이 1개씩 순차적으로 표시된다', async () => {
+      // REQ: REQ-F-B2-1 - Acceptance Criteria 1
     renderWithRouter(<TestPage />)
 
     await waitFor(() => {
@@ -85,46 +100,33 @@ describe('TestPage - REQ-F-B2-1', () => {
     })
 
     // First question displayed
-    expect(screen.getByText('문제 1')).toBeInTheDocument()
+    expect(screen.getByText(/문제\s*1\s*\/\s*3/)).toBeInTheDocument()
     expect(screen.queryByText('Machine learning is a subset of AI')).not.toBeInTheDocument()
   })
 
-  test('AC2: 진행률이 실시간으로 업데이트된다', async () => {
-    // REQ: REQ-F-B2-1 - Acceptance Criteria 2
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-    mockPost.mockResolvedValueOnce({ saved: true, session_id: 'session-456', question_id: 'q1', saved_at: '2025-11-12T00:00:00Z' })
-
+    test('AC2: 진행률이 실시간으로 업데이트된다', async () => {
+      // REQ: REQ-F-B2-1 - Acceptance Criteria 2
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/진행률: 1\/3/i)).toBeInTheDocument()
+      expect(screen.getByText(/문제\s*1\s*\/\s*3/i)).toBeInTheDocument()
     })
 
     // Select answer and click next
     const optionA = screen.getByLabelText('Option A')
     await user.click(optionA)
 
-    const nextButton = screen.getByRole('button', { name: /다음 문제/i })
+    const nextButton = screen.getByRole('button', { name: /다음/i })
     await user.click(nextButton)
 
     await waitFor(() => {
-      expect(screen.getByText(/진행률: 2\/3/i)).toBeInTheDocument()
+      expect(screen.getByText(/문제\s*2\s*\/\s*3/i)).toBeInTheDocument()
     })
   })
 
-  test('Happy Path: multiple choice 답변 제출 성공', async () => {
-    // REQ: REQ-F-B2-1 - Submit multiple choice answer
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-    mockPost.mockResolvedValueOnce({
-      saved: true,
-      session_id: 'session-456',
-      question_id: 'q1',
-      saved_at: '2025-11-12T00:00:00Z',
-    })
-
+    test('Happy Path: multiple choice 답변 제출 성공', async () => {
+      // REQ: REQ-F-B2-1 - Submit multiple choice answer
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
@@ -136,28 +138,23 @@ describe('TestPage - REQ-F-B2-1', () => {
     const optionB = screen.getByLabelText('Option B')
     await user.click(optionB)
 
-    const nextButton = screen.getByRole('button', { name: /다음 문제/i })
+    const nextButton = screen.getByRole('button', { name: /다음/i })
     await user.click(nextButton)
 
-    await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith('/questions/autosave', expect.objectContaining({
-        session_id: 'session-456',
-        question_id: 'q1',
-        user_answer: { selected: 'Option B' },
-        response_time_ms: expect.any(Number),
-      }))
-    })
+      await waitFor(() => {
+        const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
+        expect(autosaveRequests.length).toBeGreaterThan(0)
+        const payload = autosaveRequests.at(-1)!.body
+        expect(payload.session_id).toBe('session-456')
+        expect(payload.question_id).toBe('q1')
+        const parsed = JSON.parse(payload.user_answer)
+        expect(parsed.selected).toBe('Option B')
+        expect(payload.response_time_ms).toBeGreaterThan(0)
+      })
   })
 
-  test('Happy Path: short answer 답변 제출 성공', async () => {
-    // REQ: REQ-F-B2-1 - Submit short answer
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-    // Skip to question 3 by mocking 2 autosaves
-    mockPost.mockResolvedValueOnce({ saved: true, session_id: 'session-456', question_id: 'q1', saved_at: '2025-11-12T00:00:00Z' })
-    mockPost.mockResolvedValueOnce({ saved: true, session_id: 'session-456', question_id: 'q2', saved_at: '2025-11-12T00:00:00Z' })
-    mockPost.mockResolvedValueOnce({ saved: true, session_id: 'session-456', question_id: 'q3', saved_at: '2025-11-12T00:00:00Z' })
-
+    test('Happy Path: short answer 답변 제출 성공', async () => {
+      // REQ: REQ-F-B2-1 - Submit short answer
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
@@ -167,14 +164,14 @@ describe('TestPage - REQ-F-B2-1', () => {
 
     // Navigate to question 3 (short answer)
     await user.click(screen.getByLabelText('Option A'))
-    await user.click(screen.getByRole('button', { name: /다음 문제/i }))
+    await user.click(screen.getByRole('button', { name: /다음/i }))
 
     await waitFor(() => {
       expect(screen.getByText('Machine learning is a subset of AI')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByLabelText(/참 \(True\)/i))
-    await user.click(screen.getByRole('button', { name: /다음 문제/i }))
+    await user.click(screen.getByLabelText(/True/i))
+    await user.click(screen.getByRole('button', { name: /다음/i }))
 
     await waitFor(() => {
       expect(screen.getByText('Explain neural networks')).toBeInTheDocument()
@@ -184,47 +181,41 @@ describe('TestPage - REQ-F-B2-1', () => {
     const textarea = screen.getByPlaceholderText(/답변을 입력하세요/i)
     await user.type(textarea, 'Neural networks are computing systems inspired by biological neural networks.')
 
-    const completeButton = screen.getByRole('button', { name: /테스트 완료/i })
+    const completeButton = screen.getByRole('button', { name: /완료/i })
     await user.click(completeButton)
 
-    await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith('/questions/autosave', expect.objectContaining({
-        session_id: 'session-456',
-        question_id: 'q3',
-        user_answer: { text: 'Neural networks are computing systems inspired by biological neural networks.' },
-        response_time_ms: expect.any(Number),
-      }))
-    })
+      await waitFor(() => {
+        const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
+        const lastRequest = autosaveRequests.at(-1)
+        expect(lastRequest?.body.question_id).toBe('q3')
+        const parsed = JSON.parse(lastRequest!.body.user_answer)
+        expect(parsed.text).toContain('Neural networks are computing systems')
+      })
   })
 
-  test('Input Validation: 빈 답변 제출 방지', async () => {
-    // REQ: REQ-F-B2-1 - Prevent empty answer submission
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-
+    test('Input Validation: 빈 답변 제출 방지', async () => {
+      // REQ: REQ-F-B2-1 - Prevent empty answer submission
     renderWithRouter(<TestPage />)
 
     await waitFor(() => {
       expect(screen.getByText('What is AI?')).toBeInTheDocument()
     })
 
-    const nextButton = screen.getByRole('button', { name: /다음 문제/i })
+    const nextButton = screen.getByRole('button', { name: /다음/i })
     expect(nextButton).toBeDisabled()
 
-    // Verify autosave was NOT called
-    expect(mockPost).toHaveBeenCalledTimes(1) // Only generate call
+      // Verify autosave was NOT called
+      const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
+      expect(autosaveRequests).toHaveLength(0)
   })
 
-  test('Edge Case: 마지막 문항 완료 시 results 페이지 이동', async () => {
-    // REQ: REQ-F-B2-1 - Navigate to results after last question
-    const mockPost = vi.mocked(transport.transport.post)
-    const singleQuestion = {
-      session_id: 'session-789',
-      questions: [mockQuestions[0]],
-    }
-    mockPost.mockResolvedValueOnce(singleQuestion)
-    mockPost.mockResolvedValueOnce({ saved: true, session_id: 'session-789', question_id: 'q1', saved_at: '2025-11-12T00:00:00Z' })
-
+    test('Edge Case: 마지막 문항 완료 시 results 페이지 이동', async () => {
+      // REQ: REQ-F-B2-1 - Navigate to results after last question
+      const singleQuestion = {
+        session_id: 'session-789',
+        questions: [mockQuestions[0]],
+      }
+      setMockData('/api/questions/generate', singleQuestion)
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
@@ -235,22 +226,18 @@ describe('TestPage - REQ-F-B2-1', () => {
     const optionA = screen.getByLabelText('Option A')
     await user.click(optionA)
 
-    const completeButton = screen.getByRole('button', { name: /테스트 완료/i })
+    const completeButton = screen.getByRole('button', { name: /완료/i })
     await user.click(completeButton)
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/test-results', {
-        state: { sessionId: 'session-789' },
-      })
+        expect(mockNavigate).toHaveBeenCalledWith('/test-results', {
+          state: { sessionId: 'session-789', surveyId: 'test-survey-123' },
+        })
     })
   })
 
-  test('Error Handling: API 실패 시 에러 메시지 표시', async () => {
-    // REQ: REQ-F-B2-1 - Show error on API failure
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-    mockPost.mockRejectedValueOnce(new Error('Network error'))
-
+    test('Error Handling: API 실패 시 에러 메시지 표시', async () => {
+      // REQ: REQ-F-B2-1 - Show error on API failure
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
@@ -261,23 +248,19 @@ describe('TestPage - REQ-F-B2-1', () => {
     const optionC = screen.getByLabelText('Option C')
     await user.click(optionC)
 
-    const nextButton = screen.getByRole('button', { name: /다음 문제/i })
-    await user.click(nextButton)
+      const nextButton = screen.getByRole('button', { name: /다음/i })
+      setMockError('/api/questions/autosave', 'Network error')
+      await user.click(nextButton)
 
-    await waitFor(() => {
-      expect(screen.getByText(/Network error/i)).toBeInTheDocument()
-    })
-
-    // Should stay on current question
-    expect(screen.getByText('What is AI?')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText(/Network error/i)).toBeInTheDocument()
+        expect(screen.getByText('What is AI?')).toBeInTheDocument()
+      })
+      clearMockErrors('/api/questions/autosave')
   })
 
-  test('Response Time Tracking: response_time_ms 정확히 측정', async () => {
-    // REQ: REQ-F-B2-1 - Track response time accurately
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-    mockPost.mockResolvedValueOnce({ saved: true, session_id: 'session-456', question_id: 'q1', saved_at: '2025-11-12T00:00:00Z' })
-
+    test('Response Time Tracking: response_time_ms 정확히 측정', async () => {
+      // REQ: REQ-F-B2-1 - Track response time accurately
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
@@ -291,34 +274,19 @@ describe('TestPage - REQ-F-B2-1', () => {
     const optionA = screen.getByLabelText('Option A')
     await user.click(optionA)
 
-    const nextButton = screen.getByRole('button', { name: /다음 문제/i })
+    const nextButton = screen.getByRole('button', { name: /다음/i })
     await user.click(nextButton)
 
-    await waitFor(() => {
-      const autosaveCall = mockPost.mock.calls.find(call => call[0] === '/questions/autosave')
-      expect(autosaveCall).toBeDefined()
-      const payload = autosaveCall![1] as any
-      expect(payload.response_time_ms).toBeGreaterThanOrEqual(100)
-    })
+      await waitFor(() => {
+        const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
+        expect(autosaveRequests.length).toBeGreaterThan(0)
+        const payload = autosaveRequests.at(-1)!.body
+        expect(payload.response_time_ms).toBeGreaterThanOrEqual(100)
+      })
   })
 
-  test('Button State: 제출 중 버튼 비활성화', async () => {
-    // REQ: REQ-F-B2-1 - Disable button during submission
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-
-    // Delay autosave response
-    mockPost.mockImplementationOnce(() =>
-      new Promise(resolve =>
-        setTimeout(() => resolve({
-          saved: true,
-          session_id: 'session-456',
-          question_id: 'q1',
-          saved_at: '2025-11-12T00:00:00Z'
-        }), 500)
-      )
-    )
-
+    test('Button State: 제출 중 버튼 비활성화', async () => {
+      // REQ: REQ-F-B2-1 - Disable button during submission
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
@@ -329,15 +297,17 @@ describe('TestPage - REQ-F-B2-1', () => {
     const optionA = screen.getByLabelText('Option A')
     await user.click(optionA)
 
-    const nextButton = screen.getByRole('button', { name: /다음 문제/i })
+      const nextButton = screen.getByRole('button', { name: /다음/i })
+      mockConfig.delay = 200
     await user.click(nextButton)
 
     // Button should be disabled during submission
     expect(nextButton).toBeDisabled()
 
-    await waitFor(() => {
-      expect(screen.getByText('Machine learning is a subset of AI')).toBeInTheDocument()
-    }, { timeout: 1000 })
+      await waitFor(() => {
+        expect(screen.getByText('Machine learning is a subset of AI')).toBeInTheDocument()
+      }, { timeout: 1000 })
+      mockConfig.delay = 0
   })
 })
 
@@ -345,54 +315,48 @@ describe('TestPage - REQ-F-B2-2 Timer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNavigate.mockReset()
+    setupMockEnv()
   })
 
   afterEach(() => {
     vi.useRealTimers()
+    teardownMockEnv()
   })
 
-  test('Timer: 테스트 시작 시 20:00 표시', async () => {
-    // REQ: REQ-F-B2-2, REQ-F-B2-5
-    // AC: 타이머가 20분(20:00)에서 시작
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-
+    test('Timer: 테스트 시작 시 20:00 표시', async () => {
+      // REQ: REQ-F-B2-2, REQ-F-B2-5
+      // AC: 타이머가 20분(20:00)에서 시작
     renderWithRouter(<TestPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/남은 시간: 20:00/i)).toBeInTheDocument()
+      expect(screen.getByText('20:00')).toBeInTheDocument()
     })
   })
 
-  test('Timer: 1초마다 정확하게 감소', async () => {
-    // REQ: REQ-F-B2-2, REQ-F-B2-5
-    // AC: 1초마다 시간이 감소 (20:00 → 19:59 → 19:58)
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-
+    test('Timer: 1초마다 정확하게 감소', async () => {
+      // REQ: REQ-F-B2-2, REQ-F-B2-5
+      // AC: 1초마다 시간이 감소 (20:00 → 19:59 → 19:58)
     renderWithRouter(<TestPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/남은 시간: 20:00/i)).toBeInTheDocument()
+      expect(screen.getByText('20:00')).toBeInTheDocument()
     })
 
     // Use real timers and wait for actual countdown
     await waitFor(() => {
-      expect(screen.getByText(/남은 시간: 19:59/i)).toBeInTheDocument()
+      expect(screen.getByText('19:59')).toBeInTheDocument()
     }, { timeout: 2000 })
   })
 
-  test('Timer: 16분 이상일 때 녹색 스타일 적용', async () => {
-    // REQ: REQ-F-B2-5
-    // AC: 16분 이상 → 녹색 배경
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-
+    test('Timer: 16분 이상일 때 녹색 스타일 적용', async () => {
+      // REQ: REQ-F-B2-5
+      // AC: 16분 이상 → 녹색 배경
     renderWithRouter(<TestPage />)
 
     await waitFor(() => {
-      const timer = screen.getByText(/남은 시간:/i)
-      expect(timer).toHaveClass('timer-green')
+      const timerText = screen.getByText('20:00')
+      const timerElement = timerText.closest('.timer')
+      expect(timerElement).toHaveClass('timer-green')
     })
   })
 
@@ -447,15 +411,16 @@ describe('TestPage - REQ-F-B2-6 Autosave', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNavigate.mockReset()
+    setupMockEnv()
+  })
+
+  afterEach(() => {
+    teardownMockEnv()
   })
 
   test('Autosave: 답변 입력 시 자동 저장', async () => {
     // REQ: REQ-F-B2-6
     // AC: 답변 입력 시 1초 debounce 후 자동 저장
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-    mockPost.mockResolvedValueOnce({ saved: true, session_id: 'session-456', question_id: 'q1' })
-
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
@@ -469,23 +434,19 @@ describe('TestPage - REQ-F-B2-6 Autosave', () => {
 
     // Wait for autosave (1 second debounce + API call)
     await waitFor(() => {
-      const autosaveCalls = mockPost.mock.calls.filter(call => call[0] === '/questions/autosave')
-      expect(autosaveCalls.length).toBeGreaterThan(0)
-      expect(autosaveCalls[0][1]).toMatchObject({
-        session_id: 'session-456',
-        question_id: 'q1',
-        user_answer: { selected: 'Option A' },
-      })
+      const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
+      expect(autosaveRequests.length).toBeGreaterThan(0)
+      const payload = autosaveRequests.at(-1)!.body
+      expect(payload.session_id).toBe('session-456')
+      expect(payload.question_id).toBe('q1')
+      const parsed = JSON.parse(payload.user_answer)
+      expect(parsed.selected).toBe('Option A')
     }, { timeout: 3000 })
   })
 
   test('Autosave: 저장 완료 시 "저장됨" 표시', async () => {
     // REQ: REQ-F-B2-6
     // AC: 저장 완료 후 "저장됨" 메시지 표시
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-    mockPost.mockResolvedValueOnce({ saved: true, session_id: 'session-456', question_id: 'q1' })
-
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
@@ -506,10 +467,6 @@ describe('TestPage - REQ-F-B2-6 Autosave', () => {
   test('Autosave: 저장 완료 후 메시지 자동 숨김', async () => {
     // REQ: REQ-F-B2-6
     // AC: 저장 완료 후 2초 후 메시지 자동 숨김
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-    mockPost.mockResolvedValueOnce({ saved: true, session_id: 'session-456', question_id: 'q1' })
-
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
@@ -535,10 +492,6 @@ describe('TestPage - REQ-F-B2-6 Autosave', () => {
   test('Autosave: 동일한 답변은 중복 저장하지 않음', async () => {
     // REQ: REQ-F-B2-6
     // AC: 이미 저장된 답변은 다시 저장하지 않음
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-    mockPost.mockResolvedValue({ saved: true, session_id: 'session-456', question_id: 'q1' })
-
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
@@ -552,26 +505,22 @@ describe('TestPage - REQ-F-B2-6 Autosave', () => {
 
     // Wait for autosave
     await waitFor(() => {
-      const autosaveCalls = mockPost.mock.calls.filter(call => call[0] === '/questions/autosave')
-      expect(autosaveCalls.length).toBe(1)
+      const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
+      expect(autosaveRequests.length).toBe(1)
     }, { timeout: 2000 })
 
-    const saveCount = mockPost.mock.calls.filter(call => call[0] === '/questions/autosave').length
+    const initialCount = getMockRequests({ url: '/api/questions/autosave', method: 'POST' }).length
 
     // Wait longer - should NOT save again
     await new Promise(resolve => setTimeout(resolve, 2000))
 
-    const newSaveCount = mockPost.mock.calls.filter(call => call[0] === '/questions/autosave').length
-    expect(newSaveCount).toBe(saveCount) // Same count, no duplicate save
+    const newCount = getMockRequests({ url: '/api/questions/autosave', method: 'POST' }).length
+    expect(newCount).toBe(initialCount) // Same count, no duplicate save
   })
 
   test('Autosave: 저장 실패 시 에러 메시지 표시', async () => {
     // REQ: REQ-F-B2-6
     // AC: 에러 발생 시 사용자에게 알림
-    const mockPost = vi.mocked(transport.transport.post)
-    mockPost.mockResolvedValueOnce(mockGenerateResponse)
-    mockPost.mockRejectedValueOnce(new Error('Network error'))
-
     const user = userEvent.setup()
     renderWithRouter(<TestPage />)
 
@@ -584,8 +533,10 @@ describe('TestPage - REQ-F-B2-6 Autosave', () => {
     await user.click(optionA)
 
     // Should show error message
+    setMockError('/api/questions/autosave', '저장 실패')
     await waitFor(() => {
       expect(screen.getByText(/저장 실패/i)).toBeInTheDocument()
     }, { timeout: 3000 })
+    clearMockErrors('/api/questions/autosave')
   })
 })

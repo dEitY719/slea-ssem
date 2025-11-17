@@ -1,0 +1,135 @@
+/**
+ * Nickname Input Section Styles
+ *
+ * Shared styles extracted from:
+ * - NicknameSetupPage.css
+ * - SignupPage.css
+ */
+
+.nickname-input-section {
+  margin-bottom: 2rem;
+}
+
+.nickname-input-section .section-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.nickname-input-section .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.nickname-input-section .form-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.nickname-input-section .input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nickname-input-section .nickname-input {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 2px solid var(--border-default);
+  border-radius: 4px;
+  transition: border-color 0.3s;
+}
+
+.nickname-input-section .nickname-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.nickname-input-section .nickname-input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.nickname-input-section .check-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-white);
+  background-color: var(--color-secondary);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  white-space: nowrap;
+}
+
+.nickname-input-section .check-button:hover:not(:disabled) {
+  background-color: var(--color-secondary-hover);
+}
+
+.nickname-input-section .check-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.nickname-input-section .status-message {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.nickname-input-section .status-message.success {
+  background-color: var(--color-success);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success-border);
+}
+
+.nickname-input-section .status-message.error {
+  background-color: var(--color-error);
+  color: var(--color-error-text);
+  border: 1px solid var(--color-error-border);
+}
+
+.nickname-input-section .suggestions {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: var(--bg-suggestion);
+  border-radius: 4px;
+}
+
+.nickname-input-section .suggestions-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.nickname-input-section .suggestions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.nickname-input-section .suggestion-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  color: var(--color-secondary);
+  background-color: var(--bg-card);
+  border: 1px solid var(--color-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.nickname-input-section .suggestion-button:hover {
+  color: var(--text-white);
+  background-color: var(--color-secondary);
+}

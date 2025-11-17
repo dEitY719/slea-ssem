@@ -6,13 +6,13 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-accent);
 }
 
 .results-container {
   max-width: 900px;
   width: 100%;
-  background: white;
+  background: var(--bg-card);
   border-radius: 16px;
   padding: 3rem;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -21,7 +21,7 @@
 .results-title {
   font-size: 2rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text-dark);
   text-align: center;
   margin-bottom: 2rem;
 }
@@ -30,7 +30,7 @@
 .loading-text {
   text-align: center;
   font-size: 1.1rem;
-  color: #666;
+  color: var(--text-secondary);
   padding: 2rem;
 }
 
@@ -42,17 +42,20 @@
 
 .error-message {
   font-size: 1.1rem;
-  color: #d32f2f;
+  color: var(--color-error-text);
   margin-bottom: 1.5rem;
   line-height: 1.6;
 }
 
 .retry-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1rem;
   font-weight: 600;
-  color: white;
-  background-color: #667eea;
+  color: var(--text-white);
+  background-color: var(--color-accent);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -61,23 +64,26 @@
 }
 
 .retry-button:hover {
-  background-color: #5568d3;
+  background-color: var(--color-accent-hover);
 }
 
 .back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #667eea;
-  background-color: white;
-  border: 2px solid #667eea;
+  color: var(--color-accent);
+  background-color: var(--bg-card);
+  border: 2px solid var(--color-accent);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .back-button:hover {
-  background-color: #f0f3ff;
+  background-color: var(--color-accent-light);
 }
 
 /* Grade Badge (Large, Prominent) - REQ-F-B4-1 */
@@ -99,7 +105,8 @@
 }
 
 .grade-icon {
-  font-size: 4rem;
+  width: 4rem;
+  height: 4rem;
 }
 
 .grade-info {
@@ -109,7 +116,7 @@
 .grade-label {
   font-size: 0.9rem;
   font-weight: 500;
-  color: #666;
+  color: var(--text-secondary);
   margin-bottom: 0.25rem;
 }
 
@@ -122,7 +129,7 @@
 
 .grade-english {
   font-size: 1rem;
-  color: #888;
+  color: var(--text-tertiary);
   margin-top: 0.25rem;
   font-style: italic;
 }
@@ -163,16 +170,16 @@
 }
 
 .metric-card {
-  background-color: #f9f9f9;
+  background-color: var(--bg-page);
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-card);
   transition: all 0.3s ease;
 }
 
 .metric-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-hover);
 }
 
 .metric-header {
@@ -183,20 +190,22 @@
 }
 
 .metric-icon {
-  font-size: 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-accent);
 }
 
 .metric-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .metric-value {
   font-size: 2rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text-dark);
   margin: 0.5rem 0;
   line-height: 1.2;
 }
@@ -205,12 +214,12 @@
 .metric-separator {
   font-size: 1.2rem;
   font-weight: 400;
-  color: #888;
+  color: var(--text-tertiary);
 }
 
 .metric-description {
   font-size: 0.9rem;
-  color: #666;
+  color: var(--text-secondary);
   margin-top: 0.5rem;
 }
 
@@ -226,13 +235,16 @@
 
 .progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   border-radius: 6px;
   transition: width 0.6s ease;
 }
 
 /* Confidence Warning */
 .confidence-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.85rem;
   color: #f57c00;
   margin-top: 0.75rem;
@@ -240,6 +252,12 @@
   background-color: #fff3e0;
   border-radius: 6px;
   border-left: 3px solid #f57c00;
+}
+
+.confidence-warning .warning-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 
 /* Action Buttons */
@@ -251,11 +269,14 @@
 }
 
 .primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1rem;
   font-weight: 600;
-  color: white;
-  background-color: #667eea;
+  color: var(--text-white);
+  background-color: var(--color-accent);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -263,41 +284,50 @@
 }
 
 .primary-button:hover {
-  background-color: #5568d3;
+  background-color: var(--color-accent-hover);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #667eea;
-  background-color: white;
-  border: 2px solid #667eea;
+  color: var(--color-accent);
+  background-color: var(--bg-card);
+  border: 2px solid var(--color-accent);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .secondary-button:hover {
-  background-color: #f0f3ff;
+  background-color: var(--color-accent-light);
   transform: translateY(-2px);
+}
+
+/* Button icons */
+.button-icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* Grade Distribution Chart - REQ: REQ-F-B4-3 */
 .grade-distribution-container {
   margin: 2rem 0;
   padding: 2rem;
-  background-color: #f9f9f9;
+  background-color: var(--bg-page);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-card);
 }
 
 .distribution-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text-dark);
   margin-bottom: 1rem;
   text-align: center;
 }
@@ -345,7 +375,7 @@
   text-align: center;
   margin-bottom: 2rem;
   padding: 1rem;
-  background-color: white;
+  background-color: var(--bg-card);
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
@@ -353,24 +383,24 @@
 .summary-text {
   font-size: 1.2rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .summary-percentile {
-  color: #667eea;
+  color: var(--color-accent);
   font-size: 1.4rem;
   font-weight: 700;
 }
 
 .summary-rank {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 1.1rem;
 }
 
 .summary-description {
   font-size: 0.9rem;
-  color: #888;
+  color: var(--text-tertiary);
   margin-top: 0.5rem;
 }
 
@@ -382,7 +412,7 @@
   gap: 1rem;
   height: 350px;
   padding: 1rem;
-  background-color: white;
+  background-color: var(--bg-card);
   border-radius: 8px;
   margin-bottom: 1.5rem;
 }
@@ -416,16 +446,25 @@
 .bar-grade-name {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   display: block;
 }
 
 .bar-user-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
   font-size: 0.75rem;
-  color: #667eea;
+  color: var(--color-accent);
   font-weight: 700;
-  display: block;
   line-height: 1.1;
+}
+
+.bar-user-indicator .pin-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
 }
 
 .bar-container {
@@ -478,7 +517,7 @@
 .bar-count {
   font-size: 1rem;
   font-weight: 700;
-  color: white;
+  color: var(--text-white);
 }
 
 .bar-percentage {
@@ -489,7 +528,7 @@
 
 .bar-grade-english {
   font-size: 0.75rem;
-  color: #888;
+  color: var(--text-tertiary);
   font-style: italic;
   margin-top: 0.5rem;
   text-align: center;
@@ -528,7 +567,7 @@
 
 .legend-text {
   font-size: 0.9rem;
-  color: #666;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -552,7 +591,8 @@
   }
 
   .grade-icon {
-    font-size: 3rem;
+    width: 3rem;
+    height: 3rem;
   }
 
   .grade-value {

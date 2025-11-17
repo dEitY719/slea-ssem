@@ -1,0 +1,95 @@
+/**
+ * Level Selector Styles
+ *
+ * Extracted from SignupPage.css
+ * Shared across:
+ * - SignupPage (REQ-F-A2-Signup-4)
+ * - ProfileSetupPage (REQ-F-A2-2-2)
+ * - ProfileEditPage (future)
+ */
+
+.level-selector {
+  margin-bottom: 2rem;
+}
+
+.level-selector .section-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.level-selector .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.level-selector .form-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  text-align: left;
+}
+
+.level-selector .level-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.level-selector .level-option {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border: 2px solid var(--border-default);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background-color: var(--bg-card);
+}
+
+.level-selector .level-option:hover:not(.disabled) {
+  border-color: var(--color-accent);
+  background-color: var(--bg-card-hover);
+}
+
+.level-selector .level-option.selected {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-light);
+}
+
+.level-selector .level-option.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.level-selector .level-option input[type='radio'] {
+  margin-right: 1rem;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--color-accent);
+}
+
+.level-selector .level-option.disabled input[type='radio'] {
+  cursor: not-allowed;
+}
+
+.level-selector .level-content {
+  flex: 1;
+  text-align: left;
+}
+
+.level-selector .level-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.level-selector .level-description {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: left;
+}

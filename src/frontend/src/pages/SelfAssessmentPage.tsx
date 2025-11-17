@@ -1,7 +1,9 @@
 // REQ: REQ-F-A2-2-2
 import React, { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { profileService } from '../services'
+import { submitProfileSurvey } from '../features/profile/profileSubmission'
+import LevelSelector from '../components/LevelSelector'
+import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
 import './SelfAssessmentPage.css'
 
 /**
@@ -12,39 +14,17 @@ import './SelfAssessmentPage.css'
  * REQ: REQ-F-A2-2-4 - "완료" 버튼 클릭 시 user_profile 저장 및 리다이렉트
  *
  * Features:
- * - Level selection (1-5 with radio buttons)
- * - Level descriptions for each option
+ * - Level selection (shared LevelSelector component)
  * - Complete button (enabled when level is selected)
- * - API integration with backend format conversion
+ * - API integration with LEVEL_MAPPING conversion
  *
  * Route: /self-assessment
+ *
+ * Shared Components:
+ * - LevelSelector: Reused with REQ-F-A2-Signup-4
+ * - LEVEL_MAPPING: Centralized level conversion
+ * - InfoBox: Consistent info display
  */
-
-type LevelOption = {
-  value: number
-  label: string
-  description: string
-}
-
-const LEVEL_OPTIONS: LevelOption[] = [
-  { value: 1, label: '1 - 입문', description: '기초 개념 학습 중' },
-  { value: 2, label: '2 - 초급', description: '기본 업무 수행 가능' },
-  { value: 3, label: '3 - 중급', description: '독립적으로 업무 수행' },
-  { value: 4, label: '4 - 고급', description: '복잡한 문제 해결 가능' },
-  { value: 5, label: '5 - 전문가', description: '다른 사람을 지도 가능' },
-]
-
-/**
- * Convert frontend level (1-5) to backend format
- * @param level - Frontend level (1-5)
- * @returns Backend level string ('beginner' | 'intermediate' | 'advanced')
- */
-const convertLevelToBackend = (level: number): string => {
-  if (level === 1) return 'beginner'
-  if (level === 2 || level === 3) return 'intermediate'
-  if (level === 4 || level === 5) return 'advanced'
-  throw new Error(`Invalid level: ${level}`)
-}
 
 const SelfAssessmentPage: React.FC = () => {
   const [level, setLevel] = useState<number | null>(null)
@@ -65,19 +45,14 @@ const SelfAssessmentPage: React.FC = () => {
     setIsSubmitting(true)
     setErrorMessage(null)
 
-    try {
-      const backendLevel = convertLevelToBackend(level)
-      const response = await profileService.updateSurvey({
-        level: backendLevel,
-        career: 0,
-        interests: [],
-      })
+      try {
+        const response = await submitProfileSurvey({ level })
 
-      setIsSubmitting(false)
-      navigate('/profile-review', {
-        replace: true,
-        state: { level, surveyId: response.survey_id },
-      })
+        setIsSubmitting(false)
+        navigate('/profile-review', {
+          replace: true,
+          state: { level, surveyId: response.surveyId },
+        })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : '자기평가 정보 저장에 실패했습니다.'
@@ -96,33 +71,15 @@ const SelfAssessmentPage: React.FC = () => {
           현재 본인의 기술 수준을 선택해주세요. 이 정보는 맞춤형 테스트 생성에 활용됩니다.
         </p>
 
-        <div className="form-group">
-          <label className="form-label">기술 수준</label>
-          <div className="level-options">
-            {LEVEL_OPTIONS.map((option) => (
-              <label
-                key={option.value}
-                className={`level-option ${level === option.value ? 'selected' : ''}`}
-              >
-                <input
-                  type="radio"
-                  name="level"
-                  value={option.value}
-                  checked={level === option.value}
-                  onChange={() => handleLevelChange(option.value)}
-                  disabled={isSubmitting}
-                  aria-label={option.label}
-                />
-                <div className="level-content">
-                  <div className="level-label">{option.label}</div>
-                  <div className="level-description">{option.description}</div>
-                </div>
-              </label>
-            ))}
-          </div>
+        {/* Shared LevelSelector component (REQ-F-A2-Signup-4, REQ-F-A2-2-2) */}
+        <LevelSelector
+          value={level}
+          onChange={handleLevelChange}
+          disabled={isSubmitting}
+          showTitle={false}
+        />
 
-          {errorMessage && <p className="error-message">{errorMessage}</p>}
-        </div>
+        {errorMessage && <p className="error-message">{errorMessage}</p>}
 
         <div className="form-actions">
           <button
@@ -135,14 +92,13 @@ const SelfAssessmentPage: React.FC = () => {
           </button>
         </div>
 
-        <div className="info-box">
-          <p className="info-title">수준 선택 가이드</p>
+        <InfoBox title="수준 선택 가이드" icon={InfoBoxIcons.check}>
           <ul className="info-list">
             <li>본인의 현재 기술 수준을 솔직하게 평가해주세요</li>
             <li>선택한 수준에 맞춰 테스트 난이도가 조정됩니다</li>
             <li>나중에 프로필 수정에서 변경할 수 있습니다</li>
           </ul>
-        </div>
+        </InfoBox>
       </div>
     </main>
   )

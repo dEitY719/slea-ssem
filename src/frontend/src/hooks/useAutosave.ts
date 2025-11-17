@@ -69,10 +69,12 @@ export function useAutosave({
           userAnswer = { text: answer }
         }
 
-        await questionService.autosave({
+          const responseTime = Date.now() - questionStartTime
+          await questionService.autosave({
           session_id: sessionId,
           question_id: currentQuestion.id,
-          user_answer: JSON.stringify(userAnswer),
+            user_answer: JSON.stringify(userAnswer),
+            response_time_ms: responseTime,
         })
 
         setLastSavedAnswer(answer)

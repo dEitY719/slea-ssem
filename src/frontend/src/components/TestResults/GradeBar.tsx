@@ -1,4 +1,5 @@
 import React from 'react'
+import { MapPinIcon } from '@heroicons/react/24/solid'
 import type { Grade } from '../../services/resultService'
 import { getGradeKorean } from '../../utils/gradeHelpers'
 
@@ -37,7 +38,8 @@ export const GradeBar: React.FC<GradeBarProps> = ({
         <span className="bar-grade-name">{gradeKorean}</span>
         {isUserGrade && (
           <span className="bar-user-indicator" aria-label="Your current position">
-            📍 현재 위치
+            <MapPinIcon className="pin-icon" />
+            현재 위치
           </span>
         )}
       </div>

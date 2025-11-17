@@ -1,6 +1,7 @@
 // REQ: REQ-F-B2-1, REQ-F-B2-2, REQ-F-B2-6
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { ArrowRightIcon, ArrowLeftIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { questionService } from '../services'
 import { Timer, SaveStatus, Question, type QuestionData } from '../components/test'
 import { useAutosave } from '../hooks/useAutosave'
@@ -62,9 +63,18 @@ const TestPage: React.FC = () => {
 
   // Load questions on mount
   useEffect(() => {
+    // Prevent duplicate calls (React Strict Mode calls useEffect twice in dev)
+    let cancelled = false
+
     const generateQuestions = async () => {
       if (!state?.surveyId) {
         setLoadingError('자기평가 정보가 없습니다. 프로필 리뷰 페이지로 돌아가주세요.')
+        setIsLoading(false)
+        return
+      }
+
+      // Skip if already loaded (prevents StrictMode double-call issue)
+      if (sessionId && questions.length > 0) {
         setIsLoading(false)
         return
       }
@@ -79,22 +89,32 @@ const TestPage: React.FC = () => {
           domain: 'AI',
         })
 
-        setSessionId(response.session_id)
-        setQuestions(response.questions)
-        setQuestionStartTime(Date.now())
-        setIsLoading(false)
+        // Only update state if not cancelled
+        if (!cancelled) {
+          setSessionId(response.session_id)
+          setQuestions(response.questions)
+          setQuestionStartTime(Date.now())
+          setIsLoading(false)
+        }
       } catch (err) {
-        const message =
-          err instanceof Error
-            ? err.message
-            : '문제 생성에 실패했습니다. 다시 시도해주세요.'
-        setLoadingError(message)
-        setIsLoading(false)
+        if (!cancelled) {
+          const message =
+            err instanceof Error
+              ? err.message
+              : '문제 생성에 실패했습니다. 다시 시도해주세요.'
+          setLoadingError(message)
+          setIsLoading(false)
+        }
       }
     }
 
     generateQuestions()
-  }, [state?.surveyId, state?.round])
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      cancelled = true
+    }
+  }, [state?.surveyId, state?.round, sessionId, questions.length])
 
   // Reset state when moving to next question
   useEffect(() => {
@@ -144,10 +164,12 @@ const TestPage: React.FC = () => {
       }
 
       // Submit answer to backend
-      await questionService.autosave({
+        const responseTime = Date.now() - questionStartTime
+        await questionService.autosave({
         session_id: sessionId,
         question_id: currentQuestion.id,
-        user_answer: JSON.stringify(userAnswer),
+          user_answer: JSON.stringify(userAnswer),
+          response_time_ms: responseTime,
       })
 
       // Move to next question or finish
@@ -189,6 +211,7 @@ const TestPage: React.FC = () => {
             className="back-button"
             onClick={() => navigate('/profile-review')}
           >
+            <ArrowLeftIcon className="button-icon" />
             프로필 리뷰로 돌아가기
           </button>
         </div>
@@ -236,11 +259,19 @@ const TestPage: React.FC = () => {
           onClick={handleNextClick}
           disabled={!answer.trim() || isSubmitting}
         >
-          {isSubmitting
-            ? '제출 중...'
-            : currentIndex < questions.length - 1
-            ? '다음'
-            : '완료'}
+          {isSubmitting ? (
+            '제출 중...'
+          ) : currentIndex < questions.length - 1 ? (
+            <>
+              다음
+              <ArrowRightIcon className="button-icon" />
+            </>
+          ) : (
+            <>
+              완료
+              <CheckIcon className="button-icon" />
+            </>
+          )}
         </button>
       </div>
     </main>
