@@ -96,7 +96,9 @@
   |                                |            | (자동 일시중지)           | autosave_service.py:167-195 |
 
   트리거 코드:
-  # src/backend/api/questions.py:487-491
+
+# src/backend/api/questions.py:487-491
+
   time_status = autosave_service.check_time_limit(request.session_id)
   if time_status["exceeded"]:
       autosave_service.pause_session(request.session_id, reason="time_limit")
@@ -118,7 +120,9 @@
   |                         | ✅ 채점 완료 후 | ✅ TestResult 생성   | scoring_service.py:489     |
 
   배치 채점 로직:
-  # src/backend/services/scoring_service.py:337-392
+
+# src/backend/services/scoring_service.py:337-392
+
   def _score_all_unscored_answers(self, session_id: str) -> None:
       # 1. is_correct IS NULL OR (is_correct=false AND score=0)인 답변 찾음
       unscored = self.session.query(AttemptAnswer).filter(
@@ -208,7 +212,7 @@
   | in_progress          | 수동 일시중지            | paused        | PUT /session/{id}/status?status=paused      |
   | paused               | 수동 재개              | in_progress   | PUT /session/{id}/status?status=in_progress |
   | paused               | questions score 실행 | paused (변경없음) | 채점만 진행, 상태는 유지                              |
-  | paused | in_progress | 라운드 2 생성           | → 새로운 세션 생성   | Round 2용 새 TestSession                      |
+  | in_progress / paused | 라운드 2 생성           | in_progress (새 세션) | 새로운 TestSession 생성                      |
 
   ---
   6️⃣ 테이블 간 관계도

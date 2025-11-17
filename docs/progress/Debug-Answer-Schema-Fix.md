@@ -17,6 +17,7 @@ Fixed a critical issue where `answer_schema` was incorrectly being populated wit
 User reported: "5 problems generated correctly, I entered the correct answer, but it's marked as wrong."
 
 Investigation revealed:
+
 - Question ID: `a6166c75-793e-4351-9182-3b8f82199646`
 - Type: `true_false`
 - User answer: `{"answer": false}` (boolean)
@@ -26,6 +27,7 @@ Investigation revealed:
 ### Root Cause Analysis
 
 **Expected answer_schema structure** (per Tool 5 documentation):
+
 - **Multiple Choice**: `{"correct_key": "A", ...}` - no keywords
 - **True/False**: `{"correct_answer": "True/False", ...}` - no keywords
 - **Short Answer**: `{"keywords": ["key1", "key2"], ...}` - no correct_answer
@@ -33,6 +35,7 @@ Investigation revealed:
 **Actual structure found**: Multiple_choice and true_false types had BOTH `keywords` AND `correct_answer` fields.
 
 **Problem Locations**:
+
 1. `src/agent/llm_agent.py:916-920` - Final Answer JSON parsing path
 2. `src/agent/llm_agent.py:1021-1028` - Tool 5 response parsing path
 
@@ -45,6 +48,7 @@ Both code paths unconditionally set both fields regardless of question type.
 ### Approach: Type-Aware Answer Schema Construction
 
 Modify both parsing paths to:
+
 1. Extract `item_type` from the question data
 2. **For short_answer**: Include only `keywords` field
 3. **For MC/TF**: Include only `correct_answer` field
@@ -188,16 +192,19 @@ Updated all test mocks from `items=[]` to `items=[create_mock_item(...)]` to avo
 ### Test Coverage
 
 **Question Type Tests**:
+
 - ✅ Multiple Choice: `answer_schema` only has `correct_answer`, no `keywords`
 - ✅ True/False: `answer_schema` only has `correct_answer`, no `keywords`
 - ✅ Short Answer: `answer_schema` only has `keywords`, no `correct_answer`
 
 **Scoring Tests**:
+
 - ✅ MC case-insensitive matching works correctly
 - ✅ TF boolean matching works correctly
 - ✅ SA keyword matching works correctly
 
 **Agent Integration Tests**:
+
 - ✅ Agent is created and called
 - ✅ GenerateQuestionsRequest constructed correctly
 - ✅ Questions saved to database
@@ -261,6 +268,7 @@ All 775 tests pass ✅
 ## Related Issues Solved
 
 This fix resolves the investigation initiated by user report:
+
 - User: "5 problems generated, correct answer entered, marked as wrong"
 - Issue: Answer_schema with `keywords` in true_false type confusing scoring logic
 - Resolution: Type-aware schema construction prevents field pollution
@@ -284,6 +292,7 @@ This fix resolves the investigation initiated by user report:
 **Status**: ✅ Complete - All 775 tests pass
 
 **Files Modified**:
+
 - `src/agent/llm_agent.py` (2 parsing paths)
 - `tests/backend/test_question_gen_service_agent.py` (test fixtures)
 
@@ -294,4 +303,3 @@ This fix resolves the investigation initiated by user report:
 **Date**: 2025-11-17
 **Version**: 1.0
 **Status**: Complete ✅
-

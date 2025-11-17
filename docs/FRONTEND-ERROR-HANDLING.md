@@ -9,6 +9,7 @@ This document provides comprehensive guidance on handling errors in the frontend
 ### 1. **Transient Errors** (Recoverable with Retry)
 
 These are temporary failures that may succeed on retry:
+
 - Network timeouts
 - Server temporarily unavailable (5xx errors with auto-retry on backend)
 - Rate limiting (429 Too Many Requests)
@@ -16,6 +17,7 @@ These are temporary failures that may succeed on retry:
 **Backend Support**: The `/questions/generate` endpoint now implements automatic retry with exponential backoff (up to 3 attempts). Frontend should wait for the response even if it takes longer.
 
 **Frontend Responsibility**:
+
 - Implement request timeout (20-30 seconds) to account for backend retries
 - Show loading state to user during the wait
 - Do NOT retry on the frontend (backend handles this automatically)
@@ -23,11 +25,13 @@ These are temporary failures that may succeed on retry:
 ### 2. **Validation Errors** (Client Mistake)
 
 These indicate the request itself is invalid:
+
 - Missing required fields (400 Bad Request)
 - Invalid input format (400 Bad Request)
 - Invalid session ID (404 Not Found)
 
 **Frontend Responsibility**:
+
 - Validate inputs before sending request
 - Show user-friendly error message
 - Do NOT retry (the error will persist)
@@ -36,10 +40,12 @@ These indicate the request itself is invalid:
 ### 3. **Authorization Errors** (Authentication/Permission)
 
 These indicate the user is not allowed to perform the action:
+
 - Not authenticated (401 Unauthorized)
 - Not authorized for this resource (403 Forbidden)
 
 **Frontend Responsibility**:
+
 - Redirect to login page (401)
 - Show access denied message (403)
 - Do NOT retry
@@ -47,11 +53,13 @@ These indicate the user is not allowed to perform the action:
 ### 4. **Server Errors** (Unrecoverable)
 
 These are permanent failures in the backend:
+
 - Database connection error
 - Unexpected exception (500 Internal Server Error)
 - Maximum retry attempts exhausted on backend
 
 **Frontend Responsibility**:
+
 - Show error message to user
 - Log the error for debugging
 - Offer "Try Again Later" option
@@ -265,6 +273,7 @@ The backend includes attempt information in responses:
 ```
 
 This allows frontend to:
+
 - Understand if a retry was needed
 - Adjust UI feedback based on attempt count
 - Log for analytics
@@ -410,11 +419,13 @@ if (questionsGenerationFailed) {
 ### POST /questions/generate
 
 **Expected Behavior**:
+
 - Initial request takes 1-7 seconds (backend may retry)
 - Response includes `total_tokens` and `attempt` count
 - May fail after 3 backend attempts, returns 500 error
 
 **Frontend Pattern**:
+
 ```typescript
 // Set 30s timeout, show loading for entire duration
 // Don't retry on frontend - backend handles it
@@ -425,11 +436,13 @@ if (questionsGenerationFailed) {
 ### POST /questions/answer
 
 **Expected Behavior**:
+
 - Fast response (no retries needed)
 - Validates answer format before accepting
 - Returns score and feedback
 
 **Frontend Pattern**:
+
 ```typescript
 // Validate answer format first
 // Set 10s timeout (no backend retries expected)

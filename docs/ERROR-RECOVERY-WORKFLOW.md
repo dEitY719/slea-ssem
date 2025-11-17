@@ -5,6 +5,7 @@
 This document describes the complete error recovery workflow for handling transient failures during question generation. The strategy employs a **backend-first auto-retry approach** combined with frontend error handling to provide a seamless user experience.
 
 **Key Decision**: Backend auto-retry (not frontend) because:
+
 - Transient failures are environment-specific (agent state, LLM tokenization)
 - Client has no way to determine if failure is transient
 - Automatic retry is transparent to user
@@ -67,6 +68,7 @@ This document describes the complete error recovery workflow for handling transi
 ### Issue Description
 
 Intermittent "No tool results extracted" errors when generating questions:
+
 ```
 POST /questions/generate → Error: No tool results extracted
 (Retry manually) → Success: 5 questions generated
@@ -82,10 +84,12 @@ POST /questions/generate → Error: No tool results extracted
 ### Why This Happens
 
 The `GenerateQuestionsResponse` expects:
+
 - `items`: List of generated questions
 - If response has no items → Request failed
 
 This is detected as:
+
 ```python
 if agent_response.items:
     # Success
@@ -102,6 +106,7 @@ When this occurs, the entire request fails, and user must click "Generate" again
 ### Approach: Backend Auto-Retry with Exponential Backoff
 
 **Why Backend?**
+
 - ✅ Transparent to user
 - ✅ Can inspect agent response to detect transient failure
 - ✅ No need to revalidate input (already done once)
@@ -109,6 +114,7 @@ When this occurs, the entire request fails, and user must click "Generate" again
 - ✅ Better observability (logs show attempt count)
 
 **Why Exponential Backoff?**
+
 - ✅ Gives agent time to recover (1-2 seconds)
 - ✅ Prevents overwhelming the server (2-4 second wait)
 - ✅ Standard industry practice
@@ -119,6 +125,7 @@ When this occurs, the entire request fails, and user must click "Generate" again
 **File**: `src/backend/services/question_gen_service.py`
 
 **Logic**:
+
 ```python
 max_retries = 3
 retry_delays = [1, 2, 4]  # seconds
@@ -138,6 +145,7 @@ for attempt in range(max_retries):
 ```
 
 **Timeout Considerations**:
+
 - Attempt 1: 0-2s
 - Wait: 1s
 - Attempt 2: 1-3s
@@ -154,6 +162,7 @@ for attempt in range(max_retries):
 **Modified File**: `src/backend/services/question_gen_service.py`
 
 **Changes**:
+
 1. Added `import asyncio` for sleep
 2. Added retry loop with exponential backoff
 3. Detects failure: `if not agent_response.items`
@@ -161,6 +170,7 @@ for attempt in range(max_retries):
 5. Returns attempt info to frontend
 
 **Key Code**:
+
 ```python
 for attempt in range(max_retries):
     try:
@@ -198,12 +208,14 @@ logger.info(
 ### Frontend Adjustments
 
 **Required Changes**:
+
 1. Set request timeout to **30 seconds** (accounts for backend retries)
 2. Show loading state during entire wait
 3. Don't implement frontend retry (backend handles it)
 4. Display error only if backend returns 500
 
 **Timeout Setting** (30 seconds recommended):
+
 ```typescript
 const response = await fetch('/api/questions/generate', {
   method: 'POST',
@@ -214,6 +226,7 @@ const response = await fetch('/api/questions/generate', {
 ```
 
 **Why 30 seconds?**
+
 - Backend max wait: 4-7 seconds
 - LLM inference: 5-10 seconds
 - Network latency: 1-3 seconds
@@ -225,10 +238,12 @@ const response = await fetch('/api/questions/generate', {
 **Test Results**: All 775 tests pass ✅
 
 **Specific Tests for Auto-Retry**:
+
 - Existing test mocks success case (no retry needed)
 - New tests can verify retry behavior by mocking empty response
 
 **Manual Testing**:
+
 ```bash
 # 1. Start server
 ./tools/dev.sh up
@@ -250,6 +265,7 @@ curl -X POST http://localhost:8000/api/questions/generate \
 ### Observability
 
 **Log Format**:
+
 ```
 # On first-attempt success:
 ✅ Generated 5 questions (tokens: 4250, attempt: 1/3)
@@ -263,6 +279,7 @@ curl -X POST http://localhost:8000/api/questions/generate \
 ```
 
 **Key Metrics to Track**:
+
 - Success rate per attempt
 - Average latency by attempt number
 - Retry frequency (should be <5%)
@@ -382,10 +399,12 @@ User
 ### Option A: Frontend Retry ❌ (Rejected)
 
 **Pros**:
+
 - User controls retry timing
 - Can customize retry strategy per endpoint
 
 **Cons**:
+
 - ❌ Frontend doesn't know if error is transient
 - ❌ User must click retry manually
 - ❌ Creates poor UX (user sees error unnecessarily)
@@ -394,6 +413,7 @@ User
 ### Option B: Backend Auto-Retry ✅ (Chosen)
 
 **Pros**:
+
 - ✅ Transparent to user
 - ✅ Backend can detect transient failure
 - ✅ Significantly improves success rate (estimated 90%+)
@@ -401,11 +421,13 @@ User
 - ✅ Industry standard approach
 
 **Cons**:
+
 - Slightly higher latency (4-7s max wait for retries)
 
 ### Option C: Hybrid (Frontend + Backend) ❌ (Not needed)
 
 **Cons**:
+
 - Adds complexity
 - Double-retry could overwhelm server
 - Harder to debug
@@ -437,6 +459,7 @@ A: Check backend logs for "attempt X/3" messages. Success rate should be >90%.
 ### Q: Can I customize retry count?
 
 A: Yes, in `src/backend/services/question_gen_service.py`:
+
 ```python
 max_retries = 3  # Change to 2, 4, etc.
 retry_delays = [1, 2, 4]  # Adjust delays
@@ -463,12 +486,14 @@ A: Retries only help with transient agent failures, not database issues. Those s
 **The Solution**: Backend auto-retry with exponential backoff (3 attempts, 1-4 second delays).
 
 **The Impact**:
+
 - ✅ Success rate increases from ~95% to ~99%+
 - ✅ User experience unchanged (transparent)
 - ✅ Slight latency increase (4-7s max for retries)
 - ✅ Clean logging and monitoring
 
 **Next Steps**:
+
 1. Deploy to staging and monitor
 2. Track retry success rate metrics
 3. Adjust max_retries or delays if needed
