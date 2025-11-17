@@ -312,8 +312,16 @@ class QuestionGenerationService:
                 status="in_progress",
             )
             self.session.add(test_session)
+            self.session.flush()  # Flush to ensure ID is set
             self.session.commit()
             logger.debug(f"✓ TestSession created: session_id={session_id}")
+
+            # Verify session was created
+            verify_session = self.session.query(TestSession).filter_by(id=session_id).first()
+            if not verify_session:
+                logger.error(f"❌ Failed to verify TestSession creation: {session_id}")
+                raise Exception(f"TestSession creation failed: {session_id}")
+            logger.debug("✓ Verified TestSession exists in database")
 
             # Step 3: Retrieve previous answers (for adaptive difficulty)
             prev_answers = None
@@ -421,7 +429,7 @@ class QuestionGenerationService:
             }
             logger.info(
                 f"✅ Generated {len(questions_list)} questions "
-                f"(tokens: {agent_response.total_tokens}, attempt: {attempt + 1}/{max_retries})"
+                f"(tokens: {agent_response.total_tokens if agent_response else 0}, attempt: {attempt + 1}/{max_retries})"
             )
             return response
 
