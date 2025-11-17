@@ -129,13 +129,18 @@ class ScoringService:
         answer_schema: dict[str, Any],  # noqa: ANN401
     ) -> tuple[bool, float]:
         """
-        Score multiple choice question (exact match).
+        Score multiple choice question (text-based matching with normalization).
 
         REQ: REQ-B-B3-Score-2
 
         Scoring: 0-100 scale
         - Correct: 100.0
         - Incorrect: 0.0
+
+        Since choice order can be randomized for users, answers are compared
+        by full choice text. Comparison is normalized for robustness:
+        - Case-insensitive (lowercase comparison)
+        - Whitespace-normalized (multiple spaces → single space)
 
         Args:
             user_answer: User's answer dict with "selected_key"
@@ -159,7 +164,13 @@ class ScoringService:
         # Try correct_key first (standard format), fallback to correct_answer (agent format)
         correct_key = str(answer_schema.get("correct_key") or answer_schema.get("correct_answer", "")).strip()
 
-        is_correct = selected_key == correct_key
+        # Normalize both answers for robust comparison:
+        # 1. Normalize internal whitespace (multiple spaces → single space)
+        # 2. Case-insensitive comparison (convert to lowercase)
+        normalized_selected = " ".join(selected_key.split()).lower()
+        normalized_correct = " ".join(correct_key.split()).lower()
+
+        is_correct = normalized_selected == normalized_correct
         score = 100.0 if is_correct else 0.0
 
         return is_correct, score
