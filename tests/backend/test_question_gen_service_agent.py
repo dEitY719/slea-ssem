@@ -19,13 +19,39 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-from src.agent.llm_agent import GeneratedItem, GenerateQuestionsRequest, GenerateQuestionsResponse
+from src.agent.llm_agent import AnswerSchema, GeneratedItem, GenerateQuestionsRequest, GenerateQuestionsResponse
 from src.backend.models.question import Question
 from src.backend.models.test_result import TestResult
 from src.backend.models.test_session import TestSession
 from src.backend.models.user import User
 from src.backend.models.user_profile import UserProfileSurvey
 from src.backend.services.question_gen_service import QuestionGenerationService
+
+
+def create_mock_item(item_id: str = "test_q_001", item_type: str = "multiple_choice") -> GeneratedItem:
+    """Create a mock GeneratedItem for testing."""
+    if item_type == "short_answer":
+        answer_schema = AnswerSchema(
+            type="keyword_match",
+            keywords=["test", "keyword"],
+            correct_answer=None,
+        )
+    else:
+        answer_schema = AnswerSchema(
+            type="exact_match",
+            keywords=None,
+            correct_answer="A",
+        )
+
+    return GeneratedItem(
+        id=item_id,
+        type=item_type,
+        stem="Test question stem?",
+        choices=["A", "B", "C", "D"] if item_type == "multiple_choice" else None,
+        answer_schema=answer_schema,
+        difficulty=5,
+        category="test",
+    )
 
 
 class TestQuestionGenerationAgentIntegration:
@@ -61,7 +87,7 @@ class TestQuestionGenerationAgentIntegration:
         mock_agent.generate_questions = AsyncMock(
             return_value=GenerateQuestionsResponse(
                 round_id="round_test_001",
-                items=[],
+                items=[create_mock_item()],
                 time_limit_seconds=1200,
             )
         )
@@ -93,7 +119,7 @@ class TestQuestionGenerationAgentIntegration:
         mock_agent.generate_questions = AsyncMock(
             return_value=GenerateQuestionsResponse(
                 round_id="round_test_002",
-                items=[],
+                items=[create_mock_item("test_q_002")],
                 time_limit_seconds=1200,
             )
         )
@@ -131,7 +157,7 @@ class TestQuestionGenerationAgentIntegration:
             captured_request = request
             return GenerateQuestionsResponse(
                 round_id="round_test_003",
-                items=[],
+                items=[create_mock_item()],
                 time_limit_seconds=1200,
             )
 
@@ -190,7 +216,7 @@ class TestQuestionGenerationAgentIntegration:
             captured_request = request
             return GenerateQuestionsResponse(
                 round_id="round_test_004",
-                items=[],
+                items=[create_mock_item()],
                 time_limit_seconds=1200,
             )
 
@@ -534,7 +560,7 @@ class TestQuestionGenerationAgentIntegration:
             captured_request = request
             return GenerateQuestionsResponse(
                 round_id="round_test_011",
-                items=[],
+                items=[create_mock_item("test_q_011")],
                 time_limit_seconds=1200,
             )
 
@@ -567,7 +593,7 @@ class TestQuestionGenerationAgentIntegration:
         mock_agent.generate_questions = AsyncMock(
             return_value=GenerateQuestionsResponse(
                 round_id="round_test_012",
-                items=[],
+                items=[create_mock_item("test_q_012")],
                 time_limit_seconds=1200,
             )
         )
