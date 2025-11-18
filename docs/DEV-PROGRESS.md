@@ -26,16 +26,19 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-A2-2-2 | 자기평가 정보(수준) 입력 | 4 | ✅ Done | 10 tests (100%), Commit: bd3c7ec, Progress: docs/progress/REQ-F-A2-2-2.md |
 | REQ-F-A2-2-3 | 필수 필드 입력 시 "완료" 버튼 활성화 | 4 | ✅ Done | Commit: bd3c7ec, Progress: docs/progress/REQ-F-A2-2-3.md |
 | REQ-F-A2-2-4 | "완료" 클릭 시 프로필 저장 및 리뷰 페이지 이동 | 4 | ✅ Done | Commit: d401eed, Progress: docs/progress/REQ-F-A2-2-4.md |
+| REQ-F-A2-2-5 | "완료" 클릭 시 user_profile 저장 및 리다이렉트 | 4 | ✅ Done | Commit: 2661b60, Progress: docs/progress/REQ-F-A2-2-5.md |
 | REQ-F-A2-Signup | 통합 회원가입 화면 (헤더 "회원가입" 버튼) | 0 | ⏳ Backlog | 7개 sub-tasks (닉네임 + 자기평가 한 페이지) |
 | REQ-F-A2-Signup-1 | 홈화면 헤더 오른쪽 상단에 "회원가입" 버튼 표시 | 4 | ✅ Done | 6 tests (100%), Commit: b757745, Progress: docs/progress/REQ-F-A2-Signup-1.md |
 | REQ-F-A2-Signup-2 | "회원가입" 버튼 클릭 시 /signup 페이지로 이동 | 4 | ✅ Done | 1 test (100%), Commit: b757745, Progress: docs/progress/REQ-F-A2-Signup-2.md |
 | REQ-F-A2-Signup-3 | 통합 회원가입 페이지에 닉네임 입력 섹션 표시 | 4 | ✅ Done | 11 tests (100%), Commit: 273c30a, Progress: docs/progress/REQ-F-A2-Signup-3.md |
 | REQ-F-A2-Signup-4 | 통합 회원가입 페이지에 자기평가 입력 섹션 표시 (수준만) | 0 | ⏳ Backlog | 향후 추가: 경력, 직군, 담당 업무, 관심분야 |
 | REQ-F-A2-Signup-5 | 닉네임 중복 확인 완료 + 모든 필수 필드 입력 시 "가입 완료" 버튼 활성화 | 4 | ✅ Done | 6 tests (100%), Commit: bc03a83, Progress: docs/progress/REQ-F-A2-Signup-5.md |
-| REQ-F-A2-Signup-6 | "가입 완료" 클릭 시 nickname + profile 저장 및 홈화면 리다이렉트 | 0 | ⏳ Backlog | To be implemented |
-| REQ-F-A2-Signup-7 | 가입 완료 후 홈화면 재진입 시 "회원가입" 버튼 숨김 | 0 | ⏳ Backlog | To be implemented |
-| REQ-F-A2-Profile-Access | 헤더 닉네임 표시 및 드롭다운 메뉴 | 1 | 🚧 In Progress | 8개 sub-tasks (닉네임 표시 → 드롭다운 → 프로필 수정) |
+| REQ-F-A2-Signup-6 | "가입 완료" 클릭 시 nickname + profile 저장 및 홈화면 리다이렉트 | 4 | ✅ Done | 5 tests (100%), Commit: 97fb27c, Progress: docs/progress/REQ-F-A2-Signup-6.md |
+| REQ-F-A2-Signup-7 | 가입 완료 후 홈화면 재진입 시 "회원가입" 버튼 숨김 | 4 | ✅ Done | 14 tests (Header), Commit: 8b9c70c, Progress: docs/progress/REQ-F-A2-Signup-7.md |
+| REQ-F-A2-Profile-Access | 헤더 닉네임 표시 및 드롭다운 메뉴 | 4 | ✅ Done | 8개 sub-tasks (닉네임 표시 → 드롭다운 → 프로필 수정) |
 | REQ-F-A2-Profile-Access-1 | 헤더에 닉네임 표시 (nickname != null) | 4 | ✅ Done | 8 tests (100%), Commit: 16bbf7f, Progress: docs/progress/REQ-F-A2-Profile-Access-1.md |
+| REQ-F-A2-Profile-Access-2 | 헤더 닉네임 클릭 가능 버튼 (호버 피드백) | 4 | ✅ Done | 4 tests (100%), Commit: 50cb5b4, Progress: docs/progress/REQ-F-A2-Profile-Access-2.md |
+| REQ-F-A2-Profile-Access-3-6 | 닉네임 드롭다운 메뉴 (프로필 수정) | 4 | ✅ Done | 6 tests (100%), Commit: dba80be, Progress: docs/progress/REQ-F-A2-Profile-Access-3-6.md |
 | REQ-F-A2-Edit | 프로필 수정 화면 | 0 | ⏳ Backlog | 6개 sub-tasks |
 | REQ-F-A2-Edit-1 | 프로필 리뷰 화면에 "프로필 수정" 버튼 제공 | 4 | ✅ Done | Commit: d401eed, Progress: docs/progress/REQ-F-A2-Edit-1.md |
 | REQ-F-A3 | 개인정보 수집 및 이용 동의 | 0 | ⏳ Backlog | 5개 sub-tasks |
