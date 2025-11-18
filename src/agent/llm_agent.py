@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from src.agent.config import AGENT_CONFIG, create_llm
 from src.agent.fastmcp_server import TOOLS
+from src.agent.output_converter import AgentOutputConverter
 from src.agent.prompts.react_prompt import get_react_prompt
 from src.agent.round_id_generator import RoundIDGenerator
 
@@ -119,13 +120,10 @@ def parse_json_robust(json_str: str, max_attempts: int = 5) -> dict | list:
 
 def normalize_answer_schema(answer_schema_raw: str | dict | None) -> str:
     """
-    Normalize answer_schema to ensure it's always a string.
+    (Deprecated) Normalize answer_schema to ensure it's always a string.
 
-    Handles multiple formats:
-    1. Tool 5 format: {"type": "exact_match", "keywords": null, "correct_answer": "..."}
-    2. Mock format: {"correct_key": "B", "explanation": "..."}
-    3. LLM format: {"answer_type": "exact_match"}
-    4. String format: "exact_match"
+    This function is maintained for backward compatibility.
+    Use AgentOutputConverter.normalize_schema_type() instead.
 
     Args:
         answer_schema_raw: Raw answer_schema value (could be str or dict)
@@ -133,38 +131,7 @@ def normalize_answer_schema(answer_schema_raw: str | dict | None) -> str:
     Returns:
         Normalized answer_schema as string: "exact_match" | "keyword_match" | "semantic_match"
     """
-    if isinstance(answer_schema_raw, dict):
-        # Case 1: Tool 5 format - has 'type' field
-        if "type" in answer_schema_raw:
-            schema_type = answer_schema_raw.get("type")
-            if isinstance(schema_type, str):
-                return schema_type
-
-        # Case 2: Mock/LLM format - has correct_key or answer_type
-        # Mock questions use "correct_key" but it's still exact_match
-        if "correct_key" in answer_schema_raw or "explanation" in answer_schema_raw:
-            return "exact_match"
-
-        # Case 3: Keywords present - likely keyword_match
-        if "keywords" in answer_schema_raw:
-            return "keyword_match"
-
-        # Case 4: Unknown dict - try 'type' or 'answer_type'
-        for key in ["type", "answer_type", "schema_type"]:
-            if key in answer_schema_raw:
-                val = answer_schema_raw.get(key)
-                if isinstance(val, str):
-                    return val
-
-    if isinstance(answer_schema_raw, str):
-        return answer_schema_raw
-
-    # Default fallback
-    logger.warning(
-        f"⚠️  answer_schema has unexpected type: {type(answer_schema_raw).__name__}. "
-        f"Using default 'exact_match'"
-    )
-    return "exact_match"
+    return AgentOutputConverter.normalize_schema_type(answer_schema_raw)
 
 
 # ============================================================================
@@ -969,7 +936,7 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
 
             logger.info("=" * 80)
 
-            # 0. ReAct 텍스트 형식: Final Answer JSON 파싱 시도
+            # 0. ReAct 텍스트 형식: Final Answer JSON 파싱 시도 (AgentOutputConverter 사용)
             logger.info("\n🔍 Attempting to parse Final Answer JSON from AIMessage...")
             items: list[GeneratedItem] = []
             failed_count = 0
@@ -986,100 +953,27 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
                         logger.info("✓ Found 'Final Answer:' in AIMessage content")
 
                         try:
-                            # Final Answer 뒤의 JSON 추출
-                            json_start = content.find("Final Answer:") + len("Final Answer:")
-                            json_str = content[json_start:].strip()
+                            # Use AgentOutputConverter for robust JSON parsing
+                            questions_data = AgentOutputConverter.parse_final_answer_json(content)
+                            logger.info(f"✅ Parsed JSON successfully using AgentOutputConverter")
 
-                            # ```json ... ``` 마크다운 제거
-                            if "```json" in json_str:
-                                json_str = json_str.split("```json")[1].split("```")[0].strip()
-                            elif "```" in json_str:
-                                json_str = json_str.split("```")[1].split("```")[0].strip()
+                            # Extract items using converter
+                            extracted_items = AgentOutputConverter.extract_items_from_questions(questions_data)
+                            logger.info(f"✅ Extracted {len(extracted_items)} items from questions data")
 
-                            # Unescape 처리: Agent가 escaped quotes를 사용할 수 있음
-                            # Replace escaped quotes (order matters: handle single quotes first)
-                            # Remove backslash before single quotes (not valid in JSON strings)
-                            json_str = json_str.replace("\\'", "'")
-                            # Replace escaped double quotes with regular quotes
-                            json_str = json_str.replace('\\"', '"')
-
-                            # Convert Python None to JSON null
-                            import re
-
-                            json_str = re.sub(r"\bNone\b", "null", json_str)
-
-                            logger.info(f"📋 Extracted JSON (first 300 chars): {json_str[:300]}...")
-
-                            # JSON 파싱 (robust parser 사용)
-                            try:
-                                questions_data = parse_json_robust(json_str)
-                            except json.JSONDecodeError as e:
-                                logger.warning(f"❌ Failed to parse Final Answer JSON after all cleanup strategies: {e}")
-                                error_messages.append(f"Final Answer JSON parsing failed: {str(e)}")
-                                continue
-
-                            if not isinstance(questions_data, list):
-                                questions_data = [questions_data]
-
-                            logger.info(f"✅ Parsed {len(questions_data)} question(s) from Final Answer JSON")
-
-                            # 각 question을 GeneratedItem으로 변환
-                            for q in questions_data:
+                            # Add saved_at timestamp and append
+                            for item in extracted_items:
                                 try:
-                                    # Determine question type for answer_schema structure
-                                    question_type = q.get("type", "multiple_choice")
-
-                                    # answer_schema 구성 (type-aware)
-                                    # Tool 5 반환값에서 flattened 필드 사용 (correct_answer, correct_keywords)
-                                    # Normalize answer_schema to handle both string and dict formats
-                                    raw_answer_schema = q.get("answer_schema")
-                                    normalized_schema_type = normalize_answer_schema(raw_answer_schema)
-
-                                    # Extract correct_answer from multiple possible fields
-                                    # Priority: correct_answer > correct_key > (from raw_answer_schema dict)
-                                    correct_answer_value = (
-                                        q.get("correct_answer") or
-                                        q.get("correct_key") or
-                                        (raw_answer_schema.get("correct_answer") if isinstance(raw_answer_schema, dict) else None) or
-                                        (raw_answer_schema.get("correct_key") if isinstance(raw_answer_schema, dict) else None)
-                                    )
-
-                                    if question_type == "short_answer":
-                                        # Short answer: include keywords only
-                                        answer_schema = AnswerSchema(
-                                            type=normalized_schema_type,
-                                            keywords=q.get("correct_keywords"),
-                                            correct_answer=None,  # Not used for short answer
-                                        )
-                                    else:
-                                        # MC/TF: include correct_answer only
-                                        answer_schema = AnswerSchema(
-                                            type=normalized_schema_type,
-                                            keywords=None,  # Not used for MC/TF
-                                            correct_answer=correct_answer_value,
-                                        )
-                                    logger.info(
-                                        f"  ✓ answer_schema populated: type={answer_schema.type}, keywords={answer_schema.keywords is not None}, correct_answer={answer_schema.correct_answer is not None}"
-                                    )
-
-                                    item = GeneratedItem(
-                                        id=q.get("question_id", f"q_{uuid.uuid4().hex[:8]}"),
-                                        type=question_type,
-                                        stem=q.get("stem", ""),
-                                        choices=q.get("choices"),
-                                        answer_schema=answer_schema,
-                                        difficulty=q.get("difficulty", 5),
-                                        category=q.get("category", "AI"),
-                                        validation_score=q.get("validation_score", 0.0),
-                                        saved_at=datetime.now(UTC).isoformat(),
-                                    )
-                                    items.append(item)
-                                    logger.info(f"  ✓ Created GeneratedItem: {item.id} ({item.stem[:50]}...)")
-
+                                    # Recreate item with saved_at timestamp
+                                    item_dict = item.model_dump()
+                                    item_dict["saved_at"] = datetime.now(UTC).isoformat()
+                                    updated_item = GeneratedItem(**item_dict)
+                                    items.append(updated_item)
+                                    logger.info(f"  ✓ GeneratedItem: {updated_item.id} ({updated_item.stem[:50]}...)")
                                 except Exception as e:
-                                    logger.error(f"  ✗ Failed to create GeneratedItem: {e}")
+                                    logger.error(f"  ✗ Failed to process GeneratedItem: {e}")
                                     failed_count += 1
-                                    error_messages.append(f"GeneratedItem creation error: {str(e)}")
+                                    error_messages.append(f"Item processing error: {str(e)}")
                                     continue
 
                             # Final Answer JSON이 파싱되면 도구 추출 스킵
@@ -1093,6 +987,9 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
                                 )
                                 break
 
+                        except ValueError as e:
+                            logger.debug(f"⚠️  No valid Final Answer JSON found: {str(e)}")
+                            continue
                         except json.JSONDecodeError as e:
                             logger.warning(f"❌ Failed to parse Final Answer JSON: {e}")
                             error_messages.append(f"Final Answer JSON decode error: {str(e)}")

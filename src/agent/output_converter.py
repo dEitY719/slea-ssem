@@ -26,35 +26,7 @@ import re
 import uuid
 from typing import Any
 
-from pydantic import BaseModel, Field
-
 logger = logging.getLogger(__name__)
-
-
-# ============================================================================
-# Data Contracts (출력 스키마)
-# ============================================================================
-
-
-class AnswerSchema(BaseModel):
-    """정규화된 answer_schema 구조."""
-
-    type: str = Field(..., description="exact_match, keyword_match, or semantic_match")
-    keywords: list[str] | None = Field(None, description="Short answer keywords (Optional)")
-    correct_answer: str | None = Field(None, description="Correct answer (Optional)")
-
-
-class GeneratedItem(BaseModel):
-    """생성된 문항."""
-
-    id: str
-    type: str  # multiple_choice, true_false, short_answer
-    stem: str
-    choices: list[str] | None = None
-    answer_schema: AnswerSchema
-    difficulty: int
-    category: str
-    validation_score: float = 0.0
 
 
 # ============================================================================
@@ -224,9 +196,9 @@ class AgentOutputConverter:
     def extract_items_from_questions(
         questions_data: dict | list,
         question_types: list[str] | None = None,
-    ) -> list[GeneratedItem]:
+    ) -> list[dict]:
         """
-        파싱된 JSON 데이터를 GeneratedItem 리스트로 변환.
+        파싱된 JSON 데이터를 정규화된 item dict 리스트로 변환.
 
         입력 데이터 구조:
         [
@@ -244,12 +216,31 @@ class AgentOutputConverter:
             ...
         ]
 
+        반환값: 정규화된 dict (caller가 GeneratedItem으로 변환)
+        [
+            {
+                "id": "q_xxx",
+                "type": "multiple_choice",
+                "stem": "...",
+                "choices": [...],
+                "answer_schema": {
+                    "type": "exact_match",
+                    "keywords": None,
+                    "correct_answer": "B"
+                },
+                "difficulty": 5,
+                "category": "AI",
+                "validation_score": 0.9
+            },
+            ...
+        ]
+
         Args:
             questions_data: 파싱된 JSON (list 또는 dict)
             question_types: 기대하는 질문 타입 (필터링용, optional)
 
         Returns:
-            list[GeneratedItem]: 변환된 문항 리스트
+            list[dict]: 정규화된 item dict 리스트
 
         Raises:
             ValueError: 필수 필드 부족 시
@@ -257,7 +248,7 @@ class AgentOutputConverter:
         if not isinstance(questions_data, list):
             questions_data = [questions_data]
 
-        items: list[GeneratedItem] = []
+        items: list[dict] = []
 
         for q_dict in questions_data:
             try:
@@ -271,9 +262,9 @@ class AgentOutputConverter:
         return items
 
     @staticmethod
-    def _convert_question_to_item(q_dict: dict) -> GeneratedItem:
+    def _convert_question_to_item(q_dict: dict) -> dict:
         """
-        단일 질문 dict를 GeneratedItem으로 변환.
+        단일 질문 dict를 정규화된 item dict로 변환.
 
         필수 필드:
         - type: "multiple_choice" | "true_false" | "short_answer"
@@ -286,6 +277,9 @@ class AgentOutputConverter:
         - difficulty: 1-10 (기본값 5)
         - category: 문항 카테고리 (기본값 "AI")
         - validation_score: 검증 점수 (기본값 0.0)
+
+        Returns:
+            dict: 정규화된 item dict (GeneratedItem 호환)
 
         Raises:
             ValueError: 필수 필드 부족 시
@@ -312,32 +306,32 @@ class AgentOutputConverter:
             or (raw_answer_schema.get("correct_key") if isinstance(raw_answer_schema, dict) else None)
         )
 
-        # Type별 answer_schema 구성
+        # Type별 answer_schema 구성 (dict 반환)
         if question_type == "short_answer":
-            answer_schema = AnswerSchema(
-                type=normalized_schema_type,
-                keywords=q_dict.get("correct_keywords"),
-                correct_answer=None,
-            )
+            answer_schema_dict = {
+                "type": normalized_schema_type,
+                "keywords": q_dict.get("correct_keywords"),
+                "correct_answer": None,
+            }
         else:
-            answer_schema = AnswerSchema(
-                type=normalized_schema_type,
-                keywords=None,
-                correct_answer=correct_answer_value,
-            )
+            answer_schema_dict = {
+                "type": normalized_schema_type,
+                "keywords": None,
+                "correct_answer": correct_answer_value,
+            }
 
-        item = GeneratedItem(
-            id=q_dict.get("question_id", f"q_{uuid.uuid4().hex[:8]}"),
-            type=question_type,
-            stem=stem,
-            choices=q_dict.get("choices"),
-            answer_schema=answer_schema,
-            difficulty=int(q_dict.get("difficulty", 5)),
-            category=q_dict.get("category", "AI"),
-            validation_score=float(q_dict.get("validation_score", 0.0)),
-        )
+        item_dict = {
+            "id": q_dict.get("question_id", f"q_{uuid.uuid4().hex[:8]}"),
+            "type": question_type,
+            "stem": stem,
+            "choices": q_dict.get("choices"),
+            "answer_schema": answer_schema_dict,
+            "difficulty": int(q_dict.get("difficulty", 5)),
+            "category": q_dict.get("category", "AI"),
+            "validation_score": float(q_dict.get("validation_score", 0.0)),
+        }
 
-        return item
+        return item_dict
 
     # ==========================================================================
     # 3. Answer Schema 정규화
@@ -354,6 +348,8 @@ class AgentOutputConverter:
         3. Keyword 형식: {"keywords": [...]}
         4. 문자열: "exact_match"
         5. List: [...] (keyword_match로 추론)
+        6. correct_answer만 있는 경우: exact_match
+        7. correct_keywords만 있는 경우: keyword_match
 
         반환값:
         - "exact_match" (MC, TF 기본)
@@ -370,7 +366,7 @@ class AgentOutputConverter:
             # Case 1: Tool 5 형식 - 명시적 'type' 필드
             if "type" in answer_schema_raw:
                 schema_type = answer_schema_raw.get("type")
-                if isinstance(schema_type, str):
+                if isinstance(schema_type, str) and schema_type:
                     return schema_type
 
             # Case 2: Mock 형식 - "correct_key" 또는 "explanation"
@@ -381,15 +377,23 @@ class AgentOutputConverter:
             if "keywords" in answer_schema_raw and answer_schema_raw.get("keywords"):
                 return "keyword_match"
 
-            # Case 4: 기타 'type' 필드
-            for key in ["type", "answer_type", "schema_type"]:
+            # Case 4: correct_keywords 포함 - keyword_match
+            if "correct_keywords" in answer_schema_raw and answer_schema_raw.get("correct_keywords"):
+                return "keyword_match"
+
+            # Case 5: correct_answer 포함 (MC/TF) - exact_match
+            if "correct_answer" in answer_schema_raw or "correct_key" in answer_schema_raw:
+                return "exact_match"
+
+            # Case 6: 기타 'type' 필드
+            for key in ["answer_type", "schema_type", "answer_schema_type"]:
                 if key in answer_schema_raw:
                     val = answer_schema_raw.get(key)
-                    if isinstance(val, str):
+                    if isinstance(val, str) and val:
                         return val
 
         if isinstance(answer_schema_raw, str):
-            return answer_schema_raw
+            return answer_schema_raw.strip() if answer_schema_raw else "exact_match"
 
         if isinstance(answer_schema_raw, list):
             return "keyword_match"
@@ -401,14 +405,69 @@ class AgentOutputConverter:
         )
         return "exact_match"
 
+    @staticmethod
+    def normalize_answer_schema_dict(answer_schema_raw: str | dict | None, question_type: str) -> dict:
+        """
+        Raw answer_schema를 정규화된 dict로 변환.
+
+        입력:
+        - answer_schema_raw: 다양한 형식의 raw answer_schema
+        - question_type: 질문 타입 ("multiple_choice", "true_false", "short_answer")
+
+        출력:
+        {
+            "type": "exact_match" | "keyword_match" | "semantic_match",
+            "keywords": [...] or None,
+            "correct_answer": "..." or None
+        }
+
+        규칙:
+        - short_answer: keywords만 포함, correct_answer는 None
+        - MC/TF: correct_answer만 포함, keywords는 None
+
+        Args:
+            answer_schema_raw: Raw answer_schema
+            question_type: 질문 타입
+
+        Returns:
+            정규화된 answer_schema dict
+        """
+        schema_type = AgentOutputConverter.normalize_schema_type(answer_schema_raw)
+
+        # Extract values from raw schema
+        keywords = None
+        correct_answer = None
+
+        if isinstance(answer_schema_raw, dict):
+            # Extract keywords
+            keywords = answer_schema_raw.get("keywords") or answer_schema_raw.get("correct_keywords")
+
+            # Extract correct_answer
+            correct_answer = answer_schema_raw.get("correct_answer") or answer_schema_raw.get("correct_key")
+
+        # Type-aware construction
+        if question_type == "short_answer":
+            return {
+                "type": schema_type,
+                "keywords": keywords,
+                "correct_answer": None,  # Not used for short answer
+            }
+        else:
+            # MC or TF
+            return {
+                "type": schema_type,
+                "keywords": None,  # Not used for MC/TF
+                "correct_answer": correct_answer,
+            }
+
     # ==========================================================================
     # 4. 검증
     # ==========================================================================
 
     @staticmethod
-    def validate_answer_schema(answer_schema: AnswerSchema) -> bool:
+    def validate_answer_schema(answer_schema: dict) -> bool:
         """
-        AnswerSchema의 일관성을 검증.
+        Answer schema dict의 일관성을 검증.
 
         규칙:
         1. type은 항상 필수
@@ -417,29 +476,34 @@ class AgentOutputConverter:
         4. type은 유효한 값 ("exact_match", "keyword_match", "semantic_match")
 
         Args:
-            answer_schema: 검증할 AnswerSchema
+            answer_schema: 검증할 answer_schema dict
 
         Returns:
             bool: 유효하면 True, 아니면 False
         """
-        if not answer_schema.type:
+        if not isinstance(answer_schema, dict):
+            logger.warning(f"❌ answer_schema must be dict, got {type(answer_schema).__name__}")
+            return False
+
+        schema_type = answer_schema.get("type")
+        if not schema_type:
             logger.warning("❌ answer_schema.type is missing")
             return False
 
         valid_types = ["exact_match", "keyword_match", "semantic_match"]
-        if answer_schema.type not in valid_types:
-            logger.warning(f"❌ answer_schema.type '{answer_schema.type}' not in {valid_types}")
+        if schema_type not in valid_types:
+            logger.warning(f"❌ answer_schema.type '{schema_type}' not in {valid_types}")
             return False
 
         return True
 
     @staticmethod
-    def validate_generated_item(item: GeneratedItem) -> bool:
+    def validate_generated_item(item: dict) -> bool:
         """
-        GeneratedItem의 모든 필드 검증.
+        Generated item dict의 모든 필드 검증.
 
         검사 항목:
-        1. id: 유효한 UUID 형식
+        1. id: UUID 형식
         2. type: 유효한 질문 타입
         3. stem: 비어있지 않음
         4. answer_schema: 유효함
@@ -447,33 +511,42 @@ class AgentOutputConverter:
         6. category: 비어있지 않음
 
         Args:
-            item: 검증할 GeneratedItem
+            item: 검증할 item dict
 
         Returns:
             bool: 유효하면 True
         """
+        if not isinstance(item, dict):
+            logger.warning(f"❌ item must be dict, got {type(item).__name__}")
+            return False
+
         # Type 검증
+        item_type = item.get("type")
         valid_types = ["multiple_choice", "true_false", "short_answer"]
-        if item.type not in valid_types:
-            logger.warning(f"❌ Invalid item type: {item.type}")
+        if item_type not in valid_types:
+            logger.warning(f"❌ Invalid item type: {item_type}")
             return False
 
         # Stem 검증
-        if not item.stem or not isinstance(item.stem, str):
+        stem = item.get("stem")
+        if not stem or not isinstance(stem, str):
             logger.warning("❌ Invalid or missing stem")
             return False
 
         # Answer schema 검증
-        if not AgentOutputConverter.validate_answer_schema(item.answer_schema):
+        answer_schema = item.get("answer_schema")
+        if not AgentOutputConverter.validate_answer_schema(answer_schema):
             return False
 
         # Difficulty 검증
-        if not (1 <= item.difficulty <= 10):
-            logger.warning(f"❌ difficulty out of range: {item.difficulty}")
+        difficulty = item.get("difficulty")
+        if not isinstance(difficulty, int) or not (1 <= difficulty <= 10):
+            logger.warning(f"❌ difficulty out of range: {difficulty}")
             return False
 
         # Category 검증
-        if not item.category:
+        category = item.get("category")
+        if not category:
             logger.warning("❌ category is empty")
             return False
 

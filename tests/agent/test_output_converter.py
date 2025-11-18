@@ -14,11 +14,7 @@ REQ: REQ-A-OutputConverter
 import json
 import pytest
 
-from src.agent.output_converter import (
-    AgentOutputConverter,
-    AnswerSchema,
-    GeneratedItem,
-)
+from src.agent.output_converter import AgentOutputConverter
 
 
 class TestParseFinalAnswerJson:
@@ -150,11 +146,11 @@ class TestExtractItemsFromQuestions:
         items = AgentOutputConverter.extract_items_from_questions([q_data])
         assert len(items) == 1
         item = items[0]
-        assert item.id == "q1"
-        assert item.type == "multiple_choice"
-        assert item.stem == "What is AI?"
-        assert item.answer_schema.correct_answer == "B"
-        assert item.validation_score == 0.95
+        assert item["id"] == "q1"
+        assert item["type"] == "multiple_choice"
+        assert item["stem"] == "What is AI?"
+        assert item["answer_schema"]["correct_answer"] == "B"
+        assert item["validation_score"] == 0.95
 
     def test_extract_short_answer_with_keywords(self):
         """키워드가 있는 단답식 문항 추출."""
@@ -171,9 +167,9 @@ class TestExtractItemsFromQuestions:
         items = AgentOutputConverter.extract_items_from_questions([q_data])
         assert len(items) == 1
         item = items[0]
-        assert item.type == "short_answer"
-        assert item.answer_schema.keywords == ["learning", "data", "improve"]
-        assert item.answer_schema.correct_answer is None
+        assert item["type"] == "short_answer"
+        assert item["answer_schema"]["keywords"] == ["learning", "data", "improve"]
+        assert item["answer_schema"]["correct_answer"] is None
 
     def test_extract_multiple_questions(self):
         """여러 문항 추출."""
@@ -201,8 +197,8 @@ class TestExtractItemsFromQuestions:
 
         items = AgentOutputConverter.extract_items_from_questions(q_data_list)
         assert len(items) == 2
-        assert items[0].type == "multiple_choice"
-        assert items[1].type == "true_false"
+        assert items[0]["type"] == "multiple_choice"
+        assert items[1]["type"] == "true_false"
 
     def test_extract_question_missing_required_fields(self):
         """필수 필드 누락 (건너뜀)."""
@@ -232,7 +228,7 @@ class TestExtractItemsFromQuestions:
         items = AgentOutputConverter.extract_items_from_questions(q_data_list)
         # 유효한 1개만 추출됨
         assert len(items) == 1
-        assert items[0].id == "q1"
+        assert items[0]["id"] == "q1"
 
     def test_extract_with_auto_generated_id(self):
         """문항 ID 자동 생성."""
@@ -247,8 +243,8 @@ class TestExtractItemsFromQuestions:
         items = AgentOutputConverter.extract_items_from_questions([q_data])
         assert len(items) == 1
         # UUID 형식으로 자동 생성됨
-        assert items[0].id.startswith("q_")
-        assert len(items[0].id) > 4
+        assert items[0]["id"].startswith("q_")
+        assert len(items[0]["id"]) > 4
 
     def test_extract_single_dict_converted_to_list(self):
         """단일 dict가 list로 변환됨."""
@@ -262,6 +258,49 @@ class TestExtractItemsFromQuestions:
 
         items = AgentOutputConverter.extract_items_from_questions(q_data)
         assert len(items) == 1
+
+
+class TestNormalizeAnswerSchemaDict:
+    """normalize_answer_schema_dict() 테스트."""
+
+    def test_normalize_mc_with_correct_answer(self):
+        """MC 타입 answer_schema 정규화."""
+        raw = {"type": "exact_match", "correct_answer": "B"}
+        result = AgentOutputConverter.normalize_answer_schema_dict(raw, "multiple_choice")
+        assert result["type"] == "exact_match"
+        assert result["correct_answer"] == "B"
+        assert result["keywords"] is None
+
+    def test_normalize_short_answer_with_keywords(self):
+        """Short answer 타입 answer_schema 정규화."""
+        raw = {"type": "keyword_match", "keywords": ["AI", "machine learning"]}
+        result = AgentOutputConverter.normalize_answer_schema_dict(raw, "short_answer")
+        assert result["type"] == "keyword_match"
+        assert result["keywords"] == ["AI", "machine learning"]
+        assert result["correct_answer"] is None
+
+    def test_normalize_true_false_with_correct_key(self):
+        """TF 타입 (correct_key 사용) 정규화."""
+        raw = {"correct_key": "True"}
+        result = AgentOutputConverter.normalize_answer_schema_dict(raw, "true_false")
+        assert result["type"] == "exact_match"
+        assert result["correct_answer"] == "True"
+        assert result["keywords"] is None
+
+    def test_normalize_short_answer_with_correct_keywords(self):
+        """Short answer (correct_keywords 필드) 정규화."""
+        raw = {"correct_keywords": ["python", "programming"]}
+        result = AgentOutputConverter.normalize_answer_schema_dict(raw, "short_answer")
+        assert result["type"] == "keyword_match"
+        assert result["keywords"] == ["python", "programming"]
+
+    def test_normalize_string_type_mc(self):
+        """String 형식 answer_schema (MC)."""
+        raw = "exact_match"
+        result = AgentOutputConverter.normalize_answer_schema_dict(raw, "multiple_choice")
+        assert result["type"] == "exact_match"
+        assert result["correct_answer"] is None
+        assert result["keywords"] is None
 
 
 class TestNormalizeSchemaType:
@@ -323,38 +362,38 @@ class TestValidateAnswerSchema:
 
     def test_validate_valid_exact_match(self):
         """유효한 exact_match."""
-        schema = AnswerSchema(
-            type="exact_match",
-            keywords=None,
-            correct_answer="B",
-        )
+        schema = {
+            "type": "exact_match",
+            "keywords": None,
+            "correct_answer": "B",
+        }
         assert AgentOutputConverter.validate_answer_schema(schema) is True
 
     def test_validate_valid_keyword_match(self):
         """유효한 keyword_match."""
-        schema = AnswerSchema(
-            type="keyword_match",
-            keywords=["learning", "data"],
-            correct_answer=None,
-        )
+        schema = {
+            "type": "keyword_match",
+            "keywords": ["learning", "data"],
+            "correct_answer": None,
+        }
         assert AgentOutputConverter.validate_answer_schema(schema) is True
 
     def test_validate_invalid_type(self):
         """유효하지 않은 type."""
-        schema = AnswerSchema(
-            type="invalid_type",
-            keywords=None,
-            correct_answer="B",
-        )
+        schema = {
+            "type": "invalid_type",
+            "keywords": None,
+            "correct_answer": "B",
+        }
         assert AgentOutputConverter.validate_answer_schema(schema) is False
 
     def test_validate_missing_type(self):
         """type 필드 누락."""
-        schema = AnswerSchema(
-            type="",
-            keywords=None,
-            correct_answer="B",
-        )
+        schema = {
+            "type": "",
+            "keywords": None,
+            "correct_answer": "B",
+        }
         assert AgentOutputConverter.validate_answer_schema(schema) is False
 
 
@@ -363,83 +402,83 @@ class TestValidateGeneratedItem:
 
     def test_validate_valid_multiple_choice(self):
         """유효한 객관식 문항."""
-        item = GeneratedItem(
-            id="q1",
-            type="multiple_choice",
-            stem="What is AI?",
-            choices=["A", "B", "C", "D"],
-            answer_schema=AnswerSchema(
-                type="exact_match",
-                keywords=None,
-                correct_answer="B",
-            ),
-            difficulty=3,
-            category="AI",
-        )
+        item = {
+            "id": "q1",
+            "type": "multiple_choice",
+            "stem": "What is AI?",
+            "choices": ["A", "B", "C", "D"],
+            "answer_schema": {
+                "type": "exact_match",
+                "keywords": None,
+                "correct_answer": "B",
+            },
+            "difficulty": 3,
+            "category": "AI",
+        }
         assert AgentOutputConverter.validate_generated_item(item) is True
 
     def test_validate_valid_short_answer(self):
         """유효한 단답식 문항."""
-        item = GeneratedItem(
-            id="q2",
-            type="short_answer",
-            stem="Explain AI",
-            answer_schema=AnswerSchema(
-                type="keyword_match",
-                keywords=["intelligence", "machine"],
-                correct_answer=None,
-            ),
-            difficulty=5,
-            category="ML",
-        )
+        item = {
+            "id": "q2",
+            "type": "short_answer",
+            "stem": "Explain AI",
+            "answer_schema": {
+                "type": "keyword_match",
+                "keywords": ["intelligence", "machine"],
+                "correct_answer": None,
+            },
+            "difficulty": 5,
+            "category": "ML",
+        }
         assert AgentOutputConverter.validate_generated_item(item) is True
 
     def test_validate_invalid_type(self):
         """유효하지 않은 question type."""
-        item = GeneratedItem(
-            id="q1",
-            type="invalid_type",
-            stem="Test",
-            answer_schema=AnswerSchema(type="exact_match", correct_answer="A"),
-            difficulty=1,
-            category="AI",
-        )
+        item = {
+            "id": "q1",
+            "type": "invalid_type",
+            "stem": "Test",
+            "answer_schema": {"type": "exact_match", "correct_answer": "A"},
+            "difficulty": 1,
+            "category": "AI",
+        }
         assert AgentOutputConverter.validate_generated_item(item) is False
 
     def test_validate_empty_stem(self):
         """비어있는 stem."""
-        item = GeneratedItem(
-            id="q1",
-            type="multiple_choice",
-            stem="",
-            answer_schema=AnswerSchema(type="exact_match", correct_answer="A"),
-            difficulty=1,
-            category="AI",
-        )
+        item = {
+            "id": "q1",
+            "type": "multiple_choice",
+            "stem": "",
+            "answer_schema": {"type": "exact_match", "correct_answer": "A"},
+            "difficulty": 1,
+            "category": "AI",
+        }
         assert AgentOutputConverter.validate_generated_item(item) is False
 
     def test_validate_invalid_difficulty(self):
         """유효하지 않은 difficulty (범위 초과)."""
-        item = GeneratedItem(
-            id="q1",
-            type="multiple_choice",
-            stem="Test",
-            answer_schema=AnswerSchema(type="exact_match", correct_answer="A"),
-            difficulty=15,  # > 10
-            category="AI",
-        )
+        item = {
+            "id": "q1",
+            "type": "multiple_choice",
+            "stem": "Test",
+            "answer_schema": {"type": "exact_match", "correct_answer": "A"},
+            "difficulty": 15,  # > 10
+            "category": "AI",
+        }
         assert AgentOutputConverter.validate_generated_item(item) is False
 
     def test_validate_missing_category(self):
         """category 누락."""
-        item = GeneratedItem(
-            id="q1",
-            type="multiple_choice",
-            stem="Test",
-            answer_schema=AnswerSchema(type="exact_match", correct_answer="A"),
-            difficulty=5,
-            category="",  # Empty
-        )
+        item = {
+            "id": "q1",
+            "type": "multiple_choice",
+            "stem": "Test",
+            "answer_schema": {"type": "exact_match", "correct_answer": "A"},
+            "difficulty": 5,
+            "category": "",  # Empty
+        }
         assert AgentOutputConverter.validate_generated_item(item) is False
 
 
@@ -478,14 +517,14 @@ class TestRoundTrip:
         assert len(items) == 1
 
         item = items[0]
-        assert item.id == "q1"
-        assert item.type == "multiple_choice"
-        assert item.stem == "What is artificial intelligence?"
-        assert len(item.choices) == 4
-        assert item.answer_schema.type == "exact_match"
-        assert item.answer_schema.correct_answer == "B"
-        assert item.difficulty == 2
-        assert item.category == "AI"
+        assert item["id"] == "q1"
+        assert item["type"] == "multiple_choice"
+        assert item["stem"] == "What is artificial intelligence?"
+        assert len(item["choices"]) == 4
+        assert item["answer_schema"]["type"] == "exact_match"
+        assert item["answer_schema"]["correct_answer"] == "B"
+        assert item["difficulty"] == 2
+        assert item["category"] == "AI"
 
         # Validate
         assert AgentOutputConverter.validate_generated_item(item) is True
@@ -513,10 +552,10 @@ class TestRoundTrip:
         assert len(items) == 1
 
         item = items[0]
-        assert item.type == "short_answer"
-        assert item.answer_schema.type == "keyword_match"
-        assert item.answer_schema.keywords == ["artificial intelligence", "machine learning", "subset"]
-        assert item.answer_schema.correct_answer is None
+        assert item["type"] == "short_answer"
+        assert item["answer_schema"]["type"] == "keyword_match"
+        assert item["answer_schema"]["keywords"] == ["artificial intelligence", "machine learning", "subset"]
+        assert item["answer_schema"]["correct_answer"] is None
 
         # Validate
         assert AgentOutputConverter.validate_generated_item(item) is True
@@ -561,6 +600,33 @@ class TestRoundTrip:
 
         assert len(items) == 3
         assert all(AgentOutputConverter.validate_generated_item(item) for item in items)
-        assert items[0].type == "multiple_choice"
-        assert items[1].type == "true_false"
-        assert items[2].type == "short_answer"
+        assert items[0]["type"] == "multiple_choice"
+        assert items[1]["type"] == "true_false"
+        assert items[2]["type"] == "short_answer"
+
+    def test_parse_json_with_python_boolean_false(self):
+        """Python False를 JSON false로 변환해서 파싱."""
+        content = """
+        Final Answer: {
+            "question_id": "q1",
+            "type": "multiple_choice",
+            "stem": "Test?",
+            "is_active": False
+        }
+        """
+        result = AgentOutputConverter.parse_final_answer_json(content)
+        assert result["is_active"] is False
+
+    def test_parse_json_robustness_with_unicode(self):
+        """Unicode 문자 포함 JSON 파싱."""
+        content = """
+        Final Answer: {
+            "question_id": "q1",
+            "type": "multiple_choice",
+            "stem": "인공지능이란 무엇인가?",
+            "choices": ["A. 기계학습", "B. 딥러닝", "C. 신경망"]
+        }
+        """
+        result = AgentOutputConverter.parse_final_answer_json(content)
+        assert "인공지능" in result["stem"]
+        assert "기계학습" in result["choices"][0]
