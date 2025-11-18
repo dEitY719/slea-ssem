@@ -333,6 +333,8 @@ async def generate_questions(
             user_id=user_id,
             survey_id=request.survey_id,
             round_num=request.round,
+            question_count=request.question_count,
+            domain=request.domain,
         )
         return result
     except Exception as e:

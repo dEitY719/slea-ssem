@@ -386,7 +386,13 @@ class QuestionGenerationService:
             # Step 5: Save generated items to DB
             questions_list = []
             if agent_response and agent_response.items:
-                for item in agent_response.items:
+                # Limit items to requested question_count (safety filter)
+                items_to_save = agent_response.items[:question_count]
+                logger.debug(
+                    f"Agent returned {len(agent_response.items)} items, "
+                    f"limiting to {question_count} as requested"
+                )
+                for item in items_to_save:
                     # Handle both Pydantic model and dict for answer_schema
                     answer_schema_value = (
                         item.answer_schema.model_dump()
