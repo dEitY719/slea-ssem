@@ -62,12 +62,60 @@ This automatically updates `pyproject.toml` and `uv.lock`. **Do NOT manually edi
 
 ## Testing
 
+### Test Suite Structure
+
+```
+tests/
+├── backend/          # Backend service & API tests (RECOMMENDED ✅)
+├── agent/            # AI Agent integration tests (optional)
+└── cli/              # CLI command tests (optional)
+```
+
+**Total tests**: ~775 tests (backend: ~300, agent: ~200, cli: ~275)
+
+### Quick Test Guide
+
 ```bash
-pytest                         # Run all tests
+# ✅ RECOMMENDED: Run backend tests only (fast, covers most cases)
+pytest tests/backend/ -v
+
+# ✅ Run specific backend test file
+pytest tests/backend/test_question_gen_service_retake.py -v
+
+# ✅ Run specific test by name
+pytest tests/backend/ -k test_retake -v
+
+# ⏭️ OPTIONAL: Run agent integration tests (slower)
+pytest tests/agent/ -v
+
+# ⏭️ OPTIONAL: Run CLI tests (slower)
+pytest tests/cli/ -v
+
+# ❌ AVOID: Full test suite (775 tests, very slow ~10+ mins)
+pytest                         # Don't use - too many tests
 pytest -k <name>              # Run specific test
 pytest -v                      # Verbose output
-tox -e py310 py311 py312      # Test multiple versions
+tox -e py310 py311 py312      # Test multiple versions (developer only)
 ```
+
+### When to Run Which Tests
+
+| Scenario | Command | Duration |
+|----------|---------|----------|
+| **After code changes** | `pytest tests/backend/ -v` | ~2-3 min |
+| **Before commit** | `pytest tests/backend/ -v` | ~2-3 min |
+| **Specific feature testing** | `pytest tests/backend/ -k feature_name` | ~30 sec |
+| **Agent integration debugging** | `pytest tests/agent/ -v` | ~3-5 min |
+| **CLI command testing** | `pytest tests/cli/ -v` | ~3-5 min |
+| **Full validation** (developer only) | `tox -e py311` | ~15+ min |
+
+### Best Practices
+
+- ✅ Always run `pytest tests/backend/ -v` before committing
+- ✅ Use `-k` flag to run specific tests: `pytest tests/backend/ -k retake`
+- ✅ Use `--tb=short` for cleaner error output: `pytest tests/backend/ -v --tb=short`
+- ❌ Don't run full `pytest` without arguments (775 tests = very slow)
+- ❌ Don't run agent/cli tests unless debugging those specific features
 
 ## Code Quality (Before Commit)
 
