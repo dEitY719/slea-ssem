@@ -168,6 +168,12 @@ const TestResultsPage: React.FC = () => {
             // Always go to profile review first for retake
             navigate('/profile-review')
           }}
+          onViewExplanations={() => {
+            // REQ: REQ-F-B4-7 - Navigate to explanation page
+            if (state?.sessionId) {
+              navigate(`/test-explanations/${state.sessionId}`)
+            }
+          }}
         />
       </div>
     </main>

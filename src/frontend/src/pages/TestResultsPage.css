@@ -309,6 +309,28 @@
   transform: translateY(-2px);
 }
 
+/* REQ: REQ-F-B4-7 - Explanation Button */
+.explanation-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-white);
+  background-color: #10b981;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.explanation-button:hover {
+  background-color: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
 /* Button icons */
 .button-icon {
   width: 1.25rem;
