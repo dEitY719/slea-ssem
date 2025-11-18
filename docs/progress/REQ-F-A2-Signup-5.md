@@ -21,11 +21,13 @@
 ### 컨텍스트
 
 **배경**:
+
 - 통합 회원가입 페이지(`/signup`)에서 사용자가 필수 정보를 모두 입력한 경우에만 제출 가능
 - 사용자 경험 개선: 버튼 활성화를 통해 입력 완료 상태를 명확히 시각화
 - MVP 1.0 범위: 닉네임(중복 확인 완료) + 기술 수준(level) 선택 시 활성화
 
 **관련 REQ**:
+
 - REQ-F-A2-Signup-3: 닉네임 입력 섹션 (✅ 완료, commit: 273c30a)
 - REQ-F-A2-Signup-4: 자기평가 입력 섹션 - 수준만 구현 (✅ 완료)
 - REQ-F-A2-Signup-6: "가입 완료" 버튼 클릭 시 저장 및 리다이렉트 (⏳ 다음 단계)
@@ -33,6 +35,7 @@
 ### 상세 명세
 
 #### 1. Location (구현 위치)
+
 - **Component**: `src/frontend/src/pages/SignupPage.tsx` (MODIFIED)
 - **Tests**: `src/frontend/src/pages/__tests__/SignupPage.test.tsx` (MODIFIED)
 - **Lines**: SignupPage.tsx:88-92 (activation logic), 201-210 (button)
@@ -40,6 +43,7 @@
 #### 2. Signature (인터페이스)
 
 **Button Activation Logic**:
+
 ```typescript
 // REQ-F-A2-Signup-5: Submit button activation logic
 // Enable when: nickname is available AND level is selected
@@ -49,6 +53,7 @@ const isSubmitDisabled = useMemo(() => {
 ```
 
 **Button Component**:
+
 ```typescript
 <button
   type="button"
@@ -62,41 +67,49 @@ const isSubmitDisabled = useMemo(() => {
 #### 3. Behavior (동작 로직)
 
 **버튼 활성화 조건** (AND 연산):
+
 1. `checkStatus === 'available'`: 닉네임 중복 확인 완료 및 사용 가능
 2. `level !== null`: 기술 수준 선택 완료
 
 **버튼 비활성화 조건** (OR 연산):
+
 - 닉네임 미입력 (`checkStatus === 'idle'`)
 - 닉네임 확인 중 (`checkStatus === 'checking'`)
 - 닉네임 사용 불가 (`checkStatus === 'taken'` or `'error'`)
 - 기술 수준 미선택 (`level === null`)
 
 **실시간 반응성**:
+
 - `useMemo` 사용으로 `checkStatus` 또는 `level` 변경 시 즉시 업데이트
 - 사용자가 입력을 변경할 때마다 버튼 상태가 즉시 반영
 
 #### 4. Dependencies (의존성)
 
 **Internal Dependencies**:
+
 - `useNicknameCheck` hook (src/frontend/src/hooks/useNicknameCheck.ts)
   - Provides: `checkStatus` state
 - `useState<number | null>` for level state (line 52)
 
 **External Dependencies**:
+
 - React `useMemo` hook (실시간 계산 최적화)
 - React `useCallback` hook (이벤트 핸들러 최적화)
 
 #### 5. Non-functional Requirements (비기능 요구사항)
 
 **Performance**:
+
 - `useMemo` 사용으로 불필요한 재계산 방지
 - 의존성 배열 `[checkStatus, level]`로 최소 렌더링
 
 **Accessibility**:
+
 - `disabled` 속성을 통한 네이티브 접근성 지원
 - CSS를 통한 비활성화 상태 시각적 피드백
 
 **Maintainability**:
+
 - MVP 범위 (level만 필수)로 제한하되, 향후 필드 추가 시 쉽게 확장 가능
 - Activation logic을 별도 `useMemo`로 분리하여 가독성 향상
 
@@ -123,11 +136,13 @@ const isSubmitDisabled = useMemo(() => {
 ### Test Coverage Analysis
 
 **Condition Coverage**: 100%
+
 - ✅ `checkStatus === 'available'` (True/False)
 - ✅ `level !== null` (True/False)
 - ✅ AND 조합 (True AND True, True AND False, False AND True, False AND False)
 
 **Edge Cases Covered**:
+
 - Initial state (checkStatus: 'idle', level: null)
 - Nickname checking in progress (checkStatus: 'checking')
 - Nickname taken (checkStatus: 'taken')
@@ -135,6 +150,7 @@ const isSubmitDisabled = useMemo(() => {
 - Level selection changes (real-time reactivity)
 
 **Integration Points**:
+
 - `useNicknameCheck` hook interaction
 - Level state management
 - Button disabled attribute binding
@@ -148,24 +164,31 @@ const isSubmitDisabled = useMemo(() => {
 #### 1. `src/frontend/src/pages/SignupPage.tsx`
 
 **Changes**:
+
 1. Added REQ-F-A2-Signup-5 to file header comment (line 1)
 2. Updated component docstring (lines 12, 22-24)
 3. Implemented button activation logic (lines 88-92):
+
    ```typescript
    const isSubmitDisabled = useMemo(() => {
      return checkStatus !== 'available' || level === null
    }, [checkStatus, level])
    ```
+
 4. Updated button disabled attribute (line 206):
+
    ```typescript
    disabled={isSubmitDisabled}  // was: disabled={true}
    ```
+
 5. Updated button section comment (line 201):
+
    ```typescript
    {/* REQ-F-A2-Signup-5/6: Submit Button */}  // was: (to be implemented)
    ```
 
 **Rationale**:
+
 - `useMemo` 사용으로 성능 최적화 (의존성 변경 시에만 재계산)
 - 명확한 boolean 로직으로 가독성 향상
 - 기존 코드 구조 유지하며 최소한의 변경
@@ -173,11 +196,13 @@ const isSubmitDisabled = useMemo(() => {
 #### 2. `src/frontend/src/pages/__tests__/SignupPage.test.tsx`
 
 **Changes**:
+
 1. Added new describe block: `SignupPage - REQ-F-A2-Signup-5 (Submit Button Activation)` (lines 379-536)
 2. Implemented 6 test cases covering all activation/deactivation scenarios
 3. Tests use existing test infrastructure (renderWithRouter, mocked transport, userEvent)
 
 **Test Results**:
+
 ```
 ✓ src/frontend/src/pages/__tests__/SignupPage.test.tsx  (24 tests) 1673ms
 
@@ -187,6 +212,7 @@ Test Files  1 passed (1)
 ```
 
 **Breakdown**:
+
 - REQ-F-A2-Signup-3 (Nickname Section): 11 tests ✓
 - REQ-F-A2-Signup-4 (Level Radio Buttons): 7 tests ✓
 - **REQ-F-A2-Signup-5 (Submit Button Activation)**: **6 tests ✓**
@@ -223,6 +249,7 @@ Test Files  1 passed (1)
 ### Acceptance Criteria Validation
 
 **From feature_requirement_mvp1.md**:
+
 - ✅ "필수 필드 누락 시 '가입 완료' 버튼이 비활성화된다."
   - Verified by: Test #2, #3, #4, #5
 - ✅ 닉네임 중복 확인 완료 + 모든 필수 필드 입력 시 버튼 활성화
@@ -250,6 +277,7 @@ Test Files  1 passed (1)
 ### Next Steps
 
 **REQ-F-A2-Signup-6**: "가입 완료" 버튼 클릭 시 처리
+
 - `users.nickname` 업데이트
 - `user_profile` 저장
 - 홈화면으로 리다이렉트
