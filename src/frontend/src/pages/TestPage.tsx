@@ -3,8 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowRightIcon, ArrowLeftIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { questionService } from '../services'
-import { Timer, SaveStatus, Question, type QuestionData } from '../components/test'
-import { useAutosave } from '../hooks/useAutosave'
+import { Timer, SaveStatus, Question, type QuestionData, type SaveStatusType } from '../components/test'
 import './TestPage.css'
 
 /**
@@ -12,13 +11,13 @@ import './TestPage.css'
  *
  * REQ: REQ-F-B2-1 - 생성된 문항을 순차적으로 표시
  * REQ: REQ-F-B2-2 - 진행률, 응답 입력, "다음" 버튼, 타이머 제공
- * REQ: REQ-F-B2-6 - 자동 저장 with visual feedback
+ * REQ: REQ-F-B2-6 - "다음" 버튼 클릭 시 저장 with visual feedback
  *
  * Features:
  * - Generate test questions on mount
  * - Display questions one by one
  * - Timer (20 minutes)
- * - Autosave answers
+ * - Save answers on "Next" button click
  * - Submit and navigate to results
  *
  * Route: /test
@@ -27,11 +26,6 @@ import './TestPage.css'
 type LocationState = {
   surveyId: string
   round: number
-}
-
-type GenerateQuestionsResponse = {
-  session_id: string
-  questions: QuestionData[]
 }
 
 const TestPage: React.FC = () => {
@@ -45,6 +39,7 @@ const TestPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now())
   const [timeRemaining, setTimeRemaining] = useState<number>(1200) // 20 minutes = 1200 seconds
+  const [saveStatus, setSaveStatus] = useState<SaveStatusType>('idle') // REQ-F-B2-6: Save status management
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -52,14 +47,6 @@ const TestPage: React.FC = () => {
 
   // Get current question
   const currentQuestion = questions[currentIndex] || null
-
-  // Autosave hook
-  const { saveStatus } = useAutosave({
-    sessionId,
-    currentQuestion,
-    answer,
-    questionStartTime,
-  })
 
   // Load questions on mount
   useEffect(() => {
@@ -121,6 +108,7 @@ const TestPage: React.FC = () => {
     setQuestionStartTime(Date.now())
     setSubmitError(null)
     setAnswer('')
+    setSaveStatus('idle') // Reset save status for new question
   }, [currentIndex])
 
   // Timer countdown logic (REQ-F-B2-2, REQ-F-B2-5)
@@ -146,6 +134,8 @@ const TestPage: React.FC = () => {
       return
     }
 
+    // REQ-F-B2-6: Show "저장 중..." when saving
+    setSaveStatus('saving')
     setIsSubmitting(true)
     setSubmitError(null)
 
@@ -172,6 +162,12 @@ const TestPage: React.FC = () => {
           response_time_ms: responseTime,
       })
 
+      // REQ-F-B2-6: Show "저장됨" after successful save
+      setSaveStatus('saved')
+
+      // Hide "저장됨" message after 2 seconds
+      setTimeout(() => setSaveStatus('idle'), 2000)
+
       // Move to next question or finish
       if (currentIndex < questions.length - 1) {
         setCurrentIndex(currentIndex + 1)
@@ -184,10 +180,13 @@ const TestPage: React.FC = () => {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : '답변 제출에 실패했습니다.'
+
+      // REQ-F-B2-6: Show "저장 실패" on error
+      setSaveStatus('error')
       setSubmitError(message)
       setIsSubmitting(false)
     }
-  }, [sessionId, answer, isSubmitting, currentIndex, questions, navigate])
+  }, [sessionId, answer, isSubmitting, currentIndex, questions, questionStartTime, navigate, state.surveyId])
 
   // Loading state
   if (isLoading) {
