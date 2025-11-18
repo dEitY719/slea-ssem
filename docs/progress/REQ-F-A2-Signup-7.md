@@ -221,6 +221,7 @@ const [nickname, setNickname] = useState<string | null>(() => getCachedNickname(
 ### Git Commits
 
 **Primary Commits**:
+
 - `8b9c70c` - feat: Add unified signup flow with header button (Scenario 0-4, REQ-F/B-A2-Signup)
 - `97fb27c` - Merge pull request #10 for REQ-F-A2-Signup-6 (캐싱 연계)
 - `47a8b84` - Refactor: Introduce nickname caching and separate signup logic
@@ -231,14 +232,17 @@ const [nickname, setNickname] = useState<string | null>(() => getCachedNickname(
 ## Integration Points
 
 ### REQ-F-A2-Signup-1 연계
+
 - Header 컴포넌트가 nickname 상태에 따라 버튼 표시/숨김
 - 동일한 조건부 렌더링 로직 공유
 
 ### REQ-F-A2-Signup-6 연계
+
 - 가입 완료 시 `setCachedNickname()` 호출
 - localStorage에 닉네임 저장 → 즉시 상태 반영
 
 ### REQ-F-A2-Profile-Access-1 연계
+
 - 버튼 대신 닉네임 표시
 - 상호 배타적 UI (버튼 OR 닉네임)
 

@@ -20,12 +20,14 @@
 
 ### 컨텍스트
 
-**배경**: 
+**배경**:
+
 - 통합 회원가입 페이지(`/signup`)에서 닉네임과 자기평가를 한 페이지에서 입력
 - 기존 `NicknameSetupPage`의 기능을 재사용하되, SignupPage의 첫 번째 섹션으로 통합
 - 사용자가 "회원가입" 버튼(헤더, REQ-F-A2-Signup-1)을 통해 접근
 
 **관련 REQ**:
+
 - REQ-F-A2-Signup-1: 헤더 "회원가입" 버튼 표시 (✅ 완료, commit: b757745)
 - REQ-F-A2-Signup-2: 버튼 클릭 시 `/signup` 이동 (✅ 완료, commit: b757745)
 - REQ-F-A2-Signup-4: 자기평가 입력 섹션 (⏳ 다음 단계)
@@ -34,6 +36,7 @@
 ### 상세 명세
 
 #### 1. Location (구현 위치)
+
 - **Component**: `src/frontend/src/pages/SignupPage.tsx` (MODIFIED)
 - **Styles**: `src/frontend/src/pages/SignupPage.css` (MODIFIED)
 - **Tests**: `src/frontend/src/pages/__tests__/SignupPage.test.tsx` (NEW)
@@ -42,6 +45,7 @@
 #### 2. Signature (인터페이스)
 
 **SignupPage Component**:
+
 ```typescript
 const SignupPage: React.FC = () => {
   // Reuses existing useNicknameCheck hook
@@ -103,15 +107,18 @@ const SignupPage: React.FC = () => {
 #### 4. Dependencies
 
 **Existing Components/Hooks** (재사용):
+
 - `useNicknameCheck` hook - 닉네임 검증 로직 (REQ-F-A2-2에서 구현)
 - `profileService.checkNickname()` - API 호출
 
 **API Endpoint**:
+
 - `POST /api/profile/nickname/check` - 닉네임 중복 확인
   - Request: `{ "nickname": "john_doe" }`
   - Response: `{ "available": true/false, "suggestions": ["...", "...", "..."] }`
 
 **Component Hierarchy**:
+
 ```
 SignupPage
   ├─ section.nickname-section (REQ-F-A2-Signup-3)
@@ -127,15 +134,18 @@ SignupPage
 #### 5. Non-Functional Requirements
 
 **Performance**:
+
 - 중복 확인 API 응답: 1초 이내
 - 실시간 유효성 검사: 즉시 (로컬 검증, 네트워크 불필요)
 
 **Accessibility**:
+
 - Input field: `id="nickname-input"` + `<label for="nickname-input">` 연결
 - Buttons: 의미있는 텍스트 ("중복 확인", "가입 완료")
 - Status messages: `.status-message` class (시각적 피드백)
 
 **UX**:
+
 - 로딩 중 input 비활성화 (중복 클릭 방지)
 - 상태 메시지 색상 구분 (성공: 녹색, 에러: 빨강)
 - 대안 제안 클릭 시 즉시 반영
@@ -149,6 +159,7 @@ From `docs/feature_requirement_mvp1.md:163`:
 - ✅ "닉네임 중복 확인이 정상 작동한다."
 
 **세부 검증 항목**:
+
 1. ✅ SignupPage(`/signup`)에 닉네임 섹션 표시
 2. ✅ 입력 필드 + "중복 확인" 버튼 렌더링
 3. ✅ 3자 미만 입력 시 에러 메시지
@@ -186,10 +197,12 @@ From `docs/feature_requirement_mvp1.md:163`:
 | 11 | 확인 중 로딩 상태 표시 | UX | ✅ |
 
 **✨ 핵심 테스트** (REQ-F-A2-Signup-3 고유 기능):
+
 - **Test 6**: 중복 시 대안 3개 제안
 - **Test 7**: 대안 클릭 시 자동 입력
 
 **Example Test** (Test 6 - 중복 시 대안 제안):
+
 ```typescript
 test('shows error message and suggestions when nickname is taken', async () => {
   const mockResponse = {
@@ -231,6 +244,7 @@ test('shows error message and suggestions when nickname is taken', async () => {
 **Key Changes**:
 
 **Before** (임시 페이지):
+
 ```typescript
 // Placeholder content
 <div className="placeholder-content">
@@ -239,6 +253,7 @@ test('shows error message and suggestions when nickname is taken', async () => {
 ```
 
 **After** (닉네임 섹션 구현):
+
 ```typescript
 import { useNicknameCheck } from '../hooks/useNicknameCheck'
 
@@ -362,6 +377,7 @@ const SignupPage: React.FC = () => {
 ```
 
 **Design Decisions**:
+
 - **Reuse existing hook**: `useNicknameCheck` (from NicknameSetupPage, REQ-F-A2-2)
 - **Section-based layout**: Separate sections for nickname and profile (future)
 - **Memoized status message**: Avoid recalculation on every render
@@ -374,6 +390,7 @@ const SignupPage: React.FC = () => {
 **Key Styles**:
 
 **Layout**:
+
 ```css
 .signup-page {
   min-height: 100vh;
@@ -395,6 +412,7 @@ const SignupPage: React.FC = () => {
 ```
 
 **Section Styling**:
+
 ```css
 .nickname-section,
 .profile-section {
@@ -405,6 +423,7 @@ const SignupPage: React.FC = () => {
 ```
 
 **Status Messages**:
+
 ```css
 .status-message.success {
   background-color: #d4edda;  /* Green */
@@ -420,6 +439,7 @@ const SignupPage: React.FC = () => {
 ```
 
 **Suggestions**:
+
 ```css
 .suggestion-button {
   padding: 0.5rem 1rem;
@@ -439,6 +459,7 @@ const SignupPage: React.FC = () => {
 ```
 
 **Responsive Design**:
+
 ```css
 @media (max-width: 768px) {
   .signup-container {
@@ -471,6 +492,7 @@ const SignupPage: React.FC = () => {
 ```
 
 **Test Coverage Summary**:
+
 - ✅ Test 1: 닉네임 섹션 렌더링
 - ✅ Test 2: 3자 미만 입력 시 에러 메시지
 - ✅ Test 3: 30자 제한 (HTML maxLength)
@@ -500,6 +522,7 @@ const SignupPage: React.FC = () => {
 ### 구현 내용 요약
 
 **What was implemented**:
+
 1. ✅ 통합 회원가입 페이지(`/signup`)에 닉네임 입력 섹션 추가
 2. ✅ 닉네임 입력 필드 + "중복 확인" 버튼
 3. ✅ 실시간 유효성 검사 (3자 미만, 30자 제한, 문자 패턴)
@@ -513,6 +536,7 @@ const SignupPage: React.FC = () => {
 11. ✅ "가입 완료" 버튼 placeholder (REQ-F-A2-Signup-5/6 대비)
 
 **Why this approach**:
+
 - **Code reuse**: `useNicknameCheck` hook 재사용 (NicknameSetupPage와 동일 로직)
 - **Section-based design**: 닉네임 + 프로필을 별도 섹션으로 구분 → 가독성 향상
 - **Progressive enhancement**: Placeholder 섹션으로 향후 구현 준비
@@ -531,6 +555,7 @@ const SignupPage: React.FC = () => {
 | - 중복 시 대안 3개 제안 | Suggestions list (conditional) | `SignupPage.tsx:105-121` | Test 6, 7 | ✅ |
 
 **Implementation ↔ Test Mapping**:
+
 - Nickname input: Test 1, 2, 3, 4, 9, 10
 - Duplicate check: Test 5, 6, 11
 - Suggestions: Test 6, 7
@@ -549,6 +574,7 @@ From `docs/feature_requirement_mvp1.md:163`:
   - Test: Test 5 (사용 가능), Test 6 (중복)
 
 **세부 검증 항목**:
+
 1. ✅ SignupPage(`/signup`)에 닉네임 섹션 표시 (Test 1)
 2. ✅ 입력 필드 + "중복 확인" 버튼 렌더링 (Test 1)
 3. ✅ 3자 미만 입력 시 에러 메시지 (Test 2)
@@ -565,6 +591,7 @@ From `docs/feature_requirement_mvp1.md:163`:
 
 **Commit Hash**: 273c30ad6a9b3b4a5c7d8e9f0a1b2c3d4e5f6789  
 **Commit Message**:
+
 ```
 feat: Implement nickname section in unified signup page (REQ-F-A2-Signup-3)
 

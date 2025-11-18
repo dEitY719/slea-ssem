@@ -23,6 +23,7 @@
 **File**: `src/frontend/src/components/Header.tsx`
 
 **Signature**:
+
 ```typescript
 // "회원가입" 버튼의 onClick 핸들러
 const handleSignupClick = () => void
@@ -35,7 +36,7 @@ const navigate = useNavigate()
 
 1. **"회원가입" 버튼 클릭 이벤트**:
    - 사용자가 헤더의 "회원가입" 버튼을 클릭
-   
+
 2. **Navigation 실행**:
    - `useNavigate()` hook을 사용하여 `/signup` 경로로 이동
    - `navigate('/signup')` 호출
@@ -69,6 +70,7 @@ const navigate = useNavigate()
 **REQ**: REQ-F-A2-Signup-2
 
 **Setup**:
+
 ```typescript
 const mockNavigate = jest.fn()
 jest.mock('react-router-dom', () => ({
@@ -80,14 +82,17 @@ renderWithRouter(<Header nickname={null} />)
 ```
 
 **Actions**:
+
 1. Find "회원가입" button
 2. Click the button
 3. Verify `navigate('/signup')` was called
 
 **Expectation**:
+
 - ✅ `mockNavigate` should be called with `'/signup'`
 
 **Code**:
+
 ```typescript
 test('"회원가입" 버튼 클릭 시 /signup으로 이동', async () => {
   const user = userEvent.setup()
@@ -117,6 +122,7 @@ test('"회원가입" 버튼 클릭 시 /signup으로 이동', async () => {
 #### Component: Header.tsx (lines 35-38)
 
 **Navigation Handler**:
+
 ```typescript
 const navigate = useNavigate()
 
@@ -126,6 +132,7 @@ const handleSignupClick = () => {
 ```
 
 **JSX (Button with onClick)**:
+
 ```typescript
 {!nickname && (
   <button 
@@ -193,6 +200,7 @@ $ npm run type-check
 ### Test Results
 
 ✅ **All tests passing** (6/6 in Header.test.tsx)
+
 - Test 3 specifically covers REQ-F-A2-Signup-2 (navigation)
 
 ### REQ Traceability
@@ -226,6 +234,7 @@ $ npm run type-check
 **Commit**: b757745  
 **Message**: `implement REQ-F-A2-Signup-1`  
 **Files Changed**: 5 files (+360 lines)
+
 - `Header.tsx`: Added navigation logic
 - `Header.test.tsx`: Added navigation test
 - `HomePage.tsx`: Updated to use `<Header />` component

@@ -23,6 +23,7 @@
 **배경**: 홈화면 헤더의 "회원가입" 버튼을 통해 닉네임 + 자기평가를 한 페이지에서 입력하는 대체 가입 플로우를 제공합니다. "시작하기" 플로우(닉네임 → 자기평가 → 프로필 리뷰)와는 별도로, 사용자가 레벨 테스트를 시작하기 전에 플랫폼을 탐색할 수 있도록 합니다.
 
 **사용자 시나리오**: Scenario 0-4 (docs/user_scenarios_mvp1.md)
+
 - SSO 인증 완료 후 nickname=NULL 상태로 홈 페이지 진입
 - 헤더에 "회원가입" 버튼 표시
 - 클릭 시 통합 회원가입 페이지(/signup)로 이동
@@ -32,16 +33,18 @@
 ### 상세 명세
 
 #### 1. Location (구현 위치)
+
 - **Component**: `src/frontend/src/components/Header.tsx` (NEW)
 - **Styles**: `src/frontend/src/components/Header.css` (NEW)
 - **Integration**: `src/frontend/src/pages/HomePage.tsx` (MODIFIED)
-- **Tests**: 
+- **Tests**:
   - `src/frontend/src/components/__tests__/Header.test.tsx` (NEW)
   - `src/frontend/src/pages/__tests__/HomePage.test.tsx` (MODIFIED)
 
 #### 2. Signature (인터페이스)
 
 **Header Component Props**:
+
 ```typescript
 interface HeaderProps {
   nickname: string | null;  // User's nickname (null if not set)
@@ -50,6 +53,7 @@ interface HeaderProps {
 ```
 
 **Component API**:
+
 - Input: `nickname` (string | null), `isLoading` (boolean, default: false)
 - Output: Header JSX with conditional "회원가입" button
 - Side effects: Navigation to `/signup` on button click
@@ -57,6 +61,7 @@ interface HeaderProps {
 #### 3. Behavior (동작 로직)
 
 **Conditional Rendering**:
+
 ```typescript
 {!isLoading && nickname === null && (
   <button className="signup-button" onClick={handleSignupClick}>
@@ -66,11 +71,13 @@ interface HeaderProps {
 ```
 
 **Display Rules**:
+
 - `nickname === null` AND `!isLoading` → Show "회원가입" button
 - `nickname !== null` → Hide "회원가입" button
 - `isLoading === true` → Hide "회원가입" button (prevent flickering)
 
 **User Interaction**:
+
 1. User sees "회원가입" button in header (top right)
 2. User clicks button
 3. Navigate to `/signup` page (REQ-F-A2-Signup-2)
@@ -78,13 +85,16 @@ interface HeaderProps {
 #### 4. Dependencies
 
 **React Router**:
+
 - `useNavigate()` hook for navigation
 
 **User Profile Hook**:
+
 - `useUserProfile()` - provides `nickname` state and `loading` state
 - Fetches nickname on component mount via `GET /api/profile/nickname`
 
 **Component Hierarchy**:
+
 ```
 HomePage
   └─ Header (nickname={nickname}, isLoading={nicknameLoading})
@@ -94,16 +104,19 @@ HomePage
 #### 5. Non-Functional Requirements
 
 **Performance**:
+
 - Header must render immediately (no blocking API calls in Header itself)
 - Nickname fetch handled by parent (HomePage) via `useUserProfile` hook
 - Loading state prevents button flickering during initial load
 
 **Accessibility**:
+
 - Button has `aria-label="회원가입 페이지로 이동"`
 - Keyboard accessible (native button element)
 - Focus outline visible (CSS: `outline: 2px solid #1976d2`)
 
 **Responsive Design**:
+
 - Desktop: Button padding `0.5rem 1.5rem`, font-size `1rem`
 - Mobile (≤768px): Button padding `0.4rem 1rem`, font-size `0.9rem`
 
@@ -132,12 +145,15 @@ From `docs/feature_requirement_mvp1.md:159-167`:
 **REQ**: REQ-F-A2-Signup-1 (core requirement)
 
 **Setup**:
+
 - Render `<Header nickname={null} />`
 
 **Expectation**:
+
 - "회원가입" button should be visible in header
 
 **Code**:
+
 ```typescript
 test('nickname이 null일 때 "회원가입" 버튼 표시', () => {
   renderWithRouter(<Header nickname={null} />)
@@ -152,12 +168,15 @@ test('nickname이 null일 때 "회원가입" 버튼 표시', () => {
 **REQ**: REQ-F-A2-Signup-1 (core requirement)
 
 **Setup**:
+
 - Render `<Header nickname="테스터123" />`
 
 **Expectation**:
+
 - "회원가입" button should NOT be visible
 
 **Code**:
+
 ```typescript
 test('nickname이 존재할 때 "회원가입" 버튼 숨김', () => {
   renderWithRouter(<Header nickname="테스터123" />)
@@ -172,16 +191,20 @@ test('nickname이 존재할 때 "회원가입" 버튼 숨김', () => {
 **REQ**: REQ-F-A2-Signup-2 (navigation)
 
 **Setup**:
+
 - Render `<Header nickname={null} />`
 - Mock `useNavigate()` hook
 
 **Actions**:
+
 - Click "회원가입" button
 
 **Expectation**:
+
 - `navigate('/signup')` should be called
 
 **Code**:
+
 ```typescript
 test('"회원가입" 버튼 클릭 시 /signup으로 이동', async () => {
   const user = userEvent.setup()
@@ -199,12 +222,15 @@ test('"회원가입" 버튼 클릭 시 /signup으로 이동', async () => {
 **REQ**: Performance / UX (prevent flickering)
 
 **Setup**:
+
 - Render `<Header nickname={null} isLoading={true} />`
 
 **Expectation**:
+
 - "회원가입" button should NOT be visible during loading
 
 **Code**:
+
 ```typescript
 test('nickname loading 중에는 "회원가입" 버튼 숨김', () => {
   renderWithRouter(<Header nickname={null} isLoading={true} />)
@@ -219,9 +245,11 @@ test('nickname loading 중에는 "회원가입" 버튼 숨김', () => {
 **REQ**: General header functionality
 
 **Setup**:
+
 - Render `<Header nickname={null} />`
 
 **Expectation**:
+
 - Platform name "S.LSI Learning Platform" should be visible
 
 #### Test 6: "nickname이 빈 문자열일 때도 '회원가입' 버튼 표시" ✅
@@ -241,6 +269,7 @@ test('nickname loading 중에는 "회원가입" 버튼 숨김', () => {
 **Created**: New file (62 lines)
 
 **Key Implementation**:
+
 ```typescript
 export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) => {
   const navigate = useNavigate()
@@ -276,6 +305,7 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
 ```
 
 **Design Decisions**:
+
 - Props-based conditional rendering (no internal state)
 - Parent component (`HomePage`) manages nickname fetching
 - `isLoading` prop prevents button flickering during initial load
@@ -286,6 +316,7 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
 **Created**: New file (81 lines)
 
 **Key Styles**:
+
 ```css
 .app-header {
   background-color: #ffffff;
@@ -319,6 +350,7 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
 ```
 
 **Responsive Design**:
+
 ```css
 @media (max-width: 768px) {
   .signup-button {
@@ -333,6 +365,7 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
 **Modified**: Added Header component with nickname prop
 
 **Changes**:
+
 ```typescript
 // REQ: REQ-F-A2-Signup-1
 import { Header } from '../components/Header'
@@ -367,6 +400,7 @@ const HomePage: React.FC = () => {
 ```
 
 **Data Flow**:
+
 1. HomePage mounts → calls `checkNickname()` (via `useUserProfile` hook)
 2. `checkNickname()` → `GET /api/profile/nickname` (JWT in Authorization header)
 3. API response: `{ "nickname": "..." }` or `{ "nickname": null }`
@@ -390,6 +424,7 @@ const HomePage: React.FC = () => {
 ```
 
 **Test Coverage**:
+
 - ✅ Test 1: nickname이 null일 때 "회원가입" 버튼 표시 (CRITICAL)
 - ✅ Test 2: nickname이 존재할 때 "회원가입" 버튼 숨김 (CRITICAL)
 - ✅ Test 3: "회원가입" 버튼 클릭 시 /signup으로 이동
@@ -403,6 +438,7 @@ const HomePage: React.FC = () => {
 **Changes**: Added 5 new tests for Header integration
 
 **New Tests**:
+
 1. ✅ "renders Header with nickname=null when user is not signed up"
 2. ✅ "renders Header with nickname when user is signed up"
 3. ✅ "passes loading state to Header"
@@ -432,6 +468,7 @@ const HomePage: React.FC = () => {
 ### 구현 내용 요약
 
 **What was implemented**:
+
 1. ✅ Created `Header` component with conditional "회원가입" button logic
 2. ✅ Integrated Header into `HomePage` with nickname prop
 3. ✅ Added nickname loading on HomePage mount (via `useUserProfile` hook)
@@ -442,6 +479,7 @@ const HomePage: React.FC = () => {
 8. ✅ Navigation to `/signup` on button click (REQ-F-A2-Signup-2)
 
 **Why this approach**:
+
 - **Separation of concerns**: Header component is stateless and receives data via props
 - **Data fetching at parent level**: HomePage manages API calls, Header only renders
 - **Loading state**: Prevents UI flickering during initial nickname fetch
@@ -459,6 +497,7 @@ const HomePage: React.FC = () => {
 | **REQ-F-A2-Signup-2** | "회원가입" 버튼 클릭 시 /signup 이동 | `Header.tsx:35-38` | `Header.test.tsx:48-60` (Test 3) | ✅ |
 
 **Implementation ↔ Test Mapping**:
+
 - Core logic (`Header.tsx:49`): Tested by Test 1, Test 2, Test 4
 - Navigation logic (`Header.tsx:35-38`): Tested by Test 3
 - Integration (HomePage): Tested by 5 HomePage integration tests
@@ -485,6 +524,7 @@ From `docs/feature_requirement_mvp1.md:159-167`:
 
 **Commit Hash**: `b757745baaa8c9e4487c7607ea66a1d3f8278aae`  
 **Commit Message**:
+
 ```
 implement REQ-F-A2-Signup-1
 ```
@@ -531,7 +571,7 @@ implement REQ-F-A2-Signup-1
 - **User Scenario**: `docs/user_scenarios_mvp1.md` (Scenario 0-4)
 - **API Documentation**: `docs/feature_requirement_mvp1.md:601-676` (REQ-B-A2-Signup)
 - **Parent Feature**: REQ-F-A2 (회원가입 화면)
-- **Related REQs**: 
+- **Related REQs**:
   - REQ-F-A2-Signup-2 to Signup-7 (unified signup page implementation)
   - REQ-B-A2-Signup-1 to Signup-5 (backend API)
 

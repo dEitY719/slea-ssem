@@ -203,6 +203,7 @@ export async function completeProfileSignup(input: CompleteSignupInput) {
 ### Git Commits
 
 **Primary Commits**:
+
 - `97fb27c` - Merge pull request #10 for REQ-F-A2-Signup-6 (최종 병합)
 - `156298b` - Fix: Redirect to /home after signup instead of / (리다이렉트 수정)
 - `47a8b84` - Refactor: Introduce nickname caching and separate signup logic (캐싱 및 로직 분리)
@@ -212,14 +213,17 @@ export async function completeProfileSignup(input: CompleteSignupInput) {
 ## Integration Points
 
 ### REQ-F-A2-Signup-5 연계
+
 - Submit 버튼 활성화 조건: `checkStatus === 'available' && level !== null`
 - REQ-F-A2-Signup-5에서 활성화된 버튼을 REQ-F-A2-Signup-6에서 클릭
 
 ### REQ-F-A2-Signup-7 연계
+
 - 가입 완료 후 닉네임이 localStorage에 캐싱됨
 - HomePage에서 캐싱된 닉네임을 읽어 "회원가입" 버튼 숨김 처리
 
 ### API 통합
+
 - `POST /api/profile/register` - 닉네임 등록
 - `PUT /api/profile/survey` - 프로필 저장
 - 두 API가 순차적으로 호출되어 트랜잭션 일관성 보장

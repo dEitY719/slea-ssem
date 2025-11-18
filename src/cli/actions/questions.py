@@ -114,6 +114,38 @@ def _get_latest_question(session_id: str | None = None) -> tuple[str | None, str
         return None, "", None
 
 
+def _get_all_questions_in_session(session_id: str | None) -> list[dict[str, Any]]:
+    """
+    Get all questions in a session, ordered by creation.
+
+    Returns list of dicts with keys: id, stem, choices, item_type, answer_schema, category, difficulty
+    """
+    try:
+        if not session_id:
+            return []
+
+        db = SessionLocal()
+        questions = db.query(Question).filter_by(session_id=session_id).order_by(Question.created_at.asc()).all()
+        db.close()
+
+        result = []
+        for question in questions:
+            result.append(
+                {
+                    "id": question.id,
+                    "stem": question.stem,
+                    "choices": question.choices,
+                    "item_type": question.item_type,
+                    "answer_schema": question.answer_schema,
+                    "category": question.category,
+                    "difficulty": question.difficulty,
+                }
+            )
+        return result
+    except Exception:
+        return []
+
+
 def _get_unscored_answers(session_id: str | None) -> list[dict[str, Any]]:
     """
     Get all unscored attempt answers from a session.
@@ -240,7 +272,7 @@ def _print_generate_questions_help(context: CLIContext) -> None:
     context.console.print("╚═══════════════════════════════════════════════════════════════════════════════╝")
     context.console.print()
     context.console.print("[bold cyan]Usage:[/bold cyan]")
-    context.console.print("  questions generate [--survey-id ID] [--domain DOMAIN] [--round 1|2]")
+    context.console.print("  questions generate [--survey-id ID] [--domain DOMAIN] [--round 1|2] [--count N]")
     context.console.print()
     context.console.print("[bold cyan]Options:[/bold cyan]")
     context.console.print("  --survey-id TEXT   Survey ID (auto-uses latest if not provided)")
@@ -248,6 +280,8 @@ def _print_generate_questions_help(context: CLIContext) -> None:
     context.console.print("                     Default: AI")
     context.console.print("  --round INTEGER    Round number: 1 (initial) or 2 (adaptive)")
     context.console.print("                     Default: 1")
+    context.console.print("  --count INTEGER    Number of questions to generate (1-10)")
+    context.console.print("                     Default: 5")
     context.console.print("  --help             Show this help message")
     context.console.print()
     context.console.print("[bold cyan]Examples:[/bold cyan]")
@@ -257,11 +291,58 @@ def _print_generate_questions_help(context: CLIContext) -> None:
     context.console.print("  # Generate with specific domain")
     context.console.print("  questions generate --domain food")
     context.console.print()
-    context.console.print("  # Generate with specific survey and domain")
-    context.console.print("  questions generate --survey-id survey_abc --domain science")
+    context.console.print("  # Generate 3 questions instead of default 5")
+    context.console.print("  questions generate --count 3")
+    context.console.print()
+    context.console.print("  # Generate with specific survey, domain, and count")
+    context.console.print("  questions generate --survey-id survey_abc --domain science --count 7")
     context.console.print()
     context.console.print("  # Show this help message")
     context.console.print("  questions generate --help")
+    context.console.print()
+
+
+def _print_generate_adaptive_questions_help(context: CLIContext) -> None:
+    """Print help for questions generate adaptive command."""
+    context.console.print()
+    context.console.print("╔═══════════════════════════════════════════════════════════════════════════════╗")
+    context.console.print("║  questions generate adaptive - Generate Adaptive Questions (Round 2+)        ║")
+    context.console.print("╚═══════════════════════════════════════════════════════════════════════════════╝")
+    context.console.print()
+    context.console.print("[bold cyan]Usage:[/bold cyan]")
+    context.console.print("  questions generate adaptive [--round 2|3] [--count N]")
+    context.console.print()
+    context.console.print("[bold cyan]Description:[/bold cyan]")
+    context.console.print("  Generate difficulty-adjusted questions for Round 2+ (adaptive) based on")
+    context.console.print("  previous round performance. Uses Real Agent LLM for generation.")
+    context.console.print()
+    context.console.print("[bold cyan]Prerequisites:[/bold cyan]")
+    context.console.print("  1. Complete 'questions generate' (Round 1)")
+    context.console.print("  2. Score answers: 'questions score'")
+    context.console.print("  3. Run this command to get Round 2 adaptive questions")
+    context.console.print()
+    context.console.print("[bold cyan]Options:[/bold cyan]")
+    context.console.print("  --round INTEGER    Round number: 2 (default) or 3")
+    context.console.print("                     Default: 2")
+    context.console.print("  --count INTEGER    Number of questions: 1-20")
+    context.console.print("                     Default: 5")
+    context.console.print("  --help             Show this help message")
+    context.console.print()
+    context.console.print("[bold cyan]Examples:[/bold cyan]")
+    context.console.print("  # Generate Round 2 adaptive questions (default, 5 questions)")
+    context.console.print("  questions generate adaptive")
+    context.console.print()
+    context.console.print("  # Generate Round 3 questions (if supported)")
+    context.console.print("  questions generate adaptive --round 3")
+    context.console.print()
+    context.console.print("  # Generate 3 adaptive questions")
+    context.console.print("  questions generate adaptive --count 3")
+    context.console.print()
+    context.console.print("  # Generate 10 Round 3 questions")
+    context.console.print("  questions generate adaptive --round 3 --count 10")
+    context.console.print()
+    context.console.print("  # Show this help message")
+    context.console.print("  questions generate adaptive --help")
     context.console.print()
 
 
@@ -337,6 +418,53 @@ def _print_score_answer_help(context: CLIContext) -> None:
     context.console.print()
     context.console.print("  # Show this help message")
     context.console.print("  questions answer score --help")
+    context.console.print()
+
+
+def _print_solve_help(context: CLIContext) -> None:
+    """Print help for questions solve command."""
+    context.console.print()
+    context.console.print("╔═══════════════════════════════════════════════════════════════════════════════╗")
+    context.console.print("║  questions solve - Interactive Question Solver                             ║")
+    context.console.print("╚═══════════════════════════════════════════════════════════════════════════════╝")
+    context.console.print()
+    context.console.print("[bold cyan]Usage:[/bold cyan]")
+    context.console.print("  questions solve [--session-id ID] [--help]")
+    context.console.print()
+    context.console.print("[bold cyan]Description:[/bold cyan]")
+    context.console.print("  Interactive question solver with beautiful UI.")
+    context.console.print("  Displays questions one by one with formatted choices.")
+    context.console.print("  Supports multiple_choice, true_false, and short_answer types.")
+    context.console.print()
+    context.console.print("[bold cyan]Features:[/bold cyan]")
+    context.console.print("  • Display questions [N/M] format with progress")
+    context.console.print("  • Format choices nicely for multiple_choice (A, B, C, D)")
+    context.console.print("  • Simple True/False selection for true_false")
+    context.console.print("  • Free text input for short_answer")
+    context.console.print("  • Auto-save answers to database")
+    context.console.print("  • Navigate with next/previous")
+    context.console.print()
+    context.console.print("[bold cyan]Options:[/bold cyan]")
+    context.console.print(
+        "  --session-id ID   Solve questions from specific session (auto-uses latest if not provided)"
+    )
+    context.console.print("  --help            Show this help message")
+    context.console.print()
+    context.console.print("[bold cyan]Examples:[/bold cyan]")
+    context.console.print("  # Solve latest session questions (interactive)")
+    context.console.print("  questions solve")
+    context.console.print()
+    context.console.print("  # Solve questions from specific session")
+    context.console.print("  questions solve --session-id abc123def456")
+    context.console.print()
+    context.console.print("  # Show this help message")
+    context.console.print("  questions solve --help")
+    context.console.print()
+    context.console.print("[bold cyan]Keyboard Commands:[/bold cyan]")
+    context.console.print("  • Type answer and press [Enter] to save")
+    context.console.print("  • Type 'n' and press [Enter] to go to next question")
+    context.console.print("  • Type 'p' and press [Enter] to go to previous question")
+    context.console.print("  • Type 'q' and press [Enter] to quit")
     context.console.print()
 
 
@@ -817,6 +945,7 @@ def generate_questions(context: CLIContext, *args: str) -> None:
     survey_id = None
     domain = "AI"  # Default domain
     round_num = 1  # Default round
+    question_count = 5  # Default count
 
     i = 0
     while i < len(args):
@@ -831,6 +960,18 @@ def generate_questions(context: CLIContext, *args: str) -> None:
                 round_num = int(args[i + 1])
             except ValueError:
                 context.console.print(f"[yellow]⚠ Invalid round number: {args[i + 1]}. Using default: 1[/yellow]")
+            i += 2
+        elif args[i] == "--count" and i + 1 < len(args):
+            try:
+                count_val = int(args[i + 1])
+                if 1 <= count_val <= 10:
+                    question_count = count_val
+                else:
+                    context.console.print(
+                        f"[yellow]⚠ Invalid count: {args[i + 1]}. Must be 1-10. Using default: 5[/yellow]"
+                    )
+            except ValueError:
+                context.console.print(f"[yellow]⚠ Invalid count: {args[i + 1]}. Using default: 5[/yellow]")
             i += 2
         elif args[i] == "--help":
             _print_generate_questions_help(context)
@@ -853,7 +994,7 @@ def generate_questions(context: CLIContext, *args: str) -> None:
 
         context.console.print(f"[dim]Using latest survey from DB: {survey_id}[/dim]")
 
-    context.console.print(f"[dim]Generating Round {round_num} questions ({domain})...[/dim]")
+    context.console.print(f"[dim]Generating Round {round_num} questions ({domain}, count={question_count})...[/dim]")
 
     # API 호출
     status_code, response, error = context.client.make_request(
@@ -863,6 +1004,7 @@ def generate_questions(context: CLIContext, *args: str) -> None:
             "survey_id": survey_id,
             "domain": domain,
             "round": round_num,
+            "question_count": question_count,
         },
     )
 
@@ -886,26 +1028,71 @@ def generate_questions(context: CLIContext, *args: str) -> None:
     context.console.print("[bold green]✓ Round 1 questions generated[/bold green]")
     context.console.print(f"[dim]  Session: {session_id}[/dim]")
     context.console.print(f"[dim]  Questions: {questions_count}[/dim]")
-    context.logger.info("Round 1 questions generated.")
+    if context.logger:
+        context.logger.info("Round 1 questions generated.")
 
 
 def generate_adaptive_questions(context: CLIContext, *args: str) -> None:
     """적응형 문항을 생성합니다 (Round 2+)."""
+    # Check for help first
+    if args and args[0] == "help":
+        _print_generate_adaptive_questions_help(context)
+        return
+
     if not context.session.token:
         context.console.print("[bold red]✗ Not authenticated[/bold red]")
         return
 
     if not context.session.current_session_id:
         context.console.print("[bold red]✗ No active session[/bold red]")
+        context.console.print("[bold yellow]⚠ Please complete Round 1 first: 'questions generate'[/bold yellow]")
         return
 
-    context.console.print("[dim]Generating adaptive questions...[/dim]")
+    # Parse arguments with flags
+    round_num = 2  # Default round
+    question_count = 5  # Default count
 
-    # API 호출
+    i = 0
+    while i < len(args):
+        if args[i] == "--round" and i + 1 < len(args):
+            try:
+                round_num = int(args[i + 1])
+                if not (2 <= round_num <= 3):
+                    context.console.print(
+                        f"[yellow]⚠ Invalid round: {args[i + 1]}. Must be 2 or 3. Using default: 2[/yellow]"
+                    )
+                    round_num = 2
+            except ValueError:
+                context.console.print(f"[yellow]⚠ Invalid round: {args[i + 1]}. Using default: 2[/yellow]")
+            i += 2
+        elif args[i] == "--count" and i + 1 < len(args):
+            try:
+                question_count = int(args[i + 1])
+                if not (1 <= question_count <= 20):
+                    context.console.print(
+                        f"[yellow]⚠ Invalid count: {args[i + 1]}. Must be 1-20. Using default: 5[/yellow]"
+                    )
+                    question_count = 5
+            except ValueError:
+                context.console.print(f"[yellow]⚠ Invalid count: {args[i + 1]}. Using default: 5[/yellow]")
+            i += 2
+        elif args[i] == "--help":
+            _print_generate_adaptive_questions_help(context)
+            return
+        else:
+            i += 1
+
+    context.console.print(f"[dim]Generating Round {round_num} adaptive questions ({question_count} questions)...[/dim]")
+
+    # API 호출 - Use previous_session_id (current_session_id is from Round 1)
     status_code, response, error = context.client.make_request(
         "POST",
         "/questions/generate-adaptive",
-        json_data={"session_id": context.session.current_session_id},
+        json_data={
+            "previous_session_id": context.session.current_session_id,
+            "round": round_num,
+            "count": question_count,
+        },
     )
 
     if error:
@@ -915,18 +1102,24 @@ def generate_adaptive_questions(context: CLIContext, *args: str) -> None:
 
     if status_code not in (200, 201):
         context.console.print(f"[bold red]✗ Generation failed (HTTP {status_code})[/bold red]")
+        if isinstance(response, dict) and "detail" in response:
+            context.console.print(f"[red]  {response['detail']}[/red]")
         return
 
     questions_list = response.get("questions", [])
     questions_count = len(questions_list)
+    session_id = response.get("session_id")
     adaptive_params = response.get("adaptive_params", {})
     difficulty = adaptive_params.get("adjusted_difficulty", "Unknown")
-    context.session.current_round = 2
+    context.session.current_session_id = session_id
+    context.session.current_round = round_num
 
-    context.console.print("[bold green]✓ Adaptive questions generated[/bold green]")
-    context.console.print(f"[dim]  Questions: {questions_count}[/dim]")
+    context.console.print(f"[bold green]✓ Round {round_num} adaptive questions generated[/bold green]")
+    context.console.print(f"[dim]  Session: {session_id}[/dim]")
+    context.console.print(f"[dim]  Questions: {questions_count}/{question_count}[/dim]")
     context.console.print(f"[dim]  Difficulty: {difficulty}[/dim]")
-    context.logger.info("Adaptive questions generated.")
+    if context.logger:
+        context.logger.info(f"Round {round_num} adaptive questions generated ({questions_count} questions).")
 
 
 def autosave_answer(context: CLIContext, *args: str) -> None:
@@ -1040,6 +1233,240 @@ def autosave_answer(context: CLIContext, *args: str) -> None:
 
     context.console.print("[bold green]✓ Answer autosaved[/bold green]")
     context.logger.info(f"Answer autosaved for question {question_id}.")
+
+
+def solve(context: CLIContext, *args: str) -> None:
+    """
+    Interactive question solver.
+
+    Displays questions one by one with formatted choices.
+    Supports multiple_choice, true_false, and short_answer types.
+    Auto-saves answers as user provides them.
+    """
+    # Check for help first
+    if args and args[0] == "help":
+        _print_solve_help(context)
+        return
+
+    if not context.session.token:
+        context.console.print("[bold red]✗ Not authenticated[/bold red]")
+        return
+
+    # Parse arguments with flags
+    session_id = None
+
+    i = 0
+    while i < len(args):
+        if args[i] == "--session-id" and i + 1 < len(args):
+            session_id = args[i + 1]
+            i += 2
+        elif args[i] == "--help":
+            _print_solve_help(context)
+            return
+        else:
+            i += 1
+
+    # Auto-detect session_id from DB if not provided
+    if not session_id:
+        session_id, session_info = _get_latest_session(context.session.user_id)
+
+        if not session_id:
+            context.console.print(
+                "[bold yellow]⚠ No session found in DB. Please run 'questions generate' first.[/bold yellow]"
+            )
+            return
+
+        context.console.print(f"[dim]Using latest session from DB: {session_id}{session_info}[/dim]")
+
+    # Get all questions for this session
+    questions = _get_all_questions_in_session(session_id)
+
+    if not questions:
+        context.console.print("[bold yellow]⚠ No questions found in this session[/bold yellow]")
+        return
+
+    context.console.print(f"[bold green]✓ Loaded {len(questions)} questions[/bold green]")
+    context.console.print()
+
+    # Interactive question loop
+    current_idx = 0
+
+    while current_idx < len(questions):
+        question = questions[current_idx]
+        question_num = current_idx + 1
+        total_questions = len(questions)
+
+        # Display question header
+        context.console.print(
+            f"[bold cyan]Question {question_num}/{total_questions}[/bold cyan] "
+            f"[dim]({question['category']}, Difficulty: {question['difficulty']}/10)[/dim]"
+        )
+        context.console.print()
+
+        # Display question stem
+        context.console.print(f"[bold]{question['stem']}[/bold]")
+        context.console.print()
+
+        # Display choices based on question type
+        question_type = question["item_type"]
+
+        if question_type == "multiple_choice":
+            _display_multiple_choice(context, question)
+        elif question_type == "true_false":
+            _display_true_false(context, question)
+        elif question_type == "short_answer":
+            _display_short_answer(context, question)
+
+        # Get user input
+        context.console.print()
+        user_input = context.console.input("[bold cyan]Your answer:[/bold cyan] ").strip()
+
+        # Process input
+        if user_input.lower() == "q":
+            context.console.print("[yellow]Exiting solver...[/yellow]")
+            break
+        elif user_input.lower() == "n":
+            current_idx += 1
+            context.console.print()
+            continue
+        elif user_input.lower() == "p":
+            if current_idx > 0:
+                current_idx -= 1
+            else:
+                context.console.print("[yellow]Already at first question[/yellow]")
+            context.console.print()
+            continue
+        elif not user_input:
+            context.console.print("[yellow]⚠ Please enter an answer[/yellow]")
+            context.console.print()
+            continue
+
+        # Format answer based on question type
+        formatted_answer = _format_answer_for_solve(user_input, question_type, question)
+
+        if formatted_answer is None:
+            context.console.print("[red]✗ Invalid answer format[/red]")
+            context.console.print()
+            continue
+
+        # Auto-save answer
+        _autosave_answer_internal(
+            context,
+            session_id=session_id,
+            question_id=question["id"],
+            formatted_answer=formatted_answer,
+        )
+
+        # Move to next question
+        current_idx += 1
+        context.console.print()
+
+    context.console.print("[bold green]✓ Solver complete[/bold green]")
+    if context.logger:
+        context.logger.info(f"Completed solving session {session_id}")
+
+
+def _display_multiple_choice(context: CLIContext, question: dict) -> None:
+    """Display multiple choice question with formatted options."""
+    choices = question.get("choices", [])
+    if not choices:
+        context.console.print("[yellow]⚠ No choices available[/yellow]")
+        return
+
+    # Display choices with A, B, C, D, etc.
+    for idx, choice in enumerate(choices):
+        letter = chr(65 + idx)  # A, B, C, D, ...
+        context.console.print(f"  [cyan]{letter}[/cyan] {choice}")
+
+
+def _display_true_false(context: CLIContext, question: dict) -> None:
+    """Display true/false question."""
+    context.console.print("  [cyan]T[/cyan] True")
+    context.console.print("  [cyan]F[/cyan] False")
+
+
+def _display_short_answer(context: CLIContext, question: dict) -> None:
+    """Display short answer question."""
+    context.console.print("[dim](Type your answer)[/dim]")
+
+
+def _format_answer_for_solve(user_input: str, question_type: str, question: dict) -> dict | None:
+    """
+    Format user answer for database storage based on question type.
+
+    Returns formatted dict or None if invalid.
+    """
+    user_input_lower = user_input.lower().strip()
+
+    if question_type == "multiple_choice":
+        # User entered letter (A, B, C, etc.) or number (0, 1, 2, ...)
+        choices = question.get("choices", [])
+
+        if not choices:
+            return None
+
+        # Try letter first (A, B, C, etc.)
+        if len(user_input) == 1 and user_input.isalpha():
+            idx = ord(user_input.upper()) - ord("A")
+            if 0 <= idx < len(choices):
+                return {"selected_key": choices[idx]}
+
+        # Try number (0, 1, 2, etc.)
+        if user_input.isdigit():
+            idx = int(user_input)
+            if 0 <= idx < len(choices):
+                return {"selected_key": choices[idx]}
+
+        return None
+
+    elif question_type == "true_false":
+        # User entered T/F or True/False or Yes/No or 1/0
+        if user_input_lower in ("t", "true", "yes", "y", "1"):
+            return {"answer": True}
+        elif user_input_lower in ("f", "false", "no", "n", "0"):
+            return {"answer": False}
+        return None
+
+    elif question_type == "short_answer":
+        # Any text is valid
+        return {"text": user_input}
+
+    return None
+
+
+def _autosave_answer_internal(
+    context: CLIContext,
+    session_id: str,
+    question_id: str,
+    formatted_answer: dict[str, Any],
+) -> bool:
+    """
+    Autosave answer without user interaction.
+
+    Returns True if successful, False otherwise.
+    """
+    # API 호출
+    status_code, response, error = context.client.make_request(
+        "POST",
+        "/questions/autosave",
+        json_data={
+            "session_id": session_id,
+            "question_id": question_id,
+            "user_answer": formatted_answer,
+            "response_time_ms": 0,  # Default for auto-save
+        },
+    )
+
+    if error:
+        context.console.print("[bold red]✗ Failed to save answer[/bold red]")
+        return False
+
+    if status_code not in (200, 201):
+        context.console.print("[bold red]✗ Failed to save answer[/bold red]")
+        return False
+
+    context.console.print("[bold green]✓ Answer saved[/bold green]")
+    return True
 
 
 def score_answer(context: CLIContext, *args: str) -> None:
@@ -1170,11 +1597,11 @@ def calculate_round_score(context: CLIContext, *args: str) -> None:
 
     context.console.print("[dim]Calculating round score...[/dim]")
 
-    # API call: session_id is passed as query parameter
+    # API call: session_id is passed as query parameter with auto_complete=True (default)
     status_code, response, error = context.client.make_request(
         "POST",
         "/questions/score",
-        params={"session_id": session_id},
+        params={"session_id": session_id, "auto_complete": True},
     )
 
     if error:
@@ -1186,15 +1613,24 @@ def calculate_round_score(context: CLIContext, *args: str) -> None:
         context.console.print(f"[bold red]✗ Calculation failed (HTTP {status_code})[/bold red]")
         return
 
-    # Response keys from API: score, correct_count, total_count
+    # Response keys from API: score, correct_count, total_count, auto_completed
     score = response.get("score", 0)
     correct_count = response.get("correct_count", 0)
     total_count = response.get("total_count", 0)
+    auto_completed = response.get("auto_completed", False)
 
     context.console.print("[bold green]✓ Round score calculated[/bold green]")
     context.console.print(f"[dim]  Total: {score}/100[/dim]")
     context.console.print(f"[dim]  Correct: {correct_count}/{total_count}[/dim]")
-    context.logger.info("Round score calculated and saved.")
+
+    # NEW: Show auto-complete status
+    if auto_completed:
+        context.console.print("[bold green]✓ Session automatically completed[/bold green]")
+        context.logger.info("Round score calculated and session auto-completed.")
+    else:
+        context.console.print("[yellow]⚠️  Session not auto-completed (unscored answers remain)[/yellow]")
+        context.console.print("[dim]  Call 'questions complete' to manually complete[/dim]")
+        context.logger.info("Round score calculated. Session not auto-completed.")
 
 
 def _display_explanation(context: CLIContext, response: dict, question_id: str) -> None:

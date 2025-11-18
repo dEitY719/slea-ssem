@@ -198,6 +198,11 @@ COMMAND_LAYOUT = {
                     }
                 },
             },
+            "solve": {
+                "description": "문항 대화형 풀기",
+                "usage": "questions solve",
+                "target": "src.cli.actions.questions.solve",
+            },
             "answer": {
                 "description": "답변 처리",
                 "usage": "questions answer [subcommand]",

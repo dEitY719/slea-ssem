@@ -15,6 +15,7 @@
 > 헤더의 닉네임은 클릭 가능한 버튼 형태로 표시되어야 한다. (호버 시 시각적 피드백 제공: 색상 변경, 배경 강조 등)
 
 **Acceptance Criteria**:
+
 - ✅ 닉네임이 클릭 가능한 버튼 형태로 표시된다
 - ✅ 호버 시 시각적 피드백 제공 (배경 색상 변경, transform 효과)
 - ✅ 클릭 시 이벤트 핸들러가 호출된다
@@ -32,6 +33,7 @@
 ### Behavior Specification
 
 **주요 변경 사항**:
+
 1. **`.nickname-display`를 `<div>`에서 `<button>`으로 변경**
    - `type="button"` 추가 (form submit 방지)
    - `onClick={handleNicknameClick}` 추가
@@ -55,7 +57,7 @@
 ### Non-functional Requirements
 
 - **성능**: Hover 효과 < 16ms (60fps, CSS transition으로 GPU 가속)
-- **접근성**: 
+- **접근성**:
   - 키보드 접근 가능 (Tab, Enter, Space)
   - aria-label로 스크린 리더 지원
 - **반응형**: 모바일/데스크톱 모두 동일한 hover 효과
@@ -95,6 +97,7 @@
 #### 1. Header.tsx
 
 **Changes**:
+
 - `<div className="nickname-display">` → `<button type="button" className="nickname-display">`
 - `handleNicknameClick()` 함수 추가 (console.log placeholder)
 - `onClick={handleNicknameClick}` 추가
@@ -102,6 +105,7 @@
 - REQ comment 업데이트: REQ-F-A2-Profile-Access-2 추가
 
 **Key Code**:
+
 ```tsx
 const handleNicknameClick = () => {
   console.log('Nickname clicked - dropdown menu will be implemented in REQ-F-A2-Profile-Access-3')
@@ -127,6 +131,7 @@ const handleNicknameClick = () => {
 #### 2. Header.css
 
 **Changes**:
+
 - `.nickname-display` 기본 스타일 업데이트:
   - `cursor: pointer` 추가
   - `background-color: rgba(255, 255, 255, 0.1)` 추가
@@ -150,6 +155,7 @@ const handleNicknameClick = () => {
 #### 3. Header.test.tsx
 
 **Changes**:
+
 - 새로운 `describe('Header - REQ-F-A2-Profile-Access-2', () => { ... })` 블록 추가
 - 4개 테스트 케이스 추가
 - `vi.spyOn(console, 'log')` 사용하여 onClick 핸들러 호출 검증
@@ -166,6 +172,7 @@ Test Files  1 passed (1)
 ```
 
 **All 18 tests passed! ✅**
+
 - 기존 14개 테스트 (REQ-F-A2-Signup-1, REQ-F-A2-Profile-Access-1) ✅
 - 신규 4개 테스트 (REQ-F-A2-Profile-Access-2) ✅
 
@@ -237,6 +244,7 @@ Test Files  1 passed (1)
 **Branch**: `cursor/implement-profile-access-feature-34a6`
 
 **Commit Message**:
+
 ```
 feat: Implement REQ-F-A2-Profile-Access-2 - Make nickname clickable button
 
@@ -255,6 +263,7 @@ Files: Header.tsx, Header.css, Header.test.tsx
 ```
 
 **Modified Files**:
+
 - `src/frontend/src/components/Header.tsx`
 - `src/frontend/src/components/Header.css`
 - `src/frontend/src/components/__tests__/Header.test.tsx`

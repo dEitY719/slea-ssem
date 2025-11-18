@@ -22,6 +22,36 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["questions"])
 
 
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+
+def all_answers_scored(session_id: str, db: Session) -> bool:
+    """
+    Check if all answers in a session have been scored.
+
+    REQ: REQ-B-B3-Score (Auto-Complete)
+
+    Args:
+        session_id: TestSession ID
+        db: Database session
+
+    Returns:
+        bool: True if all answers have been scored, False otherwise
+
+    """
+    from src.backend.models.attempt_answer import AttemptAnswer
+
+    # Count unscored answers (where score is None)
+    unscored_count = (
+        db.query(AttemptAnswer).filter(AttemptAnswer.session_id == session_id, AttemptAnswer.score.is_(None)).count()
+    )
+
+    # All scored if unscored_count == 0
+    return unscored_count == 0
+
+
 class GenerateQuestionsRequest(BaseModel):
     """
     Request model for generating test questions.
@@ -30,12 +60,14 @@ class GenerateQuestionsRequest(BaseModel):
         survey_id: UserProfileSurvey ID to determine user interests
         round: Test round number (1 or 2, default 1)
         domain: Question domain/topic (e.g., "AI", "food", default "AI")
+        question_count: Number of questions to generate (default 5, min 1, max 10)
 
     """
 
     survey_id: str = Field(..., description="UserProfileSurvey ID")
     round: int = Field(default=1, ge=1, le=2, description="Test round (1 or 2)")
     domain: str = Field(default="AI", description="Question domain/topic (e.g., AI, food, science)")
+    question_count: int = Field(default=5, ge=1, le=10, description="Number of questions (1-10, default 5)")
 
 
 class QuestionResponse(BaseModel):
@@ -83,11 +115,13 @@ class GenerateAdaptiveQuestionsRequest(BaseModel):
     Attributes:
         previous_session_id: Previous round TestSession ID (from Round 1)
         round: Target round number (2 or 3)
+        count: Number of questions to generate (default 5, supports --count parameter)
 
     """
 
     previous_session_id: str = Field(..., description="Previous TestSession ID")
     round: int = Field(default=2, ge=2, le=3, description="Target round (2 or 3)")
+    count: int = Field(default=5, ge=1, le=20, description="Number of questions to generate")
 
 
 class GenerateAdaptiveQuestionsResponse(BaseModel):
@@ -331,6 +365,8 @@ async def generate_questions(
             user_id=user_id,
             survey_id=request.survey_id,
             round_num=request.round,
+            question_count=request.question_count,
+            domain=request.domain,
         )
         return result
     except Exception as e:
@@ -344,10 +380,11 @@ async def generate_questions(
     "/score",
     status_code=200,
     summary="Calculate Round Score",
-    description="Calculate and save test result for completed round",
+    description="Calculate and save test result for completed round, with optional auto-complete",
 )
 def calculate_round_score(
     session_id: str,
+    auto_complete: bool = True,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     """
@@ -359,13 +396,15 @@ def calculate_round_score(
     - Multiple choice / True-False: exact match
     - Short answer: keyword-based scoring
     - Identifies weak categories for adaptive Round 2
+    - NEW: Auto-completes session if all answers are scored
 
     Args:
         session_id: TestSession ID to score
+        auto_complete: Whether to auto-complete session if all answers scored (default True)
         db: Database session
 
     Returns:
-        TestResult with score, correct count, weak categories
+        TestResult with score, correct count, weak categories, auto_completed status
 
     Raises:
         HTTPException: If session not found or no answers
@@ -374,6 +413,7 @@ def calculate_round_score(
     try:
         scoring_service = ScoringService(db)
         # Get the round number from TestSession
+
         from src.backend.models.test_session import TestSession
 
         test_session = db.query(TestSession).filter_by(id=session_id).first()
@@ -382,6 +422,15 @@ def calculate_round_score(
 
         result = scoring_service.save_round_result(session_id, test_session.round)
 
+        # NEW: Auto-complete if enabled and all answers are scored
+        auto_completed = False
+        if auto_complete and all_answers_scored(session_id, db):
+            test_session.status = "completed"
+            db.commit()
+            db.refresh(test_session)
+            auto_completed = True
+            logger.info(f"Auto-completed session {session_id} (Round {test_session.round})")
+
         return {
             "session_id": result.session_id,
             "round": result.round,
@@ -389,6 +438,7 @@ def calculate_round_score(
             "correct_count": result.correct_count,
             "total_count": result.total_count,
             "wrong_categories": result.wrong_categories,
+            "auto_completed": auto_completed,
         }
     except Exception as e:
         if "not found" in str(e).lower():
@@ -404,21 +454,23 @@ def calculate_round_score(
     summary="Generate Adaptive Round 2+ Questions",
     description="Generate questions with adaptive difficulty based on previous round results",
 )
-def generate_adaptive_questions(
+async def generate_adaptive_questions(
     request: GenerateAdaptiveQuestionsRequest,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     """
-    Generate Round 2+ questions with adaptive difficulty.
+    Generate Round 2+ questions with adaptive difficulty using Real Agent.
 
     REQ: REQ-B-B2-Adapt-1, REQ-B-B2-Adapt-2, REQ-B-B2-Adapt-3
 
     Analyzes previous round results and generates questions with:
+    - Real Agent LLM-based generation
     - Adjusted difficulty based on score
     - Prioritized weak categories (≥50%)
+    - Customizable question count (default 5, supports --count parameter)
 
     Args:
-        request: Adaptive generation request with previous_session_id and round
+        request: Adaptive generation request with previous_session_id, round, and optional count
         db: Database session
 
     Returns:
@@ -433,10 +485,11 @@ def generate_adaptive_questions(
 
     try:
         question_service = QuestionGenerationService(db)
-        result = question_service.generate_questions_adaptive(
+        result = await question_service.generate_questions_adaptive(
             user_id=user_id,
             session_id=request.previous_session_id,
             round_num=request.round,
+            question_count=request.count,
         )
         return result
     except Exception as e:

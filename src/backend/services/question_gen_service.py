@@ -247,6 +247,58 @@ class QuestionGenerationService:
         """
         self.session = session
 
+    def _normalize_answer_schema(self, raw_schema: dict | str | None, item_type: str) -> dict:
+        """
+        Normalize answer_schema from various formats to standard format.
+
+        Converts Mock format {"correct_key": "B", "explanation": "..."} to
+        standard format {"type": "exact_match", "keywords": null, "correct_answer": "B"}
+
+        Args:
+            raw_schema: Raw answer_schema from mock data or LLM
+            item_type: Question type (multiple_choice, true_false, short_answer)
+
+        Returns:
+            Normalized answer_schema dict with type, keywords, correct_answer
+
+        """
+        if raw_schema is None:
+            return {
+                "type": "keyword_match" if item_type == "short_answer" else "exact_match",
+                "keywords": None,
+                "correct_answer": None,
+            }
+
+        if isinstance(raw_schema, str):
+            return {"type": raw_schema, "keywords": None, "correct_answer": None}
+
+        if isinstance(raw_schema, dict):
+            # Case 1: Standard Tool 5 format
+            if "type" in raw_schema and ("keywords" in raw_schema or "correct_answer" in raw_schema):
+                return {
+                    "type": raw_schema.get("type", "exact_match"),
+                    "keywords": raw_schema.get("keywords"),
+                    "correct_answer": raw_schema.get("correct_answer"),
+                }
+
+            # Case 2: Mock format with correct_key
+            if "correct_key" in raw_schema:
+                return {"type": "exact_match", "keywords": None, "correct_answer": raw_schema.get("correct_key")}
+
+            # Case 3: Mock format with keywords (short answer)
+            if "keywords" in raw_schema:
+                return {"type": "keyword_match", "keywords": raw_schema.get("keywords"), "correct_answer": None}
+
+            # Case 4: Unknown format - best effort
+            return {
+                "type": raw_schema.get("type", raw_schema.get("answer_type", "exact_match")),
+                "keywords": raw_schema.get("keywords"),
+                "correct_answer": raw_schema.get("correct_answer", raw_schema.get("correct_key")),
+            }
+
+        # Fallback
+        return {"type": "exact_match", "keywords": None, "correct_answer": None}
+
     async def generate_questions(
         self,
         user_id: int,
@@ -386,7 +438,12 @@ class QuestionGenerationService:
             # Step 5: Save generated items to DB
             questions_list = []
             if agent_response and agent_response.items:
-                for item in agent_response.items:
+                # Limit items to requested question_count (safety filter)
+                items_to_save = agent_response.items[:question_count]
+                logger.debug(
+                    f"Agent returned {len(agent_response.items)} items, limiting to {question_count} as requested"
+                )
+                for item in items_to_save:
                     # Handle both Pydantic model and dict for answer_schema
                     answer_schema_value = (
                         item.answer_schema.model_dump()
@@ -487,7 +544,7 @@ class QuestionGenerationService:
                     "question_id": q.id,
                     "category": q.category,
                     "difficulty": q.difficulty,
-                    "item_type": q.type,
+                    "item_type": q.item_type,
                 }
                 for q in prev_questions
             ]
@@ -499,18 +556,20 @@ class QuestionGenerationService:
             logger.warning(f"Failed to retrieve previous answers: {e}")
             return None
 
-    def generate_questions_adaptive(
+    async def generate_questions_adaptive(
         self,
         user_id: int,
         session_id: str,
         round_num: int = 2,
+        question_count: int = 5,
     ) -> dict[str, Any]:
         """
-        Generate Round 2+ questions with adaptive difficulty.
+        Generate Round 2+ questions with adaptive difficulty using Real Agent.
 
         REQ: REQ-B-B2-Adapt-1, REQ-B-B2-Adapt-2, REQ-B-B2-Adapt-3
 
         Analyzes previous round results and generates questions with:
+        - Real Agent LLM-based generation
         - Adjusted difficulty based on score
         - Prioritized weak categories (≥50%)
 
@@ -518,11 +577,12 @@ class QuestionGenerationService:
             user_id: User ID
             session_id: Previous TestSession ID (Round N-1)
             round_num: Target round number (2, 3, etc.)
+            question_count: Number of questions to generate (default 5, supports --count parameter)
 
         Returns:
             Dictionary with:
                 - session_id (str): New TestSession UUID for this round
-                - questions (list): List of 5 adaptive questions
+                - questions (list): List of adaptive questions (count as requested)
                 - adaptive_params (dict): Difficulty tier, weak categories
 
         Raises:
@@ -559,93 +619,77 @@ class QuestionGenerationService:
         test_session = TestSession(
             id=new_session_id,
             user_id=user_id,
-            survey_id=prev_session.survey_id,  # Use same survey from previous session
+            survey_id=prev_session.survey_id,
             round=round_num,
             status="in_progress",
         )
         self.session.add(test_session)
         self.session.commit()
 
-        # Get weak categories to prioritize
+        # Get weak categories from adaptive parameters
         priority_ratio = params["priority_ratio"]
         adjusted_difficulty = params["adjusted_difficulty"]
 
+        # Extract domain/category from priority_ratio (weak categories)
+        weak_categories = list(priority_ratio.keys()) if priority_ratio else []
+        domain = weak_categories[0] if weak_categories else "AI"
+
+        logger.debug(
+            f"Adaptive Round {round_num}: "
+            f"difficulty={adjusted_difficulty}, "
+            f"weak_categories={weak_categories}, "
+            f"count={question_count}"
+        )
+
+        # Retrieve previous answers for adaptive context
+        prev_answers = self._get_previous_answers(user_id, prev_round)
+        logger.debug(f"Previous answers for adaptive context: {len(prev_answers) if prev_answers else 0}")
+
+        # Call Real Agent with adaptive parameters
+        # Note: adjusted_difficulty is a float (e.g., 3.5), we pass it as-is
+        agent = await create_agent()
+        agent_request = GenerateQuestionsRequest(
+            session_id=new_session_id,
+            survey_id=prev_session.survey_id,
+            round_idx=round_num,
+            prev_answers=prev_answers,
+            question_count=question_count,
+            question_types=None,  # Let agent choose
+            domain=domain,
+        )
+        logger.debug(f"✓ Created adaptive GenerateQuestionsRequest for {domain}, count={question_count}")
+
+        agent_response = await agent.generate_questions(agent_request)
+        logger.debug(f"Agent response: {len(agent_response.items) if agent_response.items else 0} items")
+
+        # Save generated items to DB
         questions_list = []
+        if agent_response and agent_response.items:
+            items_to_save = agent_response.items[:question_count]
+            for item in items_to_save:
+                # Handle both Pydantic model and dict for answer_schema
+                answer_schema_value = (
+                    item.answer_schema.model_dump() if hasattr(item.answer_schema, "model_dump") else item.answer_schema
+                )
 
-        # Get all available categories
-        all_categories = list(self.MOCK_QUESTIONS.keys())
-
-        # Build question selection strategy
-        questions_allocated = {}
-
-        # Step 1: Allocate from weak categories (if any)
-        weak_total = 0
-        for weak_cat in priority_ratio:
-            count = int(priority_ratio[weak_cat])
-            questions_allocated[weak_cat] = count
-            weak_total += count
-
-        # Step 2: Fill remaining slots with other categories (from all available)
-        remaining_needed = 5 - weak_total
-        other_categories = [c for c in all_categories if c not in questions_allocated]
-
-        if remaining_needed > 0:
-            if other_categories:
-                # Distribute remaining among other categories fairly
-                per_category = remaining_needed // len(other_categories)
-                remainder = remaining_needed % len(other_categories)
-
-                for idx, cat in enumerate(other_categories):
-                    count = per_category + (1 if idx < remainder else 0)
-                    if count > 0:
-                        questions_allocated[cat] = count
-            else:
-                # No other categories, add back to weak categories
-                # Distribute remaining among weak categories
-                weak_cats = list(questions_allocated.keys())
-                if weak_cats:
-                    per_category = remaining_needed // len(weak_cats)
-                    remainder = remaining_needed % len(weak_cats)
-                    for idx, cat in enumerate(weak_cats):
-                        questions_allocated[cat] += per_category + (1 if idx < remainder else 0)
-
-        # Step 3: Select questions from each category
-        question_idx = 0
-        for category, count in questions_allocated.items():
-            mock_questions = self.MOCK_QUESTIONS.get(category, [])
-
-            for _ in range(count):
-                if not mock_questions:
-                    continue
-
-                # Select question (use index to vary)
-                mock_q = mock_questions[question_idx % len(mock_questions)]
-                question_idx += 1
-
-                # Adjust difficulty based on adaptive parameters
-                # Round difficulty to nearest integer for mock data
-                adjusted_diff_int = int(round(adjusted_difficulty))
-                # Clamp to 1-10
-                final_difficulty = max(1, min(10, adjusted_diff_int))
-
-                # Create Question record
                 question = Question(
                     id=str(uuid4()),
                     session_id=new_session_id,
-                    item_type=mock_q["item_type"],
-                    stem=mock_q["stem"],
-                    choices=mock_q.get("choices"),
-                    answer_schema=mock_q["answer_schema"],
-                    difficulty=final_difficulty,
-                    category=category,
+                    item_type=item.type,
+                    stem=item.stem,
+                    choices=item.choices,
+                    answer_schema=answer_schema_value,
+                    difficulty=item.difficulty,
+                    category=item.category,
                     round=round_num,
                 )
                 self.session.add(question)
                 questions_list.append(question)
 
         self.session.commit()
+        logger.debug(f"✓ Saved {len(questions_list)} adaptive questions to DB")
 
-        # Format response
+        # Format response (backward compatible with existing clients)
         return {
             "session_id": new_session_id,
             "questions": [

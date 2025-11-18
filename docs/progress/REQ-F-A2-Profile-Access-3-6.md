@@ -12,12 +12,14 @@
 ### Requirements
 
 **요구사항**:
+
 - **REQ-F-A2-Profile-Access-3**: 닉네임 클릭 시, 드롭다운 메뉴가 닉네임 아래에 표시되어야 한다.
 - **REQ-F-A2-Profile-Access-4**: 드롭다운 메뉴에는 다음 항목들이 포함되어야 한다: "프로필 수정" (필수), "로그아웃" (선택, 향후 추가 가능)
 - **REQ-F-A2-Profile-Access-5**: 드롭다운 메뉴의 "프로필 수정" 항목 클릭 시, 프로필 수정 페이지(/profile/edit)로 리다이렉트해야 한다.
 - **REQ-F-A2-Profile-Access-6**: 드롭다운 메뉴 외부 클릭 시, 메뉴가 자동으로 닫혀야 한다.
 
 **Acceptance Criteria**:
+
 - ✅ 닉네임 클릭 시 드롭다운 메뉴가 표시된다
 - ✅ 드롭다운 메뉴가 닉네임 아래에 위치한다
 - ✅ 드롭다운 메뉴에 "프로필 수정" 항목이 포함된다
@@ -56,6 +58,7 @@
    - cleanup: `removeEventListener`
 
 5. **드롭다운 메뉴 구조**:
+
    ```tsx
    <div className="profile-menu-container" ref={dropdownRef}>
      <button onClick={handleNicknameClick} aria-expanded={isDropdownOpen}>
@@ -78,7 +81,7 @@
 
 ### Dependencies
 
-- **Prerequisite**: 
+- **Prerequisite**:
   - REQ-F-A2-Profile-Access-1 (닉네임 표시) ✅
   - REQ-F-A2-Profile-Access-2 (클릭 가능 버튼) ✅
 - **React Hooks**: `useState`, `useEffect`, `useRef`
@@ -133,18 +136,20 @@
 #### 1. Header.tsx
 
 **Changes**:
+
 - Import 추가: `useState`, `useEffect`, `useRef`, `PencilSquareIcon`
 - State 추가: `isDropdownOpen`, `dropdownRef`
 - `handleNicknameClick()` 변경: console.log → 토글 로직
 - `handleEditProfileClick()` 추가: navigate + 드롭다운 닫기
 - `useEffect` 추가: 외부 클릭 감지
-- JSX 변경: 
+- JSX 변경:
   - `<div className="profile-menu-container">` 래퍼 추가
   - `aria-expanded` 속성 추가
   - 드롭다운 메뉴 조건부 렌더링
 - REQ comment 업데이트: REQ-F-A2-Profile-Access-3-6 추가
 
 **Key Code**:
+
 ```tsx
 const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 const dropdownRef = useRef<HTMLDivElement>(null)
@@ -178,6 +183,7 @@ useEffect(() => {
 #### 2. Header.css
 
 **Changes**:
+
 - `.profile-menu-container` 추가: `position: relative` (드롭다운 위치 기준)
 - `.dropdown-menu` 추가:
   - `position: absolute`, `top: calc(100% + 0.5rem)`, `right: 0`
@@ -196,6 +202,7 @@ useEffect(() => {
 #### 3. Header.test.tsx
 
 **Changes**:
+
 - REQ-F-A2-Profile-Access-2의 "닉네임 클릭 시 이벤트 핸들러" 테스트 수정:
   - console.log spy 제거
   - 드롭다운 표시 확인으로 변경
@@ -213,6 +220,7 @@ Test Files  1 passed (1)
 ```
 
 **All 24 tests passed! ✅**
+
 - 기존 18개 테스트 (REQ-F-A2-Signup-1, REQ-F-A2-Profile-Access-1, REQ-F-A2-Profile-Access-2) ✅
 - 신규 6개 테스트 (REQ-F-A2-Profile-Access-3-6) ✅
 
@@ -283,15 +291,15 @@ Test Files  1 passed (1)
 
 ## 🔗 Related Requirements
 
-- **Prerequisite**: 
+- **Prerequisite**:
   - REQ-F-A2-Profile-Access-1 (닉네임 표시) ✅ Done
   - REQ-F-A2-Profile-Access-2 (클릭 가능 버튼) ✅ Done
-- **Current**: 
+- **Current**:
   - REQ-F-A2-Profile-Access-3 (드롭다운 표시) ✅ Done
   - REQ-F-A2-Profile-Access-4 ("프로필 수정" 항목) ✅ Done
   - REQ-F-A2-Profile-Access-5 (/profile/edit 이동) ✅ Done
   - REQ-F-A2-Profile-Access-6 (외부 클릭 닫기) ✅ Done
-- **Next**: 
+- **Next**:
   - REQ-F-A2-Profile-Access-7 (상호 배타성 - 이미 구현됨)
   - REQ-F-A2-Profile-Access-8 (전역 헤더 - 이미 구현됨)
   - 향후: 드롭다운에 "로그아웃" 항목 추가 가능
@@ -303,6 +311,7 @@ Test Files  1 passed (1)
 **Branch**: `cursor/implement-profile-access-feature-34a6`
 
 **Commit Message**:
+
 ```
 feat: Implement REQ-F-A2-Profile-Access-3-6 - Add dropdown menu to nickname
 
@@ -336,6 +345,7 @@ Next: Add "로그아웃" menu item (optional, future enhancement)
 ```
 
 **Modified Files**:
+
 - `src/frontend/src/components/Header.tsx`
 - `src/frontend/src/components/Header.css`
 - `src/frontend/src/components/__tests__/Header.test.tsx`
@@ -369,16 +379,19 @@ Next: Add "로그아웃" menu item (optional, future enhancement)
 ## 💡 Implementation Notes
 
 ### Dropdown Animation
+
 - CSS `@keyframes` 사용으로 GPU 가속 활용
 - `transform` + `opacity` 조합으로 부드러운 애니메이션
 - Duration 0.2s는 사용자 경험상 최적값
 
 ### Outside Click Detection
+
 - `useEffect` + `addEventListener`로 구현
 - `useRef`로 드롭다운 영역 참조하여 내부/외부 클릭 구분
 - cleanup 함수로 메모리 누수 방지
 
 ### Future Enhancements
+
 - ESC 키 지원 (현재는 테스트에서 제외)
 - 키보드 네비게이션 (↑↓ 키로 메뉴 항목 이동)
 - 드롭다운 위치 자동 조정 (화면 밖으로 나가는 경우)

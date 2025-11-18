@@ -341,6 +341,59 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 
 ---
 
+## REQ-F-B5-Retake: 재응시 플로우 구현 (Frontend)
+
+**개요**: 사용자가 라운드 1을 완료한 후 대시보드 또는 결과 페이지에서 "재응시" 버튼을 누를 경우, 이전 응시 정보를 자동 로드하고 새로운 테스트를 시작할 수 있어야 합니다.
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-F-B5-Retake-1** | "레벨 테스트 재응시" 버튼 클릭 시, 다음 순서로 진행해야 한다: <br> 1. `GET /profile/history` 호출 → 이전 응시 정보 및 자기평가 로드 <br> 2. 자기평가 폼 미리 채우기 (수정 옵션 제공) <br> 3. 사용자가 "테스트 시작" 버튼 클릭 <br> 4. `POST /questions/generate` 호출 (기존과 동일) → 새 session_id 획득 <br> 5. 테스트 화면으로 이동 | **M** |
+| **REQ-F-B5-Retake-2** | 재응시 자기평가 폼에서 사용자가 정보를 수정할 수 있어야 하며, 수정 후 제출 시 `PUT /profile/survey` 호출로 새로운 자기평가를 저장한 후 새 survey_id를 받아야 한다. | **M** |
+| **REQ-F-B5-Retake-3** | 재응시 폼 제출 중 오류 발생 시(timeout, 네트워크 오류), 사용자에게 오류 메시지를 표시하고 "다시 시도" 버튼을 제공해야 한다. | **S** |
+| **REQ-F-B5-Retake-4** | 라운드 1 완료 후 적응형 Round 2 진행 시, `POST /questions/generate-adaptive` 호출 시 `previous_session_id`를 정확히 전달해야 한다. (기존 세션의 completed 상태와 무관) | **M** |
+| **REQ-F-B5-Retake-5** | 재응시 시작 전 사용자에게 "새로운 테스트를 시작하시겠습니까?" 확인 모달을 표시할 수 있다. (선택사항) | **S** |
+
+**재응시 플로우 (상세)**:
+
+```
+사용자가 대시보드에서 "재응시" 버튼 클릭
+    ↓
+1️⃣  모달/화면 표시: "레벨 테스트를 재응시하시겠습니까?"
+    ↓
+2️⃣  GET /profile/history 호출
+    - 이전 응시 정보 조회
+    - 최신 자기평가(survey) 정보 로드
+    ↓
+3️⃣  자기평가 폼 미리 채우기
+    - 수준, 경력, 직군, 업무, 관심분야 자동 입력
+    - 각 필드 수정 가능
+    ↓
+4️⃣  "테스트 시작" 버튼 클릭
+    - (선택) 정보 수정한 경우: PUT /profile/survey 호출 → 새 survey_id
+    - (미수정) 기존 survey_id 사용
+    ↓
+5️⃣  POST /questions/generate 호출
+    - survey_id: 기존 또는 새로 생성한 ID
+    - round: 1 (또는 직전 라운드와 동일)
+    ↓
+6️⃣  새 session_id 획득
+    - status: 'in_progress' (새로운 세션)
+    ↓
+7️⃣  테스트 화면 시작
+    - 새 session_id로 진행
+    - 이전 응시와 독립적으로 진행
+```
+
+**수용 기준**:
+
+- "대시보드/결과 페이지의 '재응시' 버튼 클릭 시 자기평가 폼이 로드되고 이전 정보가 미리 채워진다."
+- "자기평가 수정 후 '테스트 시작' 클릭 시 `POST /questions/generate` 호출로 새로운 session_id를 획득한다."
+- "새로운 세션의 status는 'in_progress'이며, 이전 세션(completed)은 변경되지 않는다."
+- "재응시 오류 발생 시 명확한 에러 메시지와 재시도 버튼이 표시된다."
+- "Round 1 → Round 2 적응형 진행 시 `previous_session_id` 파라미터를 정확히 전달한다."
+
+---
+
 ## REQ-F-B6: 재미 모드 (카테고리 선택형 퀴즈)
 
 | REQ ID | 요구사항 | 우선순위 |
@@ -735,6 +788,46 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 
 - "자기평가 제출 후 3초 내 1차 문항이 API로 반환된다."
 - "생성된 각 문항이 난이도와 카테고리 정보를 포함한다."
+
+---
+
+## REQ-B-B2-Retake: 재응시 문항 생성 (Backend)
+
+**개요**: 사용자가 라운드 1을 완료한 후 대시보드에서 "재응시" 버튼을 누를 경우, 이전 세션이 **완료(completed)** 상태이더라도 새로운 문항을 생성할 수 있어야 합니다.
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-B-B2-Retake-1** | 라운드 완료 후 재응시 시, 기존 `POST /questions/generate` 엔드포인트를 동일하게 사용하여 **새로운 TestSession**을 생성해야 한다. | **M** |
+| **REQ-B-B2-Retake-2** | 재응시 요청 시 `survey_id`와 `round` 파라미터를 받으면, 이전 세션의 상태(completed)와 무관하게 **항상 새로운 세션을 생성**해야 한다. (기존 세션은 영향 없음) | **M** |
+| **REQ-B-B2-Retake-3** | 재응시 시 이전 라운드와 동일한 `round` 번호로 새 세션을 생성하거나, 적응형 라운드(Round 2) 진행 시 `previous_session_id`를 사용하여 `POST /questions/generate-adaptive` 엔드포인트를 호출해야 한다. | **M** |
+| **REQ-B-B2-Retake-4** | 프론트엔드는 재응시 시 기존 자기평가 정보(또는 수정된 정보)로 새 TestSession을 시작할 수 있어야 한다. | **M** |
+
+**API 플로우**:
+
+```
+재응시 (Round 1 완료 후):
+1. 프론트엔드: GET /profile/history → 이전 응시 정보 조회 (자기평가 정보 로드)
+2. 사용자: (선택사항) 자기평가 수정 → PUT /profile/survey → 새 survey_id 획득
+3. 프론트엔드: POST /questions/generate 호출
+   - survey_id: 기존 또는 새 자기평가 ID
+   - round: 1 (또는 동일 라운드)
+4. 백엔드: 새로운 TestSession 생성 (이전 completed 세션과 무관)
+5. 프론트엔드: 새 session_id로 테스트 시작
+
+적응형 Round 2 진행:
+1. 프론트엔드: POST /questions/generate-adaptive 호출
+   - previous_session_id: Round 1 completed 세션 ID
+   - round: 2
+2. 백엔드: Round 1 결과 분석 → 새로운 Round 2 세션 생성
+3. 프론트엔드: 새 session_id로 Round 2 테스트 시작
+```
+
+**수용 기준**:
+
+- "라운드 1 완료(status='completed') 후 재응시 클릭 시, POST /questions/generate 호출로 새로운 session_id를 획득한다."
+- "새로 생성된 세션의 status는 'in_progress'이다."
+- "이전 세션(completed)은 변경되지 않는다."
+- "프론트엔드에서 재응시 시 이전 자기평가 정보가 자동 로드되거나 수정 가능하다."
 
 ---
 

@@ -20,6 +20,7 @@ REQ: REQ-A-ItemGen
 
 import json
 import logging
+import re
 import uuid
 from datetime import UTC, datetime
 
@@ -29,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from src.agent.config import AGENT_CONFIG, create_llm
 from src.agent.fastmcp_server import TOOLS
+from src.agent.output_converter import AgentOutputConverter
 from src.agent.prompts.react_prompt import get_react_prompt
 from src.agent.round_id_generator import RoundIDGenerator
 
@@ -36,6 +38,101 @@ logger = logging.getLogger(__name__)
 
 # Round ID generator instance (singleton pattern)
 _round_id_gen = RoundIDGenerator()
+
+
+# ============================================================================
+# Helper Functions for Robust JSON Parsing
+# ============================================================================
+
+
+def parse_json_robust(json_str: str, max_attempts: int = 5) -> dict | list:
+    """
+    Robust JSON parsing with multiple cleanup strategies.
+
+    This function attempts to parse JSON using various cleanup strategies when
+    the initial parse fails. This handles edge cases like unescaped newlines,
+    trailing commas, Python True/False, etc.
+
+    Args:
+        json_str: Raw JSON string from LLM response
+        max_attempts: Maximum number of cleanup strategies to try (default 5)
+
+    Returns:
+        Parsed JSON object or list
+
+    Raises:
+        json.JSONDecodeError: If all cleanup strategies fail
+
+    """
+    if not json_str or not isinstance(json_str, str):
+        raise ValueError("json_str must be a non-empty string")
+
+    # Strategy list: (name, cleanup_function)
+    cleanup_strategies = [
+        # Strategy 1: No cleanup - try as-is
+        ("no_cleanup", lambda s: s),
+        # Strategy 2: Fix Python literals (True/False/None)
+        (
+            "fix_python_literals",
+            lambda s: re.sub(r"\b(True|False)\b", lambda m: m.group(1).lower(), re.sub(r"\bNone\b", "null", s)),
+        ),
+        # Strategy 3: Remove trailing commas
+        ("fix_trailing_commas", lambda s: re.sub(r",(\s*[}\]])", r"\1", s)),
+        # Strategy 4: Fix escaped quotes and backslashes
+        ("fix_escapes", lambda s: re.sub(r"\\(?!\\|/|[btnfr])", "\\\\", s)),
+        # Strategy 5: Remove control characters
+        ("remove_control_chars", lambda s: s.encode("utf-8", "ignore").decode("utf-8")),
+    ]
+
+    last_error = None
+    for attempt_num, (strategy_name, cleanup_fn) in enumerate(cleanup_strategies, 1):
+        try:
+            cleaned_json = cleanup_fn(json_str)
+            result = json.loads(cleaned_json)
+
+            if attempt_num > 1:
+                logger.info(
+                    f"✅ JSON parsing succeeded with strategy '{strategy_name}' "
+                    f"(attempt {attempt_num}/{len(cleanup_strategies)})"
+                )
+
+            return result
+
+        except json.JSONDecodeError as e:
+            last_error = e
+            logger.debug(
+                f"   Attempt {attempt_num}/{len(cleanup_strategies)} "
+                f"(strategy: {strategy_name}) failed at char {e.pos}: {e.msg}"
+            )
+            continue
+
+        except Exception as e:
+            logger.debug(f"   Attempt {attempt_num} ({strategy_name}) error: {e}")
+            continue
+
+    # All strategies failed
+    logger.error(
+        f"❌ JSON parsing failed after {len(cleanup_strategies)} cleanup strategies. "
+        f"Last error: {last_error} at char {last_error.pos if last_error else 'unknown'}"
+    )
+    raise last_error or ValueError("JSON parsing failed with unknown error")
+
+
+def normalize_answer_schema(answer_schema_raw: str | dict | None) -> str:
+    """
+    Normalize answer_schema to ensure it's always a string (deprecated).
+
+    This function is maintained for backward compatibility.
+    Use AgentOutputConverter.normalize_schema_type() instead.
+
+    Args:
+        answer_schema_raw: Raw answer_schema value (could be str or dict)
+
+    Returns:
+        Normalized answer_schema as string: "exact_match" | "keyword_match" | "semantic_match"
+
+    """
+    return AgentOutputConverter.normalize_schema_type(answer_schema_raw)
 
 
 # ============================================================================
@@ -840,7 +937,7 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
 
             logger.info("=" * 80)
 
-            # 0. ReAct 텍스트 형식: Final Answer JSON 파싱 시도
+            # 0. ReAct 텍스트 형식: Final Answer JSON 파싱 시도 (AgentOutputConverter 사용)
             logger.info("\n🔍 Attempting to parse Final Answer JSON from AIMessage...")
             items: list[GeneratedItem] = []
             failed_count = 0
@@ -857,101 +954,28 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
                         logger.info("✓ Found 'Final Answer:' in AIMessage content")
 
                         try:
-                            # Final Answer 뒤의 JSON 추출
-                            json_start = content.find("Final Answer:") + len("Final Answer:")
-                            json_str = content[json_start:].strip()
+                            # Use AgentOutputConverter for robust JSON parsing
+                            questions_data = AgentOutputConverter.parse_final_answer_json(content)
+                            logger.info("✅ Parsed JSON successfully using AgentOutputConverter")
 
-                            # ```json ... ``` 마크다운 제거
-                            if "```json" in json_str:
-                                json_str = json_str.split("```json")[1].split("```")[0].strip()
-                            elif "```" in json_str:
-                                json_str = json_str.split("```")[1].split("```")[0].strip()
+                            # Extract items using converter
+                            extracted_items = AgentOutputConverter.extract_items_from_questions(questions_data)
+                            logger.info(f"✅ Extracted {len(extracted_items)} items from questions data")
 
-                            # Unescape 처리: Agent가 escaped quotes를 사용할 수 있음
-                            # Replace escaped quotes (order matters: handle single quotes first)
-                            # Remove backslash before single quotes (not valid in JSON strings)
-                            json_str = json_str.replace("\\'", "'")
-                            # Replace escaped double quotes with regular quotes
-                            json_str = json_str.replace('\\"', '"')
-
-                            # Convert Python None to JSON null
-                            import re
-
-                            json_str = re.sub(r"\bNone\b", "null", json_str)
-
-                            logger.info(f"📋 Extracted JSON (first 300 chars): {json_str[:300]}...")
-
-                            # JSON 파싱
-                            try:
-                                questions_data = json.loads(json_str)
-                            except json.JSONDecodeError as e:
-                                # Additional cleaning if initial parse fails
-                                logger.warning(
-                                    f"⚠️  Initial JSON parse failed at char {e.pos}, applying additional cleanup"
-                                )
-                                # More aggressive cleanup for edge cases
-                                json_str = re.sub(r"\\\'", "'", json_str)
-                                json_str = re.sub(r'\\\\"', '"', json_str)
-                                json_str = re.sub(
-                                    r"\\(?![ubnftr/])", "", json_str
-                                )  # Remove backslashes not part of valid escape sequences
-                                # Convert Python True/False to JSON true/false
-                                json_str = re.sub(r"\bTrue\b", "true", json_str)
-                                json_str = re.sub(r"\bFalse\b", "false", json_str)
-                                # Convert Python None to JSON null (redundant but safe)
-                                json_str = re.sub(r"\bNone\b", "null", json_str)
-                                logger.info(f"📋 Cleaned JSON (first 300 chars): {json_str[:300]}...")
-                                questions_data = json.loads(json_str)
-
-                            if not isinstance(questions_data, list):
-                                questions_data = [questions_data]
-
-                            logger.info(f"✅ Parsed {len(questions_data)} question(s) from Final Answer JSON")
-
-                            # 각 question을 GeneratedItem으로 변환
-                            for q in questions_data:
+                            # Add saved_at timestamp and append
+                            for item in extracted_items:
                                 try:
-                                    # Determine question type for answer_schema structure
-                                    question_type = q.get("type", "multiple_choice")
-
-                                    # answer_schema 구성 (type-aware)
-                                    # Tool 5 반환값에서 flattened 필드 사용 (correct_answer, correct_keywords)
-                                    if question_type == "short_answer":
-                                        # Short answer: include keywords only
-                                        answer_schema = AnswerSchema(
-                                            type=q.get("answer_schema", "keyword_match"),
-                                            keywords=q.get("correct_keywords"),
-                                            correct_answer=None,  # Not used for short answer
-                                        )
-                                    else:
-                                        # MC/TF: include correct_answer only
-                                        answer_schema = AnswerSchema(
-                                            type=q.get("answer_schema", "exact_match"),
-                                            keywords=None,  # Not used for MC/TF
-                                            correct_answer=q.get("correct_answer"),
-                                        )
-                                    logger.info(
-                                        f"  ✓ answer_schema populated: type={answer_schema.type}, keywords={answer_schema.keywords is not None}, correct_answer={answer_schema.correct_answer is not None}"
-                                    )
-
-                                    item = GeneratedItem(
-                                        id=q.get("question_id", f"q_{uuid.uuid4().hex[:8]}"),
-                                        type=question_type,
-                                        stem=q.get("stem", ""),
-                                        choices=q.get("choices"),
-                                        answer_schema=answer_schema,
-                                        difficulty=q.get("difficulty", 5),
-                                        category=q.get("category", "AI"),
-                                        validation_score=q.get("validation_score", 0.0),
-                                        saved_at=datetime.now(UTC).isoformat(),
-                                    )
-                                    items.append(item)
-                                    logger.info(f"  ✓ Created GeneratedItem: {item.id} ({item.stem[:50]}...)")
-
+                                    # extracted_items are already dicts, not Pydantic models
+                                    # Add saved_at timestamp to dict
+                                    item_dict = item if isinstance(item, dict) else item.model_dump()
+                                    item_dict["saved_at"] = datetime.now(UTC).isoformat()
+                                    updated_item = GeneratedItem(**item_dict)
+                                    items.append(updated_item)
+                                    logger.info(f"  ✓ GeneratedItem: {updated_item.id} ({updated_item.stem[:50]}...)")
                                 except Exception as e:
-                                    logger.error(f"  ✗ Failed to create GeneratedItem: {e}")
+                                    logger.error(f"  ✗ Failed to process GeneratedItem: {e}")
                                     failed_count += 1
-                                    error_messages.append(f"GeneratedItem creation error: {str(e)}")
+                                    error_messages.append(f"Item processing error: {str(e)}")
                                     continue
 
                             # Final Answer JSON이 파싱되면 도구 추출 스킵
@@ -965,6 +989,9 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
                                 )
                                 break
 
+                        except ValueError as e:
+                            logger.debug(f"⚠️  No valid Final Answer JSON found: {str(e)}")
+                            continue
                         except json.JSONDecodeError as e:
                             logger.warning(f"❌ Failed to parse Final Answer JSON: {e}")
                             error_messages.append(f"Final Answer JSON decode error: {str(e)}")

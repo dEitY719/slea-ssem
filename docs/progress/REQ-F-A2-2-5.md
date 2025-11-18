@@ -166,6 +166,7 @@ const handleCompleteClick = useCallback(async () => {
 ### Git Commit
 
 **Primary Commits**:
+
 - `8a06b74` - feat: Add self-assessment completion and profile review (초기 구현)
 - `2661b60` - Refactor: Improve profile survey and navigation logic (리팩토링 및 개선)
 - `aa04368` - Feat: Cache and display survey level on profile review page (캐싱 추가)

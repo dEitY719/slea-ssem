@@ -89,10 +89,13 @@ def generate_questions(request):
 
 📍 시점 3: 사용자가 모든 5개 문제 풀이 완료
 ┗━ 호출: POST /score
-   ├─ 요청: {session_id}
-   └─ 응답: {total_score, correct_count, wrong_categories}
-   └─ DB: TestResult 생성 + TestSession.status = "completed"
-   └─ 역할: Round 1 채점 완료, Round 2 적응형 난이도 결정
+   ├─ 요청: {session_id} (또는 {session_id, auto_complete: true})
+   ├─ 응답: {total_score, correct_count, wrong_categories, auto_completed: true}
+   ├─ DB: TestResult 생성 + TestSession.status = "completed" (자동)
+   ├─ 역할: Round 1 채점 완료, Round 2 적응형 난이도 결정
+   └─ NEW: 자동 완료 (auto_complete 기본값 true)
+      └─ 이전: POST /score 후 별도로 POST /session/{id}/complete 필요
+      └─ 현재: POST /score 후 자동으로 session 완료됨 (사용자 조치 불필요)
 
 📍 선택 사항: 각 문제를 풀고 즉시 피드백 원할 때
 ┗━ 호출: POST /answer/score (시점 2.5 - 선택)
@@ -294,6 +297,110 @@ SLEA-SSEM의 Frontend-Backend API 통신 플로우를 정리했습니다.
 
 ---
 
+---
+
+## 🚀 NEW: Auto-Complete After Score (자동 완료)
+
+**변경 사항**: POST /score 호출 후 자동으로 session이 완료됩니다.
+
+### 이전 플로우 (더 이상 필요 없음)
+
+```
+1️⃣ POST /score
+   ├─ 요청: {session_id}
+   └─ 응답: {score, correct_count, total_count, wrong_categories}
+
+2️⃣ POST /session/{session_id}/complete  ← 별도 호출 필요
+   ├─ 요청: {}
+   └─ 응답: {status: "completed"}
+```
+
+### 새로운 플로우 (현재)
+
+```
+1️⃣ POST /score
+   ├─ 요청: {session_id}
+   ├─ 응답: {
+   │    score: 85,
+   │    correct_count: 17,
+   │    total_count: 20,
+   │    wrong_categories: {...},
+   │    auto_completed: true  ← NEW: 자동 완료됨
+   │  }
+   └─ DB 자동 업데이트:
+      └─ TestSession.status = "completed" (자동)
+      └─ 사용자가 별도로 complete 호출할 필요 없음
+```
+
+### auto_complete 파라미터 (선택 사항)
+
+**기본값**: `auto_complete=true` (자동 완료)
+
+```python
+# 사용 예시
+
+# 1. 자동 완료 (권장 - 기본값)
+POST /questions/score?session_id=abc123
+# auto_complete 파라미터 생략 시 기본값 true 적용
+# 응답: {auto_completed: true, ...}
+
+# 2. 자동 완료 명시적 활성화
+POST /questions/score?session_id=abc123&auto_complete=true
+# 응답: {auto_completed: true, ...}
+
+# 3. 자동 완료 비활성화 (필요시)
+POST /questions/score?session_id=abc123&auto_complete=false
+# 응답: {auto_completed: false, ...}
+# DB: TestSession.status = "in_progress" (변경 안 함)
+```
+
+### Frontend 변경 사항
+
+#### ✅ 할 일 (이미 자동)
+
+- ✓ POST /autosave (5번) → 각 문제 저장
+- ✓ POST /score (1번) → 라운드 완료 + 채점 + **자동 완료**
+
+#### ❌ 하지 말아야 할 일 (더 이상 필요 없음)
+
+- ~~POST /session/{session_id}/complete~~ (불필요)
+
+### 응답 필드 설명
+
+```json
+{
+  "score": 85,                          // 라운드 총 점수
+  "correct_count": 17,                  // 맞은 문제 수
+  "total_count": 20,                    // 전체 문제 수
+  "wrong_categories": {
+    "AI": 2,
+    "ML": 1
+  },
+  "auto_completed": true                // NEW: 자동 완료 여부
+}
+```
+
+**`auto_completed` 필드**:
+
+- `true`: 모든 문제가 채점되어 session이 자동으로 완료됨
+- `false`: auto_complete=false를 명시했거나, 아직 채점되지 않은 문제가 있음 (드문 경우)
+
+### 데이터 일관성 보장
+
+**이전 문제점**:
+
+- Frontend가 complete 호출을 깜빡하면 session status가 "in_progress" 상태로 유지
+- 사용자 점수가 최종 ranking에 포함되지 않음
+- 데이터 불일치 발생
+
+**현재 개선**:
+
+- POST /score 호출 직후 자동으로 session.status = "completed"
+- Frontend 조치 없이도 데이터 일관성 보장
+- 누락 위험 제거
+
+---
+
 ## 📁 문서 네비게이션
 
 당신의 이해를 위해:
@@ -301,3 +408,4 @@ SLEA-SSEM의 Frontend-Backend API 통신 플로우를 정리했습니다.
 - **이 문서**: Frontend-Backend 통신 플로우 (정확한 API 순서)
 - `DB_QUICK_REFERENCE.md`: DB 구조 (5분 참고)
 - `DB_STRUCTURE_AND_FLOW.md`: 상세 분석 (30분 깊이 있는 이해)
+- `AUTO-COMPLETE-AFTER-SCORE-PROPOSAL.md`: 자동 완료 상세 설계 문서

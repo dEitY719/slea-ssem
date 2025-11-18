@@ -15,6 +15,7 @@
 > 로그인 완료 후 (nickname != NULL), 홈화면 헤더 오른쪽 상단에 사용자의 닉네임을 표시해야 한다. "회원가입" 버튼이 있던 위치에 표시한다.
 
 **Acceptance Criteria**:
+
 - ✅ nickname != NULL 상태에서 헤더 오른쪽 상단에 닉네임이 표시된다
 - ✅ nickname == NULL 상태에서는 '회원가입' 버튼이 표시되고, nickname != NULL 상태에서는 닉네임이 표시된다 (상호 배타성)
 
@@ -29,6 +30,7 @@
 ### Behavior Specification
 
 **조건부 렌더링 로직**:
+
 ```typescript
 - isLoading === true → 아무것도 표시하지 않음
 - nickname === null → "회원가입" 버튼 표시
@@ -36,6 +38,7 @@
 ```
 
 **Non-functional Requirements**:
+
 - **성능**: nickname prop 변경 시 즉시 반영 (< 50ms)
 - **접근성**: aria-label="현재 로그인: {nickname}" 제공
 - **반응형**: 모바일에서도 정상 표시 (max-width: 120px)
@@ -69,12 +72,14 @@
 #### 1. Header.tsx
 
 **Changes**:
+
 - 닉네임 표시 조건 추가 (`nickname !== null`)
 - 닉네임 표시 영역 추가 (`.nickname-display`)
 - aria-label 추가 (접근성)
 - JSDoc 주석 업데이트
 
 **Key Code**:
+
 ```tsx
 {nickname !== null && (
   <div className="nickname-display" aria-label={`현재 로그인: ${nickname}`}>
@@ -86,11 +91,13 @@
 #### 2. Header.css
 
 **Changes**:
+
 - `.nickname-display` 스타일 추가 (반투명 배경, 흰색 텍스트)
 - `.nickname-text` 스타일 추가 (ellipsis 처리)
 - 모바일 반응형 스타일 추가
 
 **Key Styles**:
+
 - Desktop: max-width 200px, padding 0.5rem 1.5rem
 - Mobile: max-width 120px, padding 0.4rem 1rem
 - Hover effect: 배경 투명도 증가
@@ -98,6 +105,7 @@
 #### 3. Header.test.tsx
 
 **Changes**:
+
 - REQ-F-A2-Profile-Access-1 테스트 suite 추가
 - 8개 테스트 케이스 추가
 - BrowserRouter mock 유지
@@ -175,6 +183,7 @@ Test Files  1 passed (1)
 **Branch**: `cursor/implement-nickname-display-and-profile-edit-access-146a`
 
 **Commit Message**:
+
 ```
 feat: Implement REQ-F-A2-Profile-Access-1 - Display nickname in header
 
@@ -192,6 +201,7 @@ Files: Header.tsx, Header.css, Header.test.tsx
 ```
 
 **Modified Files**:
+
 - `src/frontend/src/components/Header.tsx`
 - `src/frontend/src/components/Header.css`
 - `src/frontend/src/components/__tests__/Header.test.tsx`

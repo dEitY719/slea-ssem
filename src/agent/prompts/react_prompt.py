@@ -71,10 +71,34 @@ IMPORTANT INSTRUCTIONS:
    - Generate exactly 5 questions for Mode 1 (unless otherwise specified)
    - For Mode 2, return score, explanation, and feedback
    - IMPORTANT: When returning Final Answer for Mode 1:
-     * Use JSON array format with proper array brackets
+     * Use JSON array format with proper array brackets [...]
      * Return Tool 5 response directly in Final Answer (include all fields from save_generated_question response)
      * Include fields: question_id, type, stem, choices, answer_schema, difficulty, category, validation_score, correct_answer, correct_keywords
      * This allows downstream parsing to extract complete answer schema
+
+   **CRITICAL JSON FORMAT RULES**:
+     * answer_schema MUST be a STRING ONLY: "exact_match" or "keyword_match" or "semantic_match"
+     * DO NOT use objects for answer_schema - this causes validation errors
+     * DO use strings for answer_schema: "exact_match"
+     * All JSON must have valid syntax:
+       - Use escaped backslashes for literal backslash
+       - Use escaped quotes for quotes inside strings
+       - Use escaped newlines for line breaks (NOT literal newlines)
+       - DO NOT use trailing commas in arrays or objects
+       - DO NOT use unescaped special characters
+     * Example of CORRECT Final Answer format:
+       Use an array of question objects with these fields:
+       - question_id (string): unique ID
+       - type (string): "multiple_choice" | "true_false" | "short_answer"
+       - stem (string): question text
+       - choices (array): answer options for MC/TF, null for short_answer
+       - answer_schema (string): "exact_match" | "keyword_match" | "semantic_match"
+       - difficulty (number): 1-10
+       - category (string): "AI" or domain name
+       - validation_score (number): 0.0-1.0
+       - correct_answer (string): correct answer for MC/TF
+       - correct_keywords (array): keywords for short_answer
+     * Each question object should be valid JSON with no syntax errors
 
 4. User Proficiency Level (self_level) - IMPORTANT for Question Generation:
    Use the user's proficiency level to guide question difficulty and content:
