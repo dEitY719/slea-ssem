@@ -73,8 +73,8 @@ const HomePage: React.FC = () => {
             },
           })
         } else {
-          // User has nickname but no profile yet, proceed to self-assessment
-          navigate('/self-assessment')
+          // User has nickname but no profile yet, proceed to career info
+          navigate('/career-info')
         }
       } catch (err) {
         // Log detailed error for debugging
