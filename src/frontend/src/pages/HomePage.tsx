@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { PlayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { getToken } from '../utils/auth'
 import { useUserProfile } from '../hooks/useUserProfile'
+import { profileService } from '../services/profileService'
 import { Header } from '../components/Header'
 import './HomePage.css'
 
@@ -46,8 +47,17 @@ const HomePage: React.FC = () => {
   }, [checkNickname])
 
     const handleStart = async () => {
-      // REQ-F-A2-1: Check if user has set nickname before proceeding
       try {
+        // REQ-F-A3-5: Check consent status first
+        const consentStatus = await profileService.getConsentStatus()
+
+        if (!consentStatus.consented) {
+          // User hasn't consented yet, redirect to consent page
+          navigate('/consent')
+          return
+        }
+
+        // REQ-F-A2-1: Check if user has set nickname before proceeding
         const currentNickname = await checkNickname()
         const { surveyId, level } = getSurveyProgress()
 

@@ -63,6 +63,30 @@ export interface SurveyUpdateResponse {
 }
 
 /**
+ * Consent status response - REQ: REQ-F-A3
+ */
+export interface ConsentStatusResponse {
+  consented: boolean
+  consent_at: string | null
+}
+
+/**
+ * Consent update request - REQ: REQ-F-A3
+ */
+export interface ConsentUpdateRequest {
+  consent: boolean
+}
+
+/**
+ * Consent update response - REQ: REQ-F-A3
+ */
+export interface ConsentUpdateResponse {
+  message: string
+  consented: boolean
+  consent_at: string | null
+}
+
+/**
  * Profile service
  * Handles all profile-related API calls
  */
@@ -108,6 +132,29 @@ export const profileService = {
    */
   async updateSurvey(surveyData: SurveyUpdateRequest): Promise<SurveyUpdateResponse> {
     return transport.put<SurveyUpdateResponse>('/api/profile/survey', surveyData)
+  },
+
+  /**
+   * Get current user's privacy consent status
+   *
+   * REQ: REQ-F-A3-5
+   *
+   * @returns Consent status with timestamp
+   */
+  async getConsentStatus(): Promise<ConsentStatusResponse> {
+    return transport.get<ConsentStatusResponse>('/api/profile/consent')
+  },
+
+  /**
+   * Update current user's privacy consent status
+   *
+   * REQ: REQ-F-A3-5
+   *
+   * @param consent - Consent status (true to grant, false to withdraw)
+   * @returns Consent update response
+   */
+  async updateConsent(consent: boolean): Promise<ConsentUpdateResponse> {
+    return transport.post<ConsentUpdateResponse>('/api/profile/consent', { consent })
   },
 
 }

@@ -6,6 +6,7 @@ const API_AUTH_LOGIN = '/api/auth/login'
 const API_PROFILE_NICKNAME = '/api/profile/nickname'
 const API_PROFILE_NICKNAME_CHECK = '/api/profile/nickname/check'
 const API_PROFILE_REGISTER = '/api/profile/register'
+const API_PROFILE_CONSENT = '/api/profile/consent'
 const API_PROFILE_SURVEY = '/api/profile/survey'
 const API_QUESTIONS_GENERATE = '/api/questions/generate'
 const API_QUESTIONS_AUTOSAVE = '/api/questions/autosave'
@@ -46,6 +47,10 @@ const mockData: Record<string, any> = {
   [API_PROFILE_NICKNAME_CHECK]: {
     available: true,
     suggestions: [],
+  },
+  [API_PROFILE_CONSENT]: {
+    consented: false,  // Change to true to test already consented user
+    consent_at: null,
   },
   [API_PROFILE_SURVEY]: {
     level: null,
@@ -441,6 +446,31 @@ class MockTransport implements HttpTransport {
       return response as T
     }
 
+    // Handle consent update endpoint
+    if (normalizedUrl === API_PROFILE_CONSENT && method === 'POST') {
+      const consent = requestData?.consent
+
+      if (typeof consent !== 'boolean') {
+        throw new Error('consent must be a boolean')
+      }
+
+      // Update mock consent data
+      mockData[API_PROFILE_CONSENT] = {
+        consented: consent,
+        consent_at: consent ? new Date().toISOString() : null,
+      }
+
+      const response = {
+        message: consent ? '개인정보 수집 및 이용에 동의하였습니다.' : '동의가 철회되었습니다.',
+        consented: consent,
+        consent_at: mockData[API_PROFILE_CONSENT].consent_at,
+      }
+
+      console.log('[Mock Transport] Consent updated:', mockData[API_PROFILE_CONSENT])
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
     // Handle survey update endpoint
     if (normalizedUrl === API_PROFILE_SURVEY && method === 'PUT') {
       const validLevels = ['beginner', 'intermediate', 'advanced']
@@ -563,6 +593,13 @@ class MockTransport implements HttpTransport {
       return response as T
     }
 
+    // Handle GET /profile/consent endpoint
+    if (normalizedUrl === API_PROFILE_CONSENT && method === 'GET') {
+      const response = mockData[API_PROFILE_CONSENT]
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
       // Handle GET /api/results/{sessionId} endpoint
       if (normalizedUrl.startsWith('/api/results/') && method === 'GET') {
         if (normalizedUrl === API_RESULTS_PREVIOUS) {
@@ -673,7 +710,7 @@ export function resetMockResults() {
 
 // Helper to simulate different scenarios
 export function setMockScenario(
-  scenario: 'no-nickname' | 'has-nickname' | 'no-survey' | 'has-survey' | 'error' | 'reset-results'
+  scenario: 'no-nickname' | 'has-nickname' | 'no-consent' | 'has-consent' | 'no-survey' | 'has-survey' | 'error' | 'reset-results'
 ) {
   switch (scenario) {
     case 'no-nickname':
@@ -684,6 +721,20 @@ export function setMockScenario(
       mockData[API_PROFILE_NICKNAME].nickname = 'mockuser'
       mockData[API_PROFILE_NICKNAME].registered_at = '2025-11-11T00:00:00Z'
       mockData[API_PROFILE_NICKNAME].updated_at = '2025-11-11T00:00:00Z'
+      mockConfig.simulateError = false
+      break
+    case 'no-consent':
+      mockData[API_PROFILE_CONSENT] = {
+        consented: false,
+        consent_at: null,
+      }
+      mockConfig.simulateError = false
+      break
+    case 'has-consent':
+      mockData[API_PROFILE_CONSENT] = {
+        consented: true,
+        consent_at: '2025-11-18T00:00:00Z',
+      }
       mockConfig.simulateError = false
       break
     case 'no-survey':
