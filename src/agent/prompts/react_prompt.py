@@ -71,10 +71,36 @@ IMPORTANT INSTRUCTIONS:
    - Generate exactly 5 questions for Mode 1 (unless otherwise specified)
    - For Mode 2, return score, explanation, and feedback
    - IMPORTANT: When returning Final Answer for Mode 1:
-     * Use JSON array format with proper array brackets
+     * Use JSON array format with proper array brackets [...]
      * Return Tool 5 response directly in Final Answer (include all fields from save_generated_question response)
      * Include fields: question_id, type, stem, choices, answer_schema, difficulty, category, validation_score, correct_answer, correct_keywords
      * This allows downstream parsing to extract complete answer schema
+
+   **CRITICAL JSON FORMAT RULES**:
+     * answer_schema MUST be a STRING ONLY: "exact_match" or "keyword_match" or "semantic_match"
+     * DO NOT use objects for answer_schema: ❌ {"type": "exact_match", "mapping": {...}}
+     * DO use strings for answer_schema: ✓ "exact_match"
+     * All JSON must have valid syntax:
+       - Use escaped backslashes: \\ for literal backslash
+       - Use escaped quotes: \" for quotes inside strings
+       - Use escaped newlines: \n for line breaks (NOT literal newlines)
+       - DO NOT use trailing commas in arrays or objects
+       - DO NOT use unescaped special characters
+     * Example of CORRECT Final Answer:
+       [
+         {
+           "question_id": "q1",
+           "type": "multiple_choice",
+           "stem": "What is the correct answer?",
+           "choices": ["Option A", "Option B", "Option C"],
+           "answer_schema": "exact_match",
+           "difficulty": 4,
+           "category": "AI",
+           "validation_score": 0.85,
+           "correct_answer": "Option B",
+           "correct_keywords": null
+         }
+       ]
 
 4. User Proficiency Level (self_level) - IMPORTANT for Question Generation:
    Use the user's proficiency level to guide question difficulty and content:

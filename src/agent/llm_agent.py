@@ -20,6 +20,7 @@ REQ: REQ-A-ItemGen
 
 import json
 import logging
+import re
 import uuid
 from datetime import UTC, datetime
 
@@ -36,6 +37,113 @@ logger = logging.getLogger(__name__)
 
 # Round ID generator instance (singleton pattern)
 _round_id_gen = RoundIDGenerator()
+
+
+# ============================================================================
+# Helper Functions for Robust JSON Parsing
+# ============================================================================
+
+
+def parse_json_robust(json_str: str, max_attempts: int = 5) -> dict | list:
+    """
+    Robust JSON parsing with multiple cleanup strategies.
+
+    This function attempts to parse JSON using various cleanup strategies when
+    the initial parse fails. This handles edge cases like unescaped newlines,
+    trailing commas, Python True/False, etc.
+
+    Args:
+        json_str: Raw JSON string from LLM response
+        max_attempts: Maximum number of cleanup strategies to try (default 5)
+
+    Returns:
+        Parsed JSON object or list
+
+    Raises:
+        json.JSONDecodeError: If all cleanup strategies fail
+    """
+    if not json_str or not isinstance(json_str, str):
+        raise ValueError("json_str must be a non-empty string")
+
+    # Strategy list: (name, cleanup_function)
+    cleanup_strategies = [
+        # Strategy 1: No cleanup - try as-is
+        ("no_cleanup", lambda s: s),
+
+        # Strategy 2: Fix Python literals (True/False/None)
+        ("fix_python_literals", lambda s: re.sub(r"\b(True|False)\b", lambda m: m.group(1).lower(), re.sub(r"\bNone\b", "null", s))),
+
+        # Strategy 3: Remove trailing commas
+        ("fix_trailing_commas", lambda s: re.sub(r",(\s*[}\]])", r"\1", s)),
+
+        # Strategy 4: Fix escaped quotes and backslashes
+        ("fix_escapes", lambda s: re.sub(r"\\(?!\\|/|[btnfr])", "\\\\", s)),
+
+        # Strategy 5: Remove control characters
+        ("remove_control_chars", lambda s: s.encode('utf-8', 'ignore').decode('utf-8')),
+    ]
+
+    last_error = None
+    for attempt_num, (strategy_name, cleanup_fn) in enumerate(cleanup_strategies, 1):
+        try:
+            cleaned_json = cleanup_fn(json_str)
+            result = json.loads(cleaned_json)
+
+            if attempt_num > 1:
+                logger.info(
+                    f"✅ JSON parsing succeeded with strategy '{strategy_name}' "
+                    f"(attempt {attempt_num}/{len(cleanup_strategies)})"
+                )
+
+            return result
+
+        except json.JSONDecodeError as e:
+            last_error = e
+            logger.debug(
+                f"   Attempt {attempt_num}/{len(cleanup_strategies)} "
+                f"(strategy: {strategy_name}) failed at char {e.pos}: {e.msg}"
+            )
+            continue
+
+        except Exception as e:
+            logger.debug(f"   Attempt {attempt_num} ({strategy_name}) error: {e}")
+            continue
+
+    # All strategies failed
+    logger.error(
+        f"❌ JSON parsing failed after {len(cleanup_strategies)} cleanup strategies. "
+        f"Last error: {last_error} at char {last_error.pos if last_error else 'unknown'}"
+    )
+    raise last_error or ValueError("JSON parsing failed with unknown error")
+
+
+def normalize_answer_schema(answer_schema_raw: str | dict | None) -> str:
+    """
+    Normalize answer_schema to ensure it's always a string.
+
+    Handles cases where LLM returns answer_schema as a dict instead of string.
+
+    Args:
+        answer_schema_raw: Raw answer_schema value from LLM (could be str or dict)
+
+    Returns:
+        Normalized answer_schema as string: "exact_match" | "keyword_match" | "semantic_match"
+    """
+    if isinstance(answer_schema_raw, dict):
+        # Extract 'type' field if it's a dict
+        schema_type = answer_schema_raw.get("type")
+        if isinstance(schema_type, str):
+            return schema_type
+
+    if isinstance(answer_schema_raw, str):
+        return answer_schema_raw
+
+    # Default fallback
+    logger.warning(
+        f"⚠️  answer_schema has unexpected type: {type(answer_schema_raw).__name__}. "
+        f"Using default 'exact_match'"
+    )
+    return "exact_match"
 
 
 # ============================================================================
@@ -881,27 +989,13 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
 
                             logger.info(f"📋 Extracted JSON (first 300 chars): {json_str[:300]}...")
 
-                            # JSON 파싱
+                            # JSON 파싱 (robust parser 사용)
                             try:
-                                questions_data = json.loads(json_str)
+                                questions_data = parse_json_robust(json_str)
                             except json.JSONDecodeError as e:
-                                # Additional cleaning if initial parse fails
-                                logger.warning(
-                                    f"⚠️  Initial JSON parse failed at char {e.pos}, applying additional cleanup"
-                                )
-                                # More aggressive cleanup for edge cases
-                                json_str = re.sub(r"\\\'", "'", json_str)
-                                json_str = re.sub(r'\\\\"', '"', json_str)
-                                json_str = re.sub(
-                                    r"\\(?![ubnftr/])", "", json_str
-                                )  # Remove backslashes not part of valid escape sequences
-                                # Convert Python True/False to JSON true/false
-                                json_str = re.sub(r"\bTrue\b", "true", json_str)
-                                json_str = re.sub(r"\bFalse\b", "false", json_str)
-                                # Convert Python None to JSON null (redundant but safe)
-                                json_str = re.sub(r"\bNone\b", "null", json_str)
-                                logger.info(f"📋 Cleaned JSON (first 300 chars): {json_str[:300]}...")
-                                questions_data = json.loads(json_str)
+                                logger.warning(f"❌ Failed to parse Final Answer JSON after all cleanup strategies: {e}")
+                                error_messages.append(f"Final Answer JSON parsing failed: {str(e)}")
+                                continue
 
                             if not isinstance(questions_data, list):
                                 questions_data = [questions_data]
@@ -916,17 +1010,20 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
 
                                     # answer_schema 구성 (type-aware)
                                     # Tool 5 반환값에서 flattened 필드 사용 (correct_answer, correct_keywords)
+                                    # Normalize answer_schema to handle both string and dict formats
+                                    normalized_schema_type = normalize_answer_schema(q.get("answer_schema"))
+
                                     if question_type == "short_answer":
                                         # Short answer: include keywords only
                                         answer_schema = AnswerSchema(
-                                            type=q.get("answer_schema", "keyword_match"),
+                                            type=normalized_schema_type,
                                             keywords=q.get("correct_keywords"),
                                             correct_answer=None,  # Not used for short answer
                                         )
                                     else:
                                         # MC/TF: include correct_answer only
                                         answer_schema = AnswerSchema(
-                                            type=q.get("answer_schema", "exact_match"),
+                                            type=normalized_schema_type,
                                             keywords=None,  # Not used for MC/TF
                                             correct_answer=q.get("correct_answer"),
                                         )
