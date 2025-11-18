@@ -505,7 +505,7 @@ class AgentOutputConverter:
     @staticmethod
     def validate_generated_item(item: dict) -> bool:
         """
-        Generated item dict의 모든 필드 검증.
+        Validate all fields in a generated item dict.
 
         검사 항목:
         1. id: UUID 형식

@@ -120,7 +120,7 @@ def parse_json_robust(json_str: str, max_attempts: int = 5) -> dict | list:
 
 def normalize_answer_schema(answer_schema_raw: str | dict | None) -> str:
     """
-    (Deprecated) Normalize answer_schema to ensure it's always a string.
+    Normalize answer_schema to ensure it's always a string (deprecated).
 
     This function is maintained for backward compatibility.
     Use AgentOutputConverter.normalize_schema_type() instead.

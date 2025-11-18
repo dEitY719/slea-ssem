@@ -1441,7 +1441,7 @@ def _autosave_answer_internal(
     formatted_answer: dict[str, Any],
 ) -> bool:
     """
-    Internal function to autosave answer without user interaction.
+    Autosave answer without user interaction.
 
     Returns True if successful, False otherwise.
     """
