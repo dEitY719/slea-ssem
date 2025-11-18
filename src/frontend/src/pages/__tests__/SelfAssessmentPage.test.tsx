@@ -45,16 +45,39 @@ describe('SelfAssessmentPage', () => {
       localStorage.removeItem('lastSurveyLevel')
     })
 
-  test('renders level selection with 5 options and complete button', () => {
-    // REQ: REQ-F-A2-2-2
+  test('renders all 5 input fields with correct types', () => {
+    // REQ: REQ-F-A2-2-2 - 5개 필드 레이아웃
     renderWithRouter(<SelfAssessmentPage />)
 
     expect(screen.getByText(/자기평가 입력/i)).toBeInTheDocument()
+
+    // 1. 수준 (슬라이더 1-5)
     expect(screen.getByLabelText(/1 - 입문/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/2 - 초급/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/3 - 중급/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/4 - 고급/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/5 - 전문가/i)).toBeInTheDocument()
+
+    // 2. 경력(연차) - 숫자 입력
+    expect(screen.getByLabelText(/경력/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/경력/i)).toHaveAttribute('type', 'number')
+
+    // 3. 직군 - 라디오버튼 (S, E, M, G, F)
+    expect(screen.getByLabelText(/Software/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Engineering/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Marketing/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/기획/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Finance/i)).toBeInTheDocument()
+
+    // 4. 담당 업무 - 텍스트 입력
+    expect(screen.getByLabelText(/담당 업무/i)).toBeInTheDocument()
+
+    // 5. 관심분야 - 라디오버튼 (AI, ML, Backend, Frontend)
+    expect(screen.getByLabelText(/^AI$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^ML$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Backend/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Frontend/i)).toBeInTheDocument()
+
     expect(screen.getByRole('button', { name: /완료/i })).toBeInTheDocument()
   })
 
@@ -242,5 +265,150 @@ describe('SelfAssessmentPage', () => {
         )
       })
       mockConfig.delay = 0
+  })
+
+  test('submits all fields with correct backend API transformation', async () => {
+    // REQ: REQ-F-A2-2-2 - 백엔드 API 변환 (level 문자열, interests 배열)
+    const user = userEvent.setup()
+    renderWithRouter(<SelfAssessmentPage />)
+
+    // Fill all fields
+    await user.click(screen.getByLabelText(/4 - 고급/i))
+    await user.type(screen.getByLabelText(/경력/i), '10')
+    await user.click(screen.getByLabelText(/Engineering/i))
+    await user.type(screen.getByLabelText(/담당 업무/i), 'System Architecture')
+    await user.click(screen.getByLabelText(/Backend/i))
+
+    const completeButton = screen.getByRole('button', { name: /완료/i })
+    await user.click(completeButton)
+
+    await waitFor(() => {
+      const surveyData = getMockData('/api/profile/survey')
+      // Level: 4 → "Advanced"
+      expect(surveyData.level).toBe('advanced')
+      // Career: number
+      expect(surveyData.career).toBe(10)
+      // Job role: "E"
+      expect(surveyData.job_role).toBe('E')
+      // Duty: string
+      expect(surveyData.duty).toBe('System Architecture')
+      // Interests: "Backend" → ["Backend"]
+      expect(surveyData.interests).toEqual(['Backend'])
+    })
+  })
+
+  test('validates career input range (0-50)', async () => {
+    // REQ: REQ-F-A2-2-3 - 유효성 검사
+    const user = userEvent.setup()
+    renderWithRouter(<SelfAssessmentPage />)
+
+    const careerInput = screen.getByLabelText(/경력/i)
+
+    // Test min/max attributes
+    expect(careerInput).toHaveAttribute('min', '0')
+    expect(careerInput).toHaveAttribute('max', '50')
+
+    // Try to enter invalid value > 50
+    await user.type(careerInput, '100')
+    await user.click(screen.getByLabelText(/3 - 중급/i))
+
+    const completeButton = screen.getByRole('button', { name: /완료/i })
+    await user.click(completeButton)
+
+    // Should show validation error
+    await waitFor(() => {
+      expect(screen.getByText(/경력은 0~50 사이/i)).toBeInTheDocument()
+    })
+  })
+
+  test('validates duty input max length (500 chars)', async () => {
+    // REQ: REQ-F-A2-2-3 - 유효성 검사
+    const user = userEvent.setup()
+    renderWithRouter(<SelfAssessmentPage />)
+
+    const dutyInput = screen.getByLabelText(/담당 업무/i)
+
+    // Test maxLength attribute
+    expect(dutyInput).toHaveAttribute('maxLength', '500')
+
+    // Type exactly 500 characters - should work
+    const validText = 'a'.repeat(500)
+    await user.type(dutyInput, validText)
+
+    expect(dutyInput).toHaveValue(validText)
+  })
+
+  test('allows submission with only level selected (all other fields optional)', async () => {
+    // REQ: REQ-F-A2-2-2 - 모든 필드 선택사항
+    const user = userEvent.setup()
+    renderWithRouter(<SelfAssessmentPage />)
+
+    // Only select level
+    await user.click(screen.getByLabelText(/3 - 중급/i))
+
+    const completeButton = screen.getByRole('button', { name: /완료/i })
+    expect(completeButton).not.toBeDisabled()
+
+    await user.click(completeButton)
+
+    await waitFor(() => {
+      const surveyData = getMockData('/api/profile/survey')
+      expect(surveyData.level).toBe('intermediate')
+      expect(surveyData.career).toBe(0)
+      expect(surveyData.job_role).toBe('')
+      expect(surveyData.duty).toBe('')
+      expect(surveyData.interests).toEqual([])
+    })
+  })
+
+  test('converts "AI" interest to ["AI"] array', async () => {
+    // REQ: REQ-F-A2-2-2 - interests 배열 변환
+    const user = userEvent.setup()
+    renderWithRouter(<SelfAssessmentPage />)
+
+    await user.click(screen.getByLabelText(/3 - 중급/i))
+    await user.click(screen.getByLabelText(/^AI$/i))
+
+    const completeButton = screen.getByRole('button', { name: /완료/i })
+    await user.click(completeButton)
+
+    await waitFor(() => {
+      const surveyData = getMockData('/api/profile/survey')
+      expect(surveyData.interests).toEqual(['AI'])
+    })
+  })
+
+  test('converts "ML" interest to ["ML"] array', async () => {
+    // REQ: REQ-F-A2-2-2 - interests 배열 변환
+    const user = userEvent.setup()
+    renderWithRouter(<SelfAssessmentPage />)
+
+    await user.click(screen.getByLabelText(/3 - 중급/i))
+    await user.click(screen.getByLabelText(/^ML$/i))
+
+    const completeButton = screen.getByRole('button', { name: /완료/i })
+    await user.click(completeButton)
+
+    await waitFor(() => {
+      const surveyData = getMockData('/api/profile/survey')
+      expect(surveyData.interests).toEqual(['ML'])
+    })
+  })
+
+  test('converts "Backend" interest to ["Backend"] array', async () => {
+    // REQ: REQ-F-A2-2-2 - interests 배열 변환
+    const user = userEvent.setup()
+    renderWithRouter(<SelfAssessmentPage />)
+
+    await user.click(screen.getByLabelText(/3 - 중급/i))
+    await user.click(screen.getByLabelText(/Backend/i))
+
+    const completeButton = screen.getByRole('button', { name: /완료/i })
+    await user.click(completeButton)
+
+    await waitFor(() => {
+      const surveyData = getMockData('/api/profile/survey')
+      expect(surveyData.interests).toEqual(['Backend'])
+    })
   })
 })
