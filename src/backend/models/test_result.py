@@ -45,7 +45,7 @@ class TestResult(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     session_id: Mapped[str] = mapped_column(
         String(36),
-        ForeignKey("test_sessions.id"),
+        ForeignKey("test_sessions.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

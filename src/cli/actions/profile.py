@@ -21,6 +21,7 @@ def profile_help(context: CLIContext, *args: str) -> None:
     context.console.print("  profile reset_surveys         - 모든 Survey 기록 강제 삭제 (FK 무시, DEV용)")
     context.console.print("  profile get-consent           - 개인정보 동의 여부 확인 (인증 필요)")
     context.console.print("  profile set-consent           - 개인정보 동의 상태 변경 (인증 필요)")
+    context.console.print("  profile get-ranking           - 등급 및 랭킹 조회 (인증 필요)")
 
 
 def check_nickname_availability(context: CLIContext, *args: str) -> None:
@@ -498,3 +499,68 @@ def set_consent(context: CLIContext, *args: str) -> None:
         context.console.print("[dim]  Privacy consent withdrawn[/dim]")
 
     context.logger.info(f"Consent status changed: consent={consent}.")
+
+
+def get_ranking(context: CLIContext, *args: str) -> None:
+    """Get current user's grade and ranking."""
+    if not context.session.token:
+        context.console.print("[bold red]✗ Not authenticated[/bold red]")
+        context.console.print("[yellow]Please login first: auth login [username][/yellow]")
+        return
+
+    context.console.print("[dim]Fetching ranking and grade...[/dim]")
+
+    # JWT 토큰을 client에 설정
+    context.client.set_token(context.session.token)
+
+    # API 호출
+    status_code, response, error = context.client.make_request(
+        "GET",
+        "/profile/ranking",
+    )
+
+    if error:
+        context.console.print("[bold red]✗ Failed to fetch ranking[/bold red]")
+        context.console.print(f"[red]  Error: {error}[/red]")
+        context.logger.error(f"Ranking fetch failed: {error}")
+        return
+
+    if status_code != 200:
+        context.console.print(f"[bold red]✗ Failed (HTTP {status_code})[/bold red]")
+        if isinstance(response, dict) and "detail" in response:
+            context.console.print(f"[red]  {response['detail']}[/red]")
+        return
+
+    # Extract ranking data
+    grade = response.get("grade", "Unknown")
+    score = response.get("score", 0)
+    rank = response.get("rank", 0)
+    total_cohort_size = response.get("total_cohort_size", 0)
+    percentile_description = response.get("percentile_description", "")
+    percentile_confidence = response.get("percentile_confidence", "unknown")
+
+    # Display ranking information
+    context.console.print()
+    context.console.print("[bold cyan]═════════════════════════════════════════════[/bold cyan]")
+    context.console.print("[bold cyan]📊 Your Ranking and Grade[/bold cyan]")
+    context.console.print("[bold cyan]═════════════════════════════════════════════[/bold cyan]")
+    context.console.print()
+
+    # Grade
+    context.console.print(f"[bold]Grade:[/bold] [bold yellow]{grade}[/bold yellow]")
+
+    # Score
+    context.console.print(f"[bold]Composite Score:[/bold] [bold green]{score}/100[/bold green]")
+
+    # Rank
+    context.console.print(f"[bold]Rank:[/bold] [bold cyan]#{rank}[/bold cyan] out of {total_cohort_size}")
+
+    # Percentile
+    context.console.print(f"[bold]Percentile:[/bold] {percentile_description}")
+    context.console.print(f"[dim]  (Confidence: {percentile_confidence})[/dim]")
+
+    context.console.print()
+    context.console.print("[bold cyan]═════════════════════════════════════════════[/bold cyan]")
+    context.console.print()
+
+    context.logger.info(f"Fetched ranking: grade={grade}, score={score}, rank={rank}")

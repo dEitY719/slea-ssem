@@ -129,13 +129,18 @@ class ScoringService:
         answer_schema: dict[str, Any],  # noqa: ANN401
     ) -> tuple[bool, float]:
         """
-        Score multiple choice question (exact match).
+        Score multiple choice question (text-based matching with normalization).
 
         REQ: REQ-B-B3-Score-2
 
         Scoring: 0-100 scale
         - Correct: 100.0
         - Incorrect: 0.0
+
+        Since choice order can be randomized for users, answers are compared
+        by full choice text. Comparison is normalized for robustness:
+        - Case-insensitive (lowercase comparison)
+        - Whitespace-normalized (multiple spaces → single space)
 
         Args:
             user_answer: User's answer dict with "selected_key"
@@ -157,9 +162,19 @@ class ScoringService:
         selected_key = str(user_answer["selected_key"]).strip()
 
         # Try correct_key first (standard format), fallback to correct_answer (agent format)
-        correct_key = str(answer_schema.get("correct_key") or answer_schema.get("correct_answer", "")).strip()
+        # Use explicit None check to handle falsy values like False correctly
+        correct_key_value = answer_schema.get("correct_key")
+        if correct_key_value is None:
+            correct_key_value = answer_schema.get("correct_answer", "")
+        correct_key = str(correct_key_value).strip()
 
-        is_correct = selected_key == correct_key
+        # Normalize both answers for robust comparison:
+        # 1. Normalize internal whitespace (multiple spaces → single space)
+        # 2. Case-insensitive comparison (convert to lowercase)
+        normalized_selected = " ".join(selected_key.split()).lower()
+        normalized_correct = " ".join(correct_key.split()).lower()
+
+        is_correct = normalized_selected == normalized_correct
         score = 100.0 if is_correct else 0.0
 
         return is_correct, score
@@ -319,6 +334,66 @@ class ScoringService:
 
         return True, final_score
 
+    def _score_all_unscored_answers(self, session_id: str) -> None:
+        """
+        Score all unscored answers in a session.
+
+        This is called before calculating round score to ensure all answers are scored.
+        Processes answers that:
+        - Have NULL is_correct (truly unscored), OR
+        - Have is_correct=false with score=0 (default autosave values, not yet actually scored)
+
+        Args:
+            session_id: TestSession ID
+
+        Raises:
+            ValueError: If session/question/answer not found
+
+        """
+        # Get all unscored attempt answers for this session
+        # Include both truly unscored (NULL) and default-marked (false/0) answers
+        from sqlalchemy import and_, or_
+
+        unscored = (
+            self.session.query(AttemptAnswer)
+            .filter(
+                AttemptAnswer.session_id == session_id,
+                or_(
+                    AttemptAnswer.is_correct.is_(None),
+                    and_(AttemptAnswer.is_correct.is_(False), AttemptAnswer.score == 0.0),
+                ),
+            )
+            .all()
+        )
+
+        for attempt in unscored:
+            # Get the question to determine item type
+            question = self.session.query(Question).filter_by(id=attempt.question_id).first()
+            if not question:
+                continue
+
+            # Score based on item type
+            if question.item_type == "multiple_choice":
+                is_correct, base_score = self._score_multiple_choice(attempt.user_answer, question.answer_schema)
+            elif question.item_type == "true_false":
+                is_correct, base_score = self._score_true_false(attempt.user_answer, question.answer_schema)
+            elif question.item_type == "short_answer":
+                is_correct, base_score = self._score_short_answer(attempt.user_answer, question.answer_schema)
+            else:
+                continue
+
+            # Apply time penalty
+            test_session = self.session.query(TestSession).filter_by(id=session_id).first()
+            if test_session:
+                _, final_score = self._apply_time_penalty(base_score, test_session)
+            else:
+                final_score = base_score
+
+            # Update the attempt answer
+            attempt.is_correct = is_correct
+            attempt.score = final_score
+            self.session.commit()
+
     def calculate_round_score(self, session_id: str, round_num: int) -> dict:
         """
         Calculate score for a completed test round.
@@ -345,6 +420,9 @@ class ScoringService:
                 - wrong_categories (dict): Category -> wrong count mapping
 
         """
+        # First, score all unscored answers
+        self._score_all_unscored_answers(session_id)
+
         # Get all attempt answers for this session
         attempts = self.session.query(AttemptAnswer).filter_by(session_id=session_id).all()
 

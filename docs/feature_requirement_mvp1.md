@@ -815,6 +815,40 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 
 ---
 
+## REQ-B-B3-Plus: 라운드 종료 및 세션 완료 (Backend)
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-B-B3-Plus-1** | **라운드의 모든 문항에 대한 채점이 완료된 후, POST /session/{session_id}/complete 엔드포인트를 통해 세션 상태를 "completed"로 변경해야 한다.** | **M** |
+| **REQ-B-B3-Plus-2** | **세션 완료 시, 해당 라운드의 최종 점수를 계산하고 test_results 테이블에 저장해야 한다.** (REQ-B-B4 RankingService 호출 전 단계) | **M** |
+| **REQ-B-B3-Plus-3** | 세션 완료 응답은 다음을 포함해야 한다: session_id, round, status, message | **M** |
+| **REQ-B-B3-Plus-4** | 이미 완료된 세션을 다시 완료하려 시도할 경우, 적절한 에러 메시지를 반환해야 한다. | **S** |
+
+**수용 기준**:
+
+- "모든 문항 채점 완료 후 POST /session/{session_id}/complete 호출 시 status='completed'로 변경된다."
+- "세션 완료 응답에 session_id, round, status, message가 포함된다."
+- "해당 라운드의 최종 점수가 test_results에 저장된다."
+
+---
+
+## REQ-F-B3-Plus: 라운드 종료 및 다음 단계 네비게이션 (Frontend)
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-F-B3-Plus-1** | **마지막 문항의 해설을 본 후, 또는 "결과 보기" 버튼 클릭 시, POST /session/{session_id}/complete 엔드포인트를 호출하여 세션을 완료해야 한다.** | **M** |
+| **REQ-F-B3-Plus-2** | **세션 완료 후, 프론트엔드는 GET /profile/ranking 엔드포인트를 호출하여 최종 등급 및 순위 정보를 조회한 후, 결과 페이지(REQ-F-B4)로 자동 이동해야 한다.** | **M** |
+| **REQ-F-B3-Plus-3** | 세션 완료 중 API 오류 발생 시, 사용자에게 오류 메시지를 표시하고 재시도 옵션을 제공해야 한다. | **S** |
+| **REQ-F-B3-Plus-4** | 라운드 1과 라운드 2의 완료 로직이 동일하게 작동해야 한다. (라운드 번호와 무관하게 같은 엔드포인트 사용) | **M** |
+
+**수용 기준**:
+
+- ""결과 보기" 버튼 클릭 시 POST /session/{session_id}/complete가 호출된다."
+- "세션 완료 후 GET /profile/ranking이 호출되고, 결과 페이지로 자동 이동한다."
+- "API 오류 발생 시 사용자에게 오류 메시지가 표시되고 재시도 버튼이 활성화된다."
+
+---
+
 ## REQ-B-B4: 최종 등급 및 순위 산출 (Backend)
 
 | REQ ID | 요구사항 | 우선순위 |

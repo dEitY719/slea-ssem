@@ -93,6 +93,11 @@ COMMAND_LAYOUT = {
                 "usage": "profile set-consent [true|false]",
                 "target": "src.cli.actions.profile.set_consent",
             },
+            "get-ranking": {
+                "description": "등급 및 랭킹 조회",
+                "usage": "profile get-ranking",
+                "target": "src.cli.actions.profile.get_ranking",
+            },
         },
     },
     "agent": {
@@ -214,6 +219,11 @@ COMMAND_LAYOUT = {
                 "description": "라운드 점수 계산 및 저장",
                 "usage": "questions score",
                 "target": "src.cli.actions.questions.calculate_round_score",
+            },
+            "complete": {
+                "description": "테스트 세션 완료 처리",
+                "usage": "questions complete",
+                "target": "src.cli.actions.questions.complete_session",
             },
             "explanation": {
                 "description": "해설 생성",

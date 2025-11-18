@@ -346,23 +346,26 @@ def attempt_answers_for_session(db_session: Session, test_session_round1_fixture
 
     db_session.commit()
 
-    # Create attempt answers: 1 correct (LLM), 4 wrong (RAG, RAG, Robotics, LLM)
+    # Create attempt answers with expected scoring pattern
+    # Pattern: 1 correct (LLM), 4 wrong (RAG, RAG, Robotics, LLM)
+    # Note: Initially set to unscored state (is_correct=False, score=0)
+    # so that _score_all_unscored_answers() will process them
     answers = []
     answer_data = [
-        (questions[0], True, 100),  # LLM: correct
-        (questions[1], False, 0),  # RAG: wrong
-        (questions[2], False, 0),  # Robotics: wrong
-        (questions[3], False, 0),  # LLM: wrong
-        (questions[4], False, 0),  # RAG: wrong
+        (questions[0], {"selected_key": "A"}),  # LLM: will be correct (correct_key is "A")
+        (questions[1], {"selected_key": "B"}),  # RAG: will be wrong (correct_key is "A")
+        (questions[2], {"selected_key": "B"}),  # Robotics: will be wrong (correct_key is "A")
+        (questions[3], {"selected_key": "B"}),  # LLM: will be wrong (correct_key is "A")
+        (questions[4], {"selected_key": "B"}),  # RAG: will be wrong (correct_key is "A")
     ]
 
-    for question, is_correct, score in answer_data:
+    for question, user_answer in answer_data:
         answer = AttemptAnswer(
             session_id=test_session_round1_fixture.id,
             question_id=question.id,
-            user_answer="A",
-            is_correct=is_correct,
-            score=score,
+            user_answer=user_answer,
+            is_correct=False,  # Default autosave state
+            score=0.0,  # Default autosave state
             response_time_ms=5000,
         )
         db_session.add(answer)

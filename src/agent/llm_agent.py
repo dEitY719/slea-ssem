@@ -87,6 +87,7 @@ class GenerateQuestionsResponse(BaseModel):
     time_limit_seconds: int = Field(default=1200, description="시간 제한 (초, 기본 20분)")
     agent_steps: int = Field(default=0, description="에이전트 반복 횟수 - 내부 메타데이터")
     failed_count: int = Field(default=0, description="실패한 문항 개수 - 내부 메타데이터")
+    total_tokens: int = Field(default=0, description="LLM 응답 총 토큰 수 (input + output)")
     error_message: str | None = Field(default=None, description="에러 메시지")
 
 
@@ -766,6 +767,16 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
         """
         logger.info(f"문항 생성 결과 파싱 중... round_id={round_id}")
 
+        # Extract total_tokens from LangGraph messages
+        total_tokens = 0
+        if "messages" in result:
+            for msg in result.get("messages", []):
+                if hasattr(msg, "response_metadata") and msg.response_metadata:
+                    usage_metadata = msg.response_metadata.get("usage_metadata", {})
+                    if "total_tokens" in usage_metadata:
+                        total_tokens = usage_metadata["total_tokens"]
+                        break
+
         try:
             # DEBUG: Agent output 구조 분석
             logger.info("=" * 80)
@@ -900,20 +911,32 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
                             # 각 question을 GeneratedItem으로 변환
                             for q in questions_data:
                                 try:
-                                    # answer_schema 구성
+                                    # Determine question type for answer_schema structure
+                                    question_type = q.get("type", "multiple_choice")
+
+                                    # answer_schema 구성 (type-aware)
                                     # Tool 5 반환값에서 flattened 필드 사용 (correct_answer, correct_keywords)
-                                    answer_schema = AnswerSchema(
-                                        type=q.get("answer_schema", "exact_match"),
-                                        keywords=q.get("correct_keywords"),  # From Tool 5 response
-                                        correct_answer=q.get("correct_answer"),  # From Tool 5 response
-                                    )
+                                    if question_type == "short_answer":
+                                        # Short answer: include keywords only
+                                        answer_schema = AnswerSchema(
+                                            type=q.get("answer_schema", "keyword_match"),
+                                            keywords=q.get("correct_keywords"),
+                                            correct_answer=None,  # Not used for short answer
+                                        )
+                                    else:
+                                        # MC/TF: include correct_answer only
+                                        answer_schema = AnswerSchema(
+                                            type=q.get("answer_schema", "exact_match"),
+                                            keywords=None,  # Not used for MC/TF
+                                            correct_answer=q.get("correct_answer"),
+                                        )
                                     logger.info(
                                         f"  ✓ answer_schema populated: type={answer_schema.type}, keywords={answer_schema.keywords is not None}, correct_answer={answer_schema.correct_answer is not None}"
                                     )
 
                                     item = GeneratedItem(
                                         id=q.get("question_id", f"q_{uuid.uuid4().hex[:8]}"),
-                                        type=q.get("type", "multiple_choice"),
+                                        type=question_type,
                                         stem=q.get("stem", ""),
                                         choices=q.get("choices"),
                                         answer_schema=answer_schema,
@@ -1003,25 +1026,44 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
 
                     # GeneratedItem 객체 생성
                     try:
+                        # Determine question type for answer_schema structure
+                        item_type = tool_output.get("item_type", "multiple_choice")
+
                         # answer_schema 구성 (Tool 5가 제공하거나 기본값 사용)
                         schema_from_tool = tool_output.get("answer_schema", {})
                         if isinstance(schema_from_tool, dict):
                             # Tool 5에서 반환한 answer_schema 사용
-                            answer_schema = AnswerSchema(
-                                type=schema_from_tool.get(
-                                    "type", schema_from_tool.get("correct_key") and "exact_match" or "keyword_match"
-                                ),
-                                keywords=schema_from_tool.get("correct_keywords") or schema_from_tool.get("keywords"),
-                                correct_answer=schema_from_tool.get("correct_key")
-                                or schema_from_tool.get("correct_answer"),
-                            )
+                            # Type-aware construction: include only relevant fields for question type
+                            if item_type == "short_answer":
+                                # Short answer: include keywords only
+                                answer_schema = AnswerSchema(
+                                    type=schema_from_tool.get("type", "keyword_match"),
+                                    keywords=schema_from_tool.get("correct_keywords")
+                                    or schema_from_tool.get("keywords"),
+                                    correct_answer=None,  # Not used for short answer
+                                )
+                            else:
+                                # MC/TF: include correct_answer/correct_key only
+                                answer_schema = AnswerSchema(
+                                    type=schema_from_tool.get("type", "exact_match"),
+                                    keywords=None,  # Not used for MC/TF
+                                    correct_answer=schema_from_tool.get("correct_key")
+                                    or schema_from_tool.get("correct_answer"),
+                                )
                         else:
-                            # Fallback to tool_output fields
-                            answer_schema = AnswerSchema(
-                                type=tool_output.get("answer_type", "exact_match"),
-                                keywords=tool_output.get("correct_keywords"),
-                                correct_answer=tool_output.get("correct_answer"),
-                            )
+                            # Fallback to tool_output fields with type awareness
+                            if item_type == "short_answer":
+                                answer_schema = AnswerSchema(
+                                    type=tool_output.get("answer_type", "keyword_match"),
+                                    keywords=tool_output.get("correct_keywords"),
+                                    correct_answer=None,
+                                )
+                            else:
+                                answer_schema = AnswerSchema(
+                                    type=tool_output.get("answer_type", "exact_match"),
+                                    keywords=None,
+                                    correct_answer=tool_output.get("correct_answer"),
+                                )
 
                         item = GeneratedItem(
                             id=tool_output.get("question_id", f"q_{uuid.uuid4().hex[:8]}"),
@@ -1052,6 +1094,7 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
                 time_limit_seconds=1200,  # 기본 20분
                 agent_steps=agent_steps,
                 failed_count=failed_count,
+                total_tokens=total_tokens,
                 error_message=error_msg,
             )
 
@@ -1066,6 +1109,7 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
                 time_limit_seconds=1200,
                 agent_steps=0,
                 failed_count=0,
+                total_tokens=total_tokens,
                 error_message=f"Parsing error: {str(e)}",
             )
 

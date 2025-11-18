@@ -69,7 +69,9 @@ class TestScoreCalculation:
 
         answers = db_session.query(AttemptAnswer).filter_by(session_id=test_session_round1_fixture.id).all()
 
+        # Reset answers to unscored state with all wrong answers
         for answer in answers:
+            answer.user_answer = {"selected_key": "B"}  # All answers are wrong (correct is "A")
             answer.is_correct = False
             answer.score = 0.0
 
@@ -321,16 +323,16 @@ class TestScoringMultipleChoice:
         assert result["is_correct"] is False
         assert result["score"] == 0.0
 
-    def test_score_mc_case_sensitive(self, db_session: Session, test_session_in_progress: TestSession) -> None:
-        """MC matching is case-sensitive."""
+    def test_score_mc_case_insensitive(self, db_session: Session, test_session_in_progress: TestSession) -> None:
+        """MC matching is case-insensitive (normalized)."""
         service = ScoringService(db_session)
 
         question = Question(
             session_id=test_session_in_progress.id,
             item_type="multiple_choice",
             stem="Test",
-            choices=["A", "B"],
-            answer_schema={"correct_key": "A"},
+            choices=["Logistic Regression", "Linear Regression"],
+            answer_schema={"correct_key": "Logistic Regression"},
             difficulty=1,
             category="Test",
             round=1,
@@ -341,7 +343,7 @@ class TestScoringMultipleChoice:
         answer = AttemptAnswer(
             session_id=test_session_in_progress.id,
             question_id=question.id,
-            user_answer={"selected_key": "a"},  # Lowercase
+            user_answer={"selected_key": "logistic regression"},  # Lowercase
             response_time_ms=1000,
             saved_at=datetime.now(UTC),
         )
@@ -350,7 +352,9 @@ class TestScoringMultipleChoice:
 
         result = service.score_answer(test_session_in_progress.id, question.id)
 
-        assert result["is_correct"] is False
+        # Case-insensitive comparison should match
+        assert result["is_correct"] is True
+        assert result["score"] == 100.0
 
     def test_score_mc_with_whitespace(self, db_session: Session, test_session_in_progress: TestSession) -> None:
         """MC answer with whitespace normalizes and matches."""

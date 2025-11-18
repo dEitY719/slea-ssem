@@ -662,6 +662,74 @@ def score_answer(
         raise HTTPException(status_code=500, detail="Failed to score answer") from e
 
 
+@router.post(
+    "/session/{session_id}/complete",
+    status_code=200,
+    summary="Complete Test Session",
+    description="Mark a test session as completed (SRP: Session Management Only)",
+)
+def complete_session(
+    session_id: str,
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """
+    Complete a test session independently.
+
+    REQ: REQ-B-B3-Score
+
+    Single Responsibility: Only marks session as completed.
+    RankingService will be called separately via GET /profile/ranking endpoint.
+
+    Design principle:
+    - Each Round can be completed independently
+    - Round 1 complete → Round 1 status="completed"
+    - Round 2 complete → Round 2 status="completed"
+    - RankingService queries all "completed" sessions to calculate ranking
+
+    Args:
+        session_id: TestSession ID to complete
+        db: Database session
+
+    Returns:
+        Dictionary with:
+            - status (str): "completed"
+            - session_id (str): Session UUID
+            - round (int): Round number
+            - message (str): Success message
+
+    Raises:
+        HTTPException: If session not found
+
+    """
+    try:
+        from src.backend.models.test_session import TestSession
+
+        test_session = db.query(TestSession).filter_by(id=session_id).first()
+        if not test_session:
+            raise ValueError(f"Test session {session_id} not found")
+
+        # Only one responsibility: mark session as completed
+        test_session.status = "completed"
+        db.commit()
+        db.refresh(test_session)
+
+        logger.info(f"Session {session_id} (Round {test_session.round}) marked as completed")
+
+        return {
+            "status": "completed",
+            "session_id": session_id,
+            "round": test_session.round,
+            "message": f"Round {test_session.round} session completed successfully",
+        }
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except Exception as e:
+        logger.exception("Error completing session")
+        raise HTTPException(status_code=500, detail="Failed to complete session") from e
+
+
 @router.get(
     "/session/{session_id}/time-status",
     status_code=200,

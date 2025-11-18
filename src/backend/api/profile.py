@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from src.backend.database import get_db
 from src.backend.models.user import User
 from src.backend.services.profile_service import ProfileService
+from src.backend.services.ranking_service import RankingService
 from src.backend.utils.auth import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -126,6 +127,19 @@ class ConsentUpdateResponse(BaseModel):
     message: str = Field(..., description="Result message")
     user_id: str = Field(..., description="User's knox_id")
     consent_at: str | None = Field(..., description="Consent timestamp (ISO format) or null")
+
+
+class RankingResponse(BaseModel):
+    """Response model for user ranking and grade."""
+
+    user_id: str = Field(..., description="User's knox_id")
+    grade: str = Field(..., description="Grade tier (Beginner/Intermediate/Advanced/Elite)")
+    score: float = Field(..., description="Composite score (0-100)")
+    rank: int = Field(..., description="Rank within cohort")
+    total_cohort_size: int = Field(..., description="Total users in cohort")
+    percentile: float = Field(..., description="Percentile within cohort (0-100)")
+    percentile_description: str = Field(..., description="Human-readable percentile (e.g., '상위 30%')")
+    percentile_confidence: str = Field(..., description="Confidence level (low/medium/high)")
 
 
 # ============================================================================
@@ -435,3 +449,58 @@ def update_consent(
     except Exception as e:
         logger.exception("Error updating consent")
         raise HTTPException(status_code=500, detail="Failed to update consent") from e
+
+
+@router.get(
+    "/ranking",
+    response_model=RankingResponse,
+    status_code=200,
+    summary="Get User Ranking and Grade",
+    description="Get current user's grade and ranking (requires JWT)",
+)
+def get_ranking(
+    user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """
+    Get current user's grade and ranking.
+
+    REQ: REQ-B-B4-1, REQ-B-B4-2, REQ-B-B4-3, REQ-B-B4-4, REQ-B-B4-5
+    REQ: REQ-B-B4-Plus-1, REQ-B-B4-Plus-2, REQ-B-B4-Plus-3
+
+    Single Responsibility: Calculate and return ranking data only.
+    Triggered explicitly by Frontend (not automatic).
+
+    Args:
+        user: Current authenticated user (from JWT)
+        db: Database session
+
+    Returns:
+        Response with grade, score, rank, and percentile information
+
+    Raises:
+        HTTPException: 400 if no completed test sessions, 401 if not authenticated
+
+    """
+    try:
+        ranking_service = RankingService(db)
+        result = ranking_service.calculate_final_grade(user.id)
+
+        if not result:
+            raise ValueError("No completed test sessions found for user")
+
+        return {
+            "user_id": user.knox_id,
+            "grade": result.grade,
+            "score": result.score,
+            "rank": result.rank,
+            "total_cohort_size": result.total_cohort_size,
+            "percentile": result.percentile,
+            "percentile_description": result.percentile_description,
+            "percentile_confidence": result.percentile_confidence,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.exception("Error calculating ranking")
+        raise HTTPException(status_code=500, detail="Failed to calculate ranking") from e
