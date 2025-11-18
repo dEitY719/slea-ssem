@@ -271,7 +271,68 @@ const resetResultProgression = () => {
 const overriddenEndpoints = new Set<string>()
 
 // Track taken nicknames for mock: 이미 사용 중인 닉네임 목록
-const takenNicknames = new Set(['admin', 'test', 'mockuser', 'existing_user'])
+const takenNicknames = new Set(['mockuser', 'existing_user'])
+
+// REQ: REQ-F-A2-5 - Forbidden words list (금칙어)
+const FORBIDDEN_WORDS = [
+  'admin',
+  'administrator',
+  'system',
+  'root',
+  'moderator',
+  'mod',
+  'staff',
+  'support',
+  'bot',
+  'service',
+  'account',
+  'user',
+  'test',
+  'temp',
+  'guest',
+  'anonymous',
+]
+
+// REQ: REQ-F-A2-3, REQ-F-A2-5 - Nickname validation helper
+const validateNickname = (nickname: string): { valid: boolean; error?: string } => {
+  // Validate length (3-30 characters)
+  if (nickname.length < 3) {
+    return { valid: false, error: '닉네임은 3자 이상이어야 합니다.' }
+  }
+
+  if (nickname.length > 30) {
+    return { valid: false, error: '닉네임은 30자 이하여야 합니다.' }
+  }
+
+  // Validate format: alphanumeric + underscore only
+  const validPattern = /^[a-zA-Z0-9_]+$/
+  if (!validPattern.test(nickname)) {
+    return { valid: false, error: '닉네임은 영문자, 숫자, 언더스코어만 사용 가능합니다.' }
+  }
+
+  // Check forbidden words (case-insensitive)
+  const nicknameLower = nickname.toLowerCase()
+
+  // Exact match check
+  if (FORBIDDEN_WORDS.includes(nicknameLower)) {
+    return {
+      valid: false,
+      error: `'${nickname}'은(는) 사용할 수 없는 닉네임입니다. 다른 닉네임을 선택해주세요.`,
+    }
+  }
+
+  // Check if nickname starts with forbidden word
+  for (const forbidden of FORBIDDEN_WORDS) {
+    if (nicknameLower.startsWith(forbidden)) {
+      return {
+        valid: false,
+        error: '닉네임에 사용할 수 없는 단어가 포함되어 있습니다. 다른 닉네임을 선택해주세요.',
+      }
+    }
+  }
+
+  return { valid: true }
+}
 
 type RequestLogEntry = {
   url: string
@@ -324,6 +385,13 @@ class MockTransport implements HttpTransport {
     // Handle nickname check endpoint
     if (normalizedUrl === API_PROFILE_NICKNAME_CHECK && method === 'POST' && requestData?.nickname) {
       const nickname = requestData.nickname
+
+      // REQ: REQ-F-A2-3, REQ-F-A2-5 - Validate nickname format and forbidden words
+      const validation = validateNickname(nickname)
+      if (!validation.valid) {
+        throw new Error(validation.error)
+      }
+
       const isTaken = takenNicknames.has(nickname.toLowerCase())
 
       const response = {
@@ -343,17 +411,10 @@ class MockTransport implements HttpTransport {
     if (normalizedUrl === API_PROFILE_REGISTER && method === 'POST' && requestData?.nickname) {
       const nickname: string = requestData.nickname
 
-      if (nickname.length < 3) {
-        throw new Error('닉네임은 3자 이상이어야 합니다.')
-      }
-
-      if (nickname.length > 30) {
-        throw new Error('닉네임은 30자 이하여야 합니다.')
-      }
-
-      const validPattern = /^[a-zA-Z0-9_]+$/
-      if (!validPattern.test(nickname)) {
-        throw new Error('닉네임은 영문자, 숫자, 언더스코어만 사용 가능합니다.')
+      // REQ: REQ-F-A2-3, REQ-F-A2-5 - Validate nickname format and forbidden words
+      const validation = validateNickname(nickname)
+      if (!validation.valid) {
+        throw new Error(validation.error)
       }
 
       if (takenNicknames.has(nickname.toLowerCase())) {
