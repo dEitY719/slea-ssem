@@ -36,6 +36,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-B2-2 | 남은 시간(타이머) 표시 (20분 제한, 색상 변화) | 4 | ✅ Done | 5 tests (100%), Commit: dd7cbe3, Progress: docs/progress/REQ-F-B2-2.md |
 | REQ-F-B2-6 | 자동 저장 및 "저장됨" 표시 (실시간 저장) | 4 | ✅ Done | 5 tests (100%), Commit: 068b2ff, Progress: docs/progress/REQ-F-B2-6.md |
 | REQ-F-B3 | 해설 화면 | 0 | ⏳ Backlog | 2개 sub-tasks |
+| REQ-F-B3-Plus | 라운드 종료 및 다음 단계 네비게이션 | 0 | ⏳ Backlog | 4개 sub-tasks (백엔드 준비 완료) |
 | REQ-F-B4 | 최종 결과 페이지 | 0 | ⏳ Backlog | 6개 sub-tasks |
 | REQ-F-B4-1 | 등급/점수/순위/백분위 표시 | 4 | ✅ Done | Tests designed (16 cases), Commit: a22319f, Progress: docs/progress/REQ-F-B4-1.md |
 | REQ-F-B4-3 | 전사 상대 순위 및 분포 시각화 (막대 차트) | 4 | ✅ Done | 5 tests (100%), Commit: 6c22a41, Progress: docs/progress/REQ-F-B4-3.md |
@@ -61,6 +62,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-B-B2-Plus | 실시간 저장 & 재개 | 4 | ✅ Done | 33 tests (100%), Commit: c95dfcb |
 | REQ-B-B3-Score | 채점 (정오답 판정) | 4 | ✅ Done | 36 tests (100%), Commit: (pending) |
 | REQ-B-B3-Explain | 해설 생성 | 4 | ✅ Done | 15 tests (100%), Commit: f653be5 |
+| REQ-B-B3-Plus | 라운드 종료 및 세션 완료 | 4 | ✅ Done | 기능 구현 완료, 테스트 필요 |
 | REQ-B-B4 | 최종 등급 & 순위 산출 | 4 | ✅ Done | 21 tests (100%), Commit: 1de9a2d |
 | REQ-B-B4-Plus | 등급 기반 배지 부여 | 4 | ✅ Done | 6 badge tests included, Commit: 1de9a2d, Progress: docs/progress/REQ-B-B4-Plus.md |
 | REQ-B-B5 | 응시 이력 저장 & 조회 | 4 | ✅ Done | 16 tests (100%), Commit: d400aa8, Progress: docs/progress/REQ-B-B5.md |
