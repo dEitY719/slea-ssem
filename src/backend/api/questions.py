@@ -85,11 +85,13 @@ class GenerateAdaptiveQuestionsRequest(BaseModel):
     Attributes:
         previous_session_id: Previous round TestSession ID (from Round 1)
         round: Target round number (2 or 3)
+        count: Number of questions to generate (default 5, supports --count parameter)
 
     """
 
     previous_session_id: str = Field(..., description="Previous TestSession ID")
     round: int = Field(default=2, ge=2, le=3, description="Target round (2 or 3)")
+    count: int = Field(default=5, ge=1, le=20, description="Number of questions to generate")
 
 
 class GenerateAdaptiveQuestionsResponse(BaseModel):
@@ -408,21 +410,23 @@ def calculate_round_score(
     summary="Generate Adaptive Round 2+ Questions",
     description="Generate questions with adaptive difficulty based on previous round results",
 )
-def generate_adaptive_questions(
+async def generate_adaptive_questions(
     request: GenerateAdaptiveQuestionsRequest,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     """
-    Generate Round 2+ questions with adaptive difficulty.
+    Generate Round 2+ questions with adaptive difficulty using Real Agent.
 
     REQ: REQ-B-B2-Adapt-1, REQ-B-B2-Adapt-2, REQ-B-B2-Adapt-3
 
     Analyzes previous round results and generates questions with:
+    - Real Agent LLM-based generation
     - Adjusted difficulty based on score
     - Prioritized weak categories (≥50%)
+    - Customizable question count (default 5, supports --count parameter)
 
     Args:
-        request: Adaptive generation request with previous_session_id and round
+        request: Adaptive generation request with previous_session_id, round, and optional count
         db: Database session
 
     Returns:
@@ -437,10 +441,11 @@ def generate_adaptive_questions(
 
     try:
         question_service = QuestionGenerationService(db)
-        result = question_service.generate_questions_adaptive(
+        result = await question_service.generate_questions_adaptive(
             user_id=user_id,
             session_id=request.previous_session_id,
             round_num=request.round,
+            question_count=request.count,
         )
         return result
     except Exception as e:

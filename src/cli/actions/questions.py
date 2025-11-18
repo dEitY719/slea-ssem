@@ -311,15 +311,15 @@ def _print_generate_adaptive_questions_help(context: CLIContext) -> None:
     """Print help for questions generate adaptive command."""
     context.console.print()
     context.console.print("╔═══════════════════════════════════════════════════════════════════════════════╗")
-    context.console.print("║  questions generate adaptive - Generate Adaptive Questions (Round 2)         ║")
+    context.console.print("║  questions generate adaptive - Generate Adaptive Questions (Round 2+)        ║")
     context.console.print("╚═══════════════════════════════════════════════════════════════════════════════╝")
     context.console.print()
     context.console.print("[bold cyan]Usage:[/bold cyan]")
-    context.console.print("  questions generate adaptive [--round 2|3]")
+    context.console.print("  questions generate adaptive [--round 2|3] [--count N]")
     context.console.print()
     context.console.print("[bold cyan]Description:[/bold cyan]")
-    context.console.print("  Generate difficulty-adjusted questions for Round 2 (adaptive) based on")
-    context.console.print("  Round 1 performance. Uses current session from active test.")
+    context.console.print("  Generate difficulty-adjusted questions for Round 2+ (adaptive) based on")
+    context.console.print("  previous round performance. Uses Real Agent LLM for generation.")
     context.console.print()
     context.console.print("[bold cyan]Prerequisites:[/bold cyan]")
     context.console.print("  1. Complete 'questions generate' (Round 1)")
@@ -329,14 +329,22 @@ def _print_generate_adaptive_questions_help(context: CLIContext) -> None:
     context.console.print("[bold cyan]Options:[/bold cyan]")
     context.console.print("  --round INTEGER    Round number: 2 (default) or 3")
     context.console.print("                     Default: 2")
+    context.console.print("  --count INTEGER    Number of questions: 1-20")
+    context.console.print("                     Default: 5")
     context.console.print("  --help             Show this help message")
     context.console.print()
     context.console.print("[bold cyan]Examples:[/bold cyan]")
-    context.console.print("  # Generate Round 2 adaptive questions (default)")
+    context.console.print("  # Generate Round 2 adaptive questions (default, 5 questions)")
     context.console.print("  questions generate adaptive")
     context.console.print()
     context.console.print("  # Generate Round 3 questions (if supported)")
     context.console.print("  questions generate adaptive --round 3")
+    context.console.print()
+    context.console.print("  # Generate 3 adaptive questions")
+    context.console.print("  questions generate adaptive --count 3")
+    context.console.print()
+    context.console.print("  # Generate 10 Round 3 questions")
+    context.console.print("  questions generate adaptive --round 3 --count 10")
     context.console.print()
     context.console.print("  # Show this help message")
     context.console.print("  questions generate adaptive --help")
@@ -1043,6 +1051,7 @@ def generate_adaptive_questions(context: CLIContext, *args: str) -> None:
 
     # Parse arguments with flags
     round_num = 2  # Default round
+    question_count = 5  # Default count
 
     i = 0
     while i < len(args):
@@ -1055,13 +1064,22 @@ def generate_adaptive_questions(context: CLIContext, *args: str) -> None:
             except ValueError:
                 context.console.print(f"[yellow]⚠ Invalid round: {args[i + 1]}. Using default: 2[/yellow]")
             i += 2
+        elif args[i] == "--count" and i + 1 < len(args):
+            try:
+                question_count = int(args[i + 1])
+                if not (1 <= question_count <= 20):
+                    context.console.print(f"[yellow]⚠ Invalid count: {args[i + 1]}. Must be 1-20. Using default: 5[/yellow]")
+                    question_count = 5
+            except ValueError:
+                context.console.print(f"[yellow]⚠ Invalid count: {args[i + 1]}. Using default: 5[/yellow]")
+            i += 2
         elif args[i] == "--help":
             _print_generate_adaptive_questions_help(context)
             return
         else:
             i += 1
 
-    context.console.print(f"[dim]Generating Round {round_num} adaptive questions...[/dim]")
+    context.console.print(f"[dim]Generating Round {round_num} adaptive questions ({question_count} questions)...[/dim]")
 
     # API 호출 - Use previous_session_id (current_session_id is from Round 1)
     status_code, response, error = context.client.make_request(
@@ -1070,6 +1088,7 @@ def generate_adaptive_questions(context: CLIContext, *args: str) -> None:
         json_data={
             "previous_session_id": context.session.current_session_id,
             "round": round_num,
+            "count": question_count,
         },
     )
 
@@ -1094,10 +1113,10 @@ def generate_adaptive_questions(context: CLIContext, *args: str) -> None:
 
     context.console.print(f"[bold green]✓ Round {round_num} adaptive questions generated[/bold green]")
     context.console.print(f"[dim]  Session: {session_id}[/dim]")
-    context.console.print(f"[dim]  Questions: {questions_count}[/dim]")
+    context.console.print(f"[dim]  Questions: {questions_count}/{question_count}[/dim]")
     context.console.print(f"[dim]  Difficulty: {difficulty}[/dim]")
     if context.logger:
-        context.logger.info(f"Round {round_num} adaptive questions generated.")
+        context.logger.info(f"Round {round_num} adaptive questions generated ({questions_count} questions).")
 
 
 def autosave_answer(context: CLIContext, *args: str) -> None:
