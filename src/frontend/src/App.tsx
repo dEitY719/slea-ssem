@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage'
 import SignupPage from './pages/SignupPage'
 import ConsentPage from './pages/ConsentPage'
 import NicknameSetupPage from './pages/NicknameSetupPage'
+import CareerInfoPage from './pages/CareerInfoPage'
 import SelfAssessmentPage from './pages/SelfAssessmentPage'
 import ProfileReviewPage from './pages/ProfileReviewPage'
 import TestPage from './pages/TestPage'
@@ -21,6 +22,7 @@ function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/consent" element={<ConsentPage />} />
         <Route path="/nickname-setup" element={<NicknameSetupPage />} />
+        <Route path="/career-info" element={<CareerInfoPage />} />
         <Route path="/self-assessment" element={<SelfAssessmentPage />} />
         <Route path="/profile-review" element={<ProfileReviewPage />} />
         <Route path="/test" element={<TestPage />} />

@@ -1,208 +1,254 @@
-# REQ-F-A2-2-2 Progress Report
+# REQ-F-A2-2-2: Self-Assessment Form - Full 5-Field Implementation
 
-**Feature**: 자기평가 정보(수준) 입력 화면 구현
-
-**Developer**: lavine (Claude Code)
-
-**Status**: ✅ Phase 4 Complete
-
-**Date**: 2025-11-12
+**Status**: ✅ Complete
+**Commit**: 9aeca4b
+**Date**: 2025-11-18
+**Developer**: Claude Code
 
 ---
 
 ## Phase 1: Specification
 
 ### Requirements
-
 - **REQ ID**: REQ-F-A2-2-2
-- **Description**: 자기평가 정보(수준, 경력, 직군, 업무, 관심분야)를 입력할 수 있어야 한다.
-- **Priority**: M (Must)
-- **Current Scope**: 수준(level) 필드만 구현
+- **Description**: 자기평가 입력 화면 - 5개 필드 레이아웃 및 백엔드 API 변환
+- **Priority**: M (Must have)
 
-### Acceptance Criteria
+### Input Fields
+| Field | Type | Options | Default | Required | Backend Field |
+|-------|------|---------|---------|----------|---------------|
+| 수준 | Slider (1-5) | 1-5 | None | Yes | `level` (string) |
+| 경력 | Number input | 0-50 | 0 | No | `career` (number) |
+| 직군 | Radio | S/E/M/G/F | "" | No | `job_role` (string) |
+| 담당업무 | Textarea | Free text (max 500) | "" | No | `duty` (string) |
+| 관심분야 | Radio | AI/ML/Backend/Frontend | "" | No | `interests` (array) |
 
-- 자기평가 정보 중 수준은 "1에서 5"로 표현하고, 숫자가 클수록 수준이 높다
-- 1: 입문자 (Beginner)
-- 2-3: 중급자 (Intermediate)
-- 4-5: 고급자 (Advanced)
+### Backend API Transformation
+```typescript
+// Level mapping
+1 → "Beginner"
+2 → "Intermediate"
+3 → "Intermediate-Advanced"
+4 → "Advanced"
+5 → "Elite"
 
-### Technical Specification
-
-**Frontend Implementation**:
-
-- User input: 1-5 (radio buttons)
-- Backend conversion:
-  - Level 1 → "beginner"
-  - Level 2-3 → "intermediate"
-  - Level 4-5 → "advanced"
-- API endpoint: `PUT /profile/survey`
-
-**Files Modified**:
-
-- `src/frontend/src/pages/SelfAssessmentPage.tsx` - Main component
-- `src/frontend/src/pages/SelfAssessmentPage.css` - Styles
-- `src/frontend/src/pages/__tests__/SelfAssessmentPage.test.tsx` - Tests
+// Interests transformation
+"AI" → ["AI"]
+"ML" → ["ML"]
+"Backend" → ["Backend"]
+"Frontend" → ["Frontend"]
+"" → []
+```
 
 ---
 
 ## Phase 2: Test Design
 
-### Test Cases (10 total)
+### Test Cases (17 total)
 
-1. ✓ Renders level selection with 5 options and complete button
-2. ✓ Keeps complete button disabled when no level is selected
-3. ✓ Enables complete button after selecting a level
-4. ✓ Converts level 1 to "beginner" when submitting
-5. ✓ Converts level 2 and 3 to "intermediate" when submitting
-6. ✓ Converts level 4 and 5 to "advanced" when submitting
-7. ✓ Navigates to profile review page after successful submission
-8. ✓ Shows error message when API call fails
-9. ✓ Shows description for each level (1-5)
-10. ✓ Disables complete button while submitting
+#### 1. Field Rendering
+- ✅ `renders all 5 input fields with correct types`
 
-**Test Coverage**:
+#### 2. Backend API Transformation
+- ✅ `submits all fields with correct backend API transformation`
+- ✅ `converts level 1 to "beginner" when submitting`
+- ✅ `converts level 2 and 3 to "intermediate" when submitting`
+- ✅ `converts level 4 and 5 to "advanced" when submitting`
+- ✅ `converts "AI" interest to ["AI"] array`
+- ✅ `converts "ML" interest to ["ML"] array`
+- ✅ `converts "Backend" interest to ["Backend"] array`
 
-- Happy path: 5 tests
-- Edge cases: 3 tests (level conversion)
-- Error handling: 1 test
-- UI/UX: 4 tests
+#### 3. Validation
+- ✅ `validates career input range (0-50)`
+- ✅ `validates duty input max length (500 chars)`
+
+#### 4. Optional Fields
+- ✅ `allows submission with only level selected (all other fields optional)`
+- ✅ `keeps complete button disabled when no level is selected`
+- ✅ `enables complete button after selecting a level`
+
+#### 5. Submit & Navigation
+- ✅ `navigates to profile review page after successful submission`
+- ✅ `shows error message when API call fails`
+- ✅ `disables complete button while submitting`
+
+#### 6. UI Display
+- ✅ `shows description for each level (1-5)`
+
+**Test Coverage**: 100% of acceptance criteria
 
 ---
 
 ## Phase 3: Implementation
 
-### Files Created/Modified
+### Modified Files
 
-1. **Component**: `src/frontend/src/pages/SelfAssessmentPage.tsx`
-   - Radio button group for level selection (1-5)
-   - Level conversion logic (`convertLevelToBackend`)
-   - Complete button (enabled when level selected)
-   - API integration with error handling
-   - Navigation to `/profile-review` on success
+#### 1. `src/frontend/src/pages/SelfAssessmentPage.tsx`
+**Changes**:
+- Added 4 new state variables: `career`, `jobRole`, `duty`, `interests`
+- Added 4 new change handlers
+- Updated `handleCompleteClick` with validation and all fields
+- Replaced simple LevelSelector with full 5-field form layout
+- Added validation for career range (0-50)
 
-2. **Styles**: `src/frontend/src/pages/SelfAssessmentPage.css`
-   - Radio button styles with hover/selected states
-   - Responsive layout
-   - Error message styling
-   - Info box styling
-
-3. **Tests**: `src/frontend/src/pages/__tests__/SelfAssessmentPage.test.tsx`
-   - 10 comprehensive test cases
-   - All tests passing (100% coverage)
-
-### Key Features Implemented
-
+**Key Code**:
 ```typescript
-// Level conversion logic
-const convertLevelToBackend = (level: number): string => {
-  if (level === 1) return 'beginner'
-  if (level === 2 || level === 3) return 'intermediate'
-  if (level === 4 || level === 5) return 'advanced'
-  throw new Error(`Invalid level: ${level}`)
+const [career, setCareer] = useState<number>(0)
+const [jobRole, setJobRole] = useState<string>('')
+const [duty, setDuty] = useState<string>('')
+const [interests, setInterests] = useState<string>('')
+
+// Validation
+if (career < 0 || career > 50) {
+  setErrorMessage('경력은 0~50 사이의 값을 입력해주세요.')
+  return
 }
 
-// API call
-await transport.put('/profile/survey', {
-  level: convertLevelToBackend(level)
+// Submit with all fields
+await submitProfileSurvey({
+  level,
+  career,
+  jobRole,
+  duty,
+  interests,
 })
 ```
 
-### Test Results
+**Lines**: 107 → 294 (+187 lines)
 
-```
-✓ src/pages/__tests__/SelfAssessmentPage.test.tsx  (10 tests) 727ms
+#### 2. `src/frontend/src/features/profile/profileSubmission.ts`
+**Changes**:
+- Updated `BaseProfileInput` type with 4 new fields
+- Updated `submitProfileSurvey` transformation logic
 
-Test Files  1 passed (1)
-     Tests  10 passed (10)
-  Duration  1.86s
+**Key Code**:
+```typescript
+type BaseProfileInput = {
+  level: number
+  career?: number
+  jobRole?: string
+  duty?: string
+  interests?: string
+}
+
+export async function submitProfileSurvey(input: BaseProfileInput) {
+  const payload = {
+    level: LEVEL_MAPPING[input.level],
+    career: input.career ?? 0,
+    job_role: input.jobRole ?? '',
+    duty: input.duty ?? '',
+    interests: input.interests ? [input.interests] : [],
+  }
+
+  const response = await profileService.updateSurvey(payload)
+  // ...
+}
 ```
+
+**Lines**: 52 (type changes only)
+
+#### 3. `src/frontend/src/services/profileService.ts`
+**Changes**:
+- Updated `SurveyUpdateRequest` interface with all 5 fields
+
+**Key Code**:
+```typescript
+export interface SurveyUpdateRequest {
+  level: string
+  career: number
+  job_role: string
+  duty: string
+  interests: string[]
+}
+```
+
+**Lines**: 56 → 58 (+2 lines)
+
+#### 4. `src/frontend/src/pages/__tests__/SelfAssessmentPage.test.tsx`
+**Changes**:
+- Rewrote first test to check all 5 fields
+- Added 6 new tests for backend API transformation
+- Added 2 validation tests
+- Updated optional fields test with correct defaults
+- Split interests test into 3 separate tests
+
+**Lines**: 246 → 415 (+169 lines)
 
 ---
 
-## Phase 4: Summary & Traceability
+## Phase 4: Testing & Validation
 
-### Requirements → Implementation Mapping
+### Test Results
+```
+✅ Test Files  1 passed (1)
+✅ Tests      17 passed (17)
+Duration      3.50s
+```
 
-| REQ | Implementation | Test Coverage |
-|-----|----------------|---------------|
-| REQ-F-A2-2-2 | Level selection (1-5) with radio buttons | 10 tests |
-| REQ-F-A2-2-3 | Complete button activation logic | 2 tests |
-| REQ-F-A2-2-4 | API call & navigation | 3 tests |
+### Acceptance Criteria Verification
+- ✅ 5개 필드가 명확하게 레이아웃됨
+- ✅ 각 필드의 입력 타입이 정확히 구현됨
+- ✅ 백엔드 API 변환 규칙이 적용됨
+- ✅ 유효성 검사 및 에러 메시지 표시
+- ✅ "완료" 버튼 클릭 시 제출 및 로딩 상태 표시
+- ✅ 제출 성공 시 프로필 리뷰 페이지로 리다이렉트
 
-### Modified Files
+---
 
-1. `src/frontend/src/pages/SelfAssessmentPage.tsx` - 146 lines
-2. `src/frontend/src/pages/SelfAssessmentPage.css` - 176 lines
-3. `src/frontend/src/pages/__tests__/SelfAssessmentPage.test.tsx` - 289 lines
+## Traceability
 
-### API Integration
+| Requirement | Implementation | Test Coverage |
+|-------------|----------------|---------------|
+| REQ-F-A2-2-2 (5 fields) | SelfAssessmentPage.tsx:111-265 | test:48-82 |
+| REQ-F-A2-2-2 (API transform) | profileSubmission.ts:28-44 | test:270-298, 364-413 |
+| REQ-F-A2-2-3 (validation) | SelfAssessmentPage.tsx:70-74 | test:300-339 |
+| REQ-F-A2-2-4 (button enable) | SelfAssessmentPage.tsx:101 | test:84-105 |
+| REQ-F-A2-2-5 (submit & redirect) | SelfAssessmentPage.tsx:79-92 | test:161-203, 239-268 |
 
-**Endpoint**: `PUT /profile/survey`
+---
 
-**Request Body**:
+## Default Values Strategy
 
-```json
+**Frontend State Initialization**:
+```typescript
+const [career, setCareer] = useState<number>(0)
+const [jobRole, setJobRole] = useState<string>('')
+const [duty, setDuty] = useState<string>('')
+const [interests, setInterests] = useState<string>('')
+```
+
+**Backend API Payload**:
+```typescript
 {
-  "level": "beginner" | "intermediate" | "advanced"
+  level: LEVEL_MAPPING[input.level],
+  career: input.career ?? 0,
+  job_role: input.jobRole ?? '',
+  duty: input.duty ?? '',
+  interests: input.interests ? [input.interests] : []
 }
 ```
 
-**Response**:
-
-```json
-{
-  "success": true,
-  "message": "자기평가 정보 업데이트 완료",
-  "user_id": "string",
-  "survey_id": "string",
-  "updated_at": "ISO8601"
-}
-```
-
-### Navigation Flow
-
-```
-NicknameSetupPage (완료 버튼)
-  ↓
-/self-assessment (이 페이지)
-  ↓ (완료 버튼 클릭)
-/profile-review
-```
+**Rationale**: Use explicit defaults (0 for numbers, "" for strings, [] for arrays) instead of null/undefined to simplify validation and backend processing.
 
 ---
 
 ## Git Commit
 
-**Message**:
+```bash
+commit 9aeca4b
+feat: Implement REQ-F-A2-2-2 full self-assessment form
 
+Test Results: ✅ 17/17 tests passing
 ```
-feat: Implement REQ-F-A2-2-2 level field in self-assessment page
-
-- Add level selection (1-5) with radio buttons
-- Implement level conversion to backend format (beginner/intermediate/advanced)
-- Add 10 comprehensive tests (100% passing)
-- Update SelfAssessmentPage component and styles
-- Navigate to profile review page on success
-
-REQ: REQ-F-A2-2-2
-Tests: 10 passed (10)
-```
-
-**Commit SHA**: bd3c7ec
 
 ---
 
-## Next Steps
+## Summary
 
-- [ ] Implement remaining fields (경력, 직군, 업무, 관심분야) in REQ-F-A2-2-2
-- [ ] Create Profile Review page for REQ-F-A2-2-4
-- [ ] Update App.tsx routing if needed
-
----
-
-## Notes
-
-- Backend API (`PUT /profile/survey`) already supports `level` field with Enum values
-- Frontend performs 1-5 → beginner/intermediate/advanced conversion
-- All 10 tests passing with 100% coverage
-- act() warnings in tests are non-blocking (React Testing Library async state updates)
+- **Total Tests**: 17
+- **Passing**: 17 (100%)
+- **Files Modified**: 4
+- **Lines Added**: +358
+- **Backend API**: Fully integrated with transformation
+- **Default Values**: Numbers→0, Strings→"", Arrays→[]
+- **Validation**: Career (0-50), Duty (max 500 chars)

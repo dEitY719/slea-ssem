@@ -52,6 +52,8 @@ export interface NicknameRegisterResponse {
 export interface SurveyUpdateRequest {
   level: string
   career: number
+  job_role: string
+  duty: string
   interests: string[]
 }
 
