@@ -8,6 +8,7 @@ import NicknameSetupPage from './pages/NicknameSetupPage'
 import CareerInfoPage from './pages/CareerInfoPage'
 import SelfAssessmentPage from './pages/SelfAssessmentPage'
 import ProfileReviewPage from './pages/ProfileReviewPage'
+import ProfileEditPage from './pages/ProfileEditPage'
 import TestPage from './pages/TestPage'
 import TestResultsPage from './pages/TestResultsPage'
 import ExplanationPage from './pages/ExplanationPage'
@@ -25,6 +26,7 @@ function App() {
         <Route path="/career-info" element={<CareerInfoPage />} />
         <Route path="/self-assessment" element={<SelfAssessmentPage />} />
         <Route path="/profile-review" element={<ProfileReviewPage />} />
+        <Route path="/profile/edit" element={<ProfileEditPage />} />
         <Route path="/test" element={<TestPage />} />
         <Route path="/test-results" element={<TestResultsPage />} />
         <Route path="/test-explanations/:sessionId" element={<ExplanationPage />} />
