@@ -46,7 +46,7 @@ const NicknameSetupPage: React.FC = () => {
         await profileService.registerNickname(nickname)
         setCachedNickname(nickname)
         setIsSubmitting(false)
-        navigate('/self-assessment', { replace: true })
+        navigate('/career-info', { replace: true })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : '닉네임 등록에 실패했습니다.'

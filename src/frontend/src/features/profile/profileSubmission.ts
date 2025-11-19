@@ -8,7 +8,9 @@ const LAST_SURVEY_LEVEL_KEY = 'lastSurveyLevel'
 type BaseProfileInput = {
   level: number
   career?: number
-  interests?: string[]
+  jobRole?: string
+  duty?: string
+  interests?: string
 }
 
 type CompleteSignupInput = BaseProfileInput & {
@@ -27,7 +29,9 @@ export async function submitProfileSurvey(input: BaseProfileInput) {
   const payload = {
     level: LEVEL_MAPPING[input.level],
     career: input.career ?? 0,
-    interests: input.interests ?? [],
+    job_role: input.jobRole ?? '',
+    duty: input.duty ?? '',
+    interests: input.interests ? [input.interests] : [],
   }
 
   const response = await profileService.updateSurvey(payload)

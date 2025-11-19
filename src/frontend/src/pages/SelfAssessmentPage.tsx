@@ -1,39 +1,57 @@
-// REQ: REQ-F-A2-2-2
+// REQ: REQ-F-A2-3
 import React, { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { submitProfileSurvey } from '../features/profile/profileSubmission'
 import LevelSelector from '../components/LevelSelector'
+import RadioButtonGrid, { type RadioButtonOption } from '../components/RadioButtonGrid'
 import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
+import { CAREER_TEMP_STORAGE_KEY, type CareerTempData } from './CareerInfoPage'
 import './SelfAssessmentPage.css'
 
 /**
  * Self Assessment Page Component
  *
- * REQ: REQ-F-A2-2-2 - 자기평가 정보(수준) 입력
- * REQ: REQ-F-A2-2-3 - 필수 필드 입력 시 "완료" 버튼 활성화
- * REQ: REQ-F-A2-2-4 - "완료" 버튼 클릭 시 user_profile 저장 및 리다이렉트
+ * REQ: REQ-F-A2-3 - 관심분야 및 기술 수준 입력 (프로필 설정 2/2)
  *
  * Features:
- * - Level selection (shared LevelSelector component)
+ * - Interests selection: radio button grid (3 columns)
+ * - Level selection: slider (1-5, required)
+ * - Loads career data from localStorage (from CareerInfoPage)
  * - Complete button (enabled when level is selected)
- * - API integration with LEVEL_MAPPING conversion
+ * - Combines career data + interests/level and submits to API
  *
  * Route: /self-assessment
  *
+ * Flow: /career-info → /self-assessment → /profile-review
+ *
  * Shared Components:
- * - LevelSelector: Reused with REQ-F-A2-Signup-4
- * - LEVEL_MAPPING: Centralized level conversion
+ * - LevelSelector: Reusable level selector (1-5)
+ * - RadioButtonGrid: Reusable radio button grid (3 columns per row)
  * - InfoBox: Consistent info display
  */
 
+// Radio button grid options for Interests field
+const INTERESTS_OPTIONS: RadioButtonOption[] = [
+  { value: 'AI', label: 'AI' },
+  { value: 'ML', label: 'ML' },
+  { value: 'Backend', label: 'Backend' },
+  { value: 'Frontend', label: 'Frontend' },
+]
+
 const SelfAssessmentPage: React.FC = () => {
   const [level, setLevel] = useState<number | null>(null)
+  const [interests, setInterests] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const navigate = useNavigate()
 
   const handleLevelChange = useCallback((selectedLevel: number) => {
     setLevel(selectedLevel)
+    setErrorMessage(null)
+  }, [])
+
+  const handleInterestsChange = useCallback((value: string) => {
+    setInterests(value)
     setErrorMessage(null)
   }, [])
 
@@ -45,39 +63,67 @@ const SelfAssessmentPage: React.FC = () => {
     setIsSubmitting(true)
     setErrorMessage(null)
 
-      try {
-        const response = await submitProfileSurvey({ level })
+    try {
+      // Load career data from localStorage
+      const careerDataStr = localStorage.getItem(CAREER_TEMP_STORAGE_KEY)
+      const careerData: CareerTempData = careerDataStr
+        ? JSON.parse(careerDataStr)
+        : { career: 0, jobRole: '', duty: '' }
 
-        setIsSubmitting(false)
-        navigate('/profile-review', {
-          replace: true,
-          state: { level, surveyId: response.surveyId },
-        })
+      // Combine career data + interests/level
+      const response = await submitProfileSurvey({
+        level,
+        career: careerData.career,
+        jobRole: careerData.jobRole,
+        duty: careerData.duty,
+        interests,
+      })
+
+      // Clear temporary career data
+      localStorage.removeItem(CAREER_TEMP_STORAGE_KEY)
+
+      setIsSubmitting(false)
+      navigate('/profile-review', {
+        replace: true,
+        state: { level, surveyId: response.surveyId },
+      })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : '자기평가 정보 저장에 실패했습니다.'
       setErrorMessage(message)
       setIsSubmitting(false)
     }
-  }, [level, isSubmitting, navigate])
+  }, [level, interests, isSubmitting, navigate])
 
   const isCompleteEnabled = level !== null && !isSubmitting
 
   return (
     <main className="self-assessment-page">
       <div className="self-assessment-container">
-        <h1 className="page-title">자기평가 입력</h1>
+        <h1 className="page-title">관심분야 및 기술 수준 입력</h1>
         <p className="page-description">
-          현재 본인의 기술 수준을 선택해주세요. 이 정보는 맞춤형 테스트 생성에 활용됩니다.
+          관심 있는 분야와 현재 본인의 기술 수준을 선택해주세요. 기술 수준은 필수 항목입니다.
         </p>
 
-        {/* Shared LevelSelector component (REQ-F-A2-Signup-4, REQ-F-A2-2-2) */}
-        <LevelSelector
-          value={level}
-          onChange={handleLevelChange}
-          disabled={isSubmitting}
-          showTitle={false}
-        />
+        <div className="form-section">
+          {/* 1. 관심분야 - 라디오버튼 그리드 (3열) */}
+          <RadioButtonGrid
+            name="interests"
+            legend="관심분야"
+            options={INTERESTS_OPTIONS}
+            value={interests}
+            onChange={handleInterestsChange}
+            disabled={isSubmitting}
+          />
+
+          {/* 2. 수준 (1-5 슬라이더) */}
+          <LevelSelector
+            value={level}
+            onChange={handleLevelChange}
+            disabled={isSubmitting}
+            showTitle={true}
+          />
+        </div>
 
         {errorMessage && <p className="error-message">{errorMessage}</p>}
 
@@ -92,10 +138,12 @@ const SelfAssessmentPage: React.FC = () => {
           </button>
         </div>
 
-        <InfoBox title="수준 선택 가이드" icon={InfoBoxIcons.check}>
+        <InfoBox title="자기평가 가이드" icon={InfoBoxIcons.check}>
           <ul className="info-list">
-            <li>본인의 현재 기술 수준을 솔직하게 평가해주세요</li>
+            <li>관심분야는 선택 사항입니다</li>
+            <li>기술 수준은 필수 항목입니다 (1~5 중 선택)</li>
             <li>선택한 수준에 맞춰 테스트 난이도가 조정됩니다</li>
+            <li>본인의 현재 기술 수준을 솔직하게 평가해주세요</li>
             <li>나중에 프로필 수정에서 변경할 수 있습니다</li>
           </ul>
         </InfoBox>
