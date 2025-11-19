@@ -69,7 +69,7 @@ class GoogleGenerativeAIProvider(LLMProvider):
         return ChatGoogleGenerativeAI(
             api_key=api_key,
             model="gemini-2.0-flash",
-            temperature=0.7,  # 창의성과 정확성의 균형 (0~1)
+            temperature=0.3,  # 결정적 도구 호출 (0.7 → 0.3으로 감소: ReAct 형식 일관성 향상)
             max_output_tokens=8192,  # 응답 최대 길이 (2024년 증가: 1024 → 4096 → 8192, 전체 ReAct 대화 및 다중 문항 생성 지원)
             top_p=0.95,  # Nucleus sampling (다양성 제어)
             timeout=30,  # API 타임아웃 (초)
@@ -113,7 +113,7 @@ class LiteLLMProvider(LLMProvider):
             model=model,
             api_key=api_key,
             base_url=base_url,
-            temperature=0.7,  # 창의성과 정확성의 균형 (0~1)
+            temperature=0.3,  # 결정적 도구 호출 (0.7 → 0.3으로 감소: ReAct 형식 일관성 향상)
             max_tokens=8192,  # LiteLLM 프록시 호환성 (보수적 설정)
             timeout=30,  # API 타임아웃 (초)
         )

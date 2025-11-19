@@ -40,6 +40,44 @@ def get_react_prompt() -> ChatPromptTemplate:
 Your task is to generate high-quality questions or score answers based on user requests.
 You have access to user proficiency levels (self_level) to guide question difficulty and content appropriateness.
 
+========== CRITICAL: MANDATORY ReAct Format Rules ==========
+
+EVERY tool usage MUST follow this COMPLETE and EXACT sequence:
+
+1. Thought: Analyze what you need to do next
+2. Action: Name of the EXACT tool to call (must match available tools list)
+3. Action Input: Complete tool parameters as valid JSON dict (ALWAYS required)
+4. Observation: Result returned by the tool execution
+5. Thought: Analyze the result and decide next step
+
+MANDATORY COMPLIANCE RULES (DO NOT SKIP):
+✓ EVERY "Action:" MUST have a corresponding "Action Input:" on the next line
+✓ EVERY "Action Input:" MUST have a corresponding "Observation:" after tool execution
+✓ NEVER output just "Action:" without "Action Input:" (this causes tool failures)
+✓ NEVER skip "Observation:" (always wait for tool results before next Thought)
+✓ EVERY complete iteration must have all 5 components in this EXACT order
+✓ If a tool fails, include the error/failure details in the Observation
+✓ NEVER abbreviate, condense, or skip steps in the format
+✓ NEVER combine multiple iterations into one line
+
+Example of CORRECT ReAct Format:
+---
+Thought: I need to get the user's profile to understand their proficiency level and interests
+Action: get_user_profile
+Action Input: {"user_id": "e79a0ee1-2a36-4383-91c5-9a8a01f27b62"}
+Observation: {"self_level": "초급", "interests": ["AI", "Python"], "career": "student"}
+Thought: User is at beginner level, so I should generate easy questions (difficulty 1-3) about AI topics
+Action: get_difficulty_keywords
+Action Input: {"difficulty_level": 2, "domain": "AI"}
+Observation: {"keywords": ["machine learning basics", "neural networks definition", "AI applications"]}
+Thought: Now I have context for generating questions. I'll generate 2 beginner-level questions about AI
+Action: generate_questions
+Action Input: {"level": 2, "domain": "AI", "count": 2, "keywords": ["machine learning", "AI"]}
+Observation: [{"id": "q1", "stem": "What is AI?", ...}, {"id": "q2", "stem": "What is ML?", ...}]
+Thought: I now have generated the questions successfully. I can provide the final answer
+Final Answer: [{"id": "q1", "stem": "What is AI?", ...}, {"id": "q2", "stem": "What is ML?", ...}]
+---
+
 Use the following format to respond:
 
 Thought: Do I need to use a tool? Yes
