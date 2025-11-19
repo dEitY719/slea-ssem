@@ -209,190 +209,101 @@ console.print("Usage: cmd [[level]] [[years]] [--option VALUE]")
 
 ## LLM-Based Development Guidelines
 
-### Problem: Prompt Template & JSON Escaping Issues
+### Quick Summary
 
-**When working with LLM prompts and LangChain templates, be aware of this critical issue:**
+When working with LLM prompts and LangChain, **always separate content from template logic**. Mixing them causes escaping nightmares when you add JSON examples to prompts.
 
-LangChain's `ChatPromptTemplate.from_template()` interprets ALL curly braces `{}` as template variables, which causes problems when you have JSON examples in your prompts.
-
-**Real Example from This Project:**
+**Key Pattern**:
 ```python
-# ❌ PROBLEM: JSON in prompt causes template variable errors
-system_prompt = """
-Example:
-Action Input: {"user_id": "123-456"}
-Observation: {"level": "초급"}
-"""
+# ✅ CORRECT: Use SystemMessage, not from_template()
+system_message = SystemMessage(content=prompt_text)  # {} stays as plain text
+return ChatPromptTemplate.from_messages([system_message, ...])
 
-template = ChatPromptTemplate.from_template(system_prompt)
-# Error: 'Input to ChatPromptTemplate is missing variables {"user_id"}'
+# ❌ WRONG: from_template() interprets {} as variables
+ChatPromptTemplate.from_template(prompt_text)  # JSON needs escaping!
 ```
 
-### Root Causes to Avoid
+### Two Critical Issues Learned the Hard Way
 
-1. **Mixing Content and Logic**: Keeping prompt content and template logic in same file
-   - Makes testing hard
-   - Breaks when adding JSON examples
-   - Forces ugly escaping (`{{"user_id": ...}}`)
+#### 1. ReAct Format Completeness (LiteLLM Issue)
+- **Problem**: LLM sometimes skips Action Input or Observation fields
+- **Root Cause**: High temperature (0.7) + vague prompt instructions
+- **Solution**: Use temperature 0.3 + explicit format requirements
+- **Reference**: `docs/postmortem-litellm-no-tool-results.md`
 
-2. **Using from_template() with JSON**: Interprets `{}` as variables
-   - JSON examples require double-brace escaping
-   - Error-prone on every prompt update
-   - Violates SOLID principles (mixed responsibilities)
+#### 2. JSON Escaping in Prompts (Template Logic Issue)
+- **Problem**: `{"user_id": "..."}` in prompt → interpreted as template variable
+- **Root Cause**: Mixing content and logic; using `from_template()`
+- **Solution**: SOLID-based refactoring (Builder + Factory patterns)
+- **Reference**: `docs/postmortem-prompt-escaping-solid-refactoring.md`
 
-3. **Ignoring SOLID Principles**: Not separating concerns
-   - Content changes break template logic
-   - Hard to test and extend
-   - Difficult to add new prompt types
+### SOLID-Based Solution (Condensed)
 
-### Recommended Solution: SOLID-Based Prompt Architecture
+**File Structure**:
+```
+src/agent/prompts/
+├── prompt_content.py  (pure text, no escaping!)
+├── prompt_builder.py  (Builder + Factory patterns)
+└── react_prompt.py    (simple API via factory delegation)
+```
 
-Follow this pattern for ANY LLM prompt work:
-
-#### Step 1: Separate Content from Logic
-
-**File: `prompts/prompt_content.py`** (Pure text, NO escaping!)
+**Key Code Pattern**:
 ```python
-# Simple string constants - natural JSON, no escaping needed
-REACT_FORMAT_RULES = """..."""
-REACT_EXAMPLE = """
-Action Input: {"user_id": "..."}     # ✅ Natural JSON!
-Observation: {"level": "초급", ...}  # ✅ No escaping!
-"""
-
+# Content: Just plain text, no escaping needed
 def get_system_prompt() -> str:
-    # String concatenation (not f-strings)
     parts = [
         "Your role...",
         REACT_FORMAT_RULES,
-        REACT_EXAMPLE,
+        "Action Input: {\"user_id\": \"...\"}",  # ✅ Natural JSON!
         "Instructions...",
     ]
-    return "\n".join(parts)  # Simple concatenation
-```
+    return "\n".join(parts)
 
-#### Step 2: Use Builder Pattern for Template Logic
-
-**File: `prompts/prompt_builder.py`** (Template logic only)
-```python
-from langchain_core.messages import SystemMessage  # KEY: Not from_template()
-
-class PromptBuilder(ABC):
-    @abstractmethod
-    def build(self) -> ChatPromptTemplate:
-        pass
-
+# Template: Uses SystemMessage, not from_template()
 class ReactPromptBuilder(PromptBuilder):
     def build(self) -> ChatPromptTemplate:
-        # KEY CHANGE: Use SystemMessage directly
-        # This avoids from_template() which interprets {}
-        system_prompt = get_system_prompt()  # Pure text from content module
-        system_message = SystemMessage(content=system_prompt)  # No interpretation!
-
+        system_prompt = get_system_prompt()  # Pure text
+        system_message = SystemMessage(content=system_prompt)  # No {} interpretation!
         return ChatPromptTemplate.from_messages([
-            system_message,  # {} stays as plain text
+            system_message,
             MessagesPlaceholder(variable_name="messages"),
         ])
 ```
-
-#### Step 3: Use Factory Pattern for Flexibility
-
-```python
-class PromptFactory:
-    _builders = {
-        "react": ReactPromptBuilder,
-        "simple": SimplePromptBuilder,
-    }
-
-    @staticmethod
-    def get_builder(builder_type: str) -> PromptBuilder:
-        return PromptFactory._builders[builder_type]()
-
-    @staticmethod
-    def register_builder(name: str, builder_class: type):
-        PromptFactory._builders[name] = builder_class
-```
-
-#### Step 4: Simplify Public API
-
-**File: `prompts/react_prompt.py`** (Simple delegation)
-```python
-def get_react_prompt() -> ChatPromptTemplate:
-    builder = PromptFactory.get_builder("react")
-    return builder.build()
-```
-
-### Benefits of This Approach
-
-| Aspect | Without SOLID | With SOLID |
-|--------|---|---|
-| **JSON escaping** | `{{"user_id": ...}}` | `{"user_id": ...}` |
-| **Prompt updates** | Risky (escaping errors) | Safe (edit content.py only) |
-| **Adding new prompts** | Copy-paste mess | Add one builder class |
-| **Testing** | Hard (mixed concerns) | Easy (separate modules) |
-| **Maintenance** | High friction | Low friction |
-
-### SOLID Principles Applied
-
-1. **Single Responsibility**: Content ≠ Template Logic
-   - `prompt_content.py`: Content only
-   - `prompt_builder.py`: Logic only
-
-2. **Open/Closed**: Easy to extend
-   ```python
-   class CustomPromptBuilder(PromptBuilder):
-       def build(self) -> ChatPromptTemplate:
-           # Custom implementation
-           pass
-
-   PromptFactory.register_builder("custom", CustomPromptBuilder)
-   ```
-
-3. **Liskov Substitution**: All builders implement same interface
-
-4. **Interface Segregation**: Clients use simple `build()` method
-
-5. **Dependency Inversion**: Depends on abstractions (PromptBuilder, SystemMessage)
-
-### Key Technical Insight
-
-The crucial difference:
-```python
-# ❌ WRONG: from_template() interprets {} as variables
-SystemMessagePromptTemplate.from_template(system_prompt)
-
-# ✅ CORRECT: SystemMessage treats {} as plain text
-SystemMessage(content=system_prompt)
-```
-
-### Real-World Example
-
-See `docs/PROMPT_SOLID_REFACTORING.md` for the complete implementation from this project, including:
-- Before/after comparison
-- Full file structure
-- Testing results
-- Future extension examples
 
 ### Checklist for Future LLM Projects
 
 When adding LLM prompts to ANY project:
 
-- [ ] Don't mix content and logic in same file
-- [ ] Separate into: `prompt_content.py` (text) + `prompt_builder.py` (logic)
-- [ ] Use `SystemMessage(content=...)` NOT `from_template()`
-- [ ] Use simple string concatenation, not f-strings
-- [ ] Apply Builder + Factory patterns
-- [ ] Write tests that mock content separately from template logic
-- [ ] Document the architecture (like PROMPT_SOLID_REFACTORING.md)
+- [ ] **Separate content and logic**: Different files, never mix
+- [ ] **Use SystemMessage**: `SystemMessage(content=...)` NOT `from_template()`
+- [ ] **No escaping needed**: If you're using `{{`, you're doing it wrong
+- [ ] **Apply Builder + Factory**: For flexibility and testability
+- [ ] **Document the architecture**: Reference PROMPT_SOLID_REFACTORING.md
 
-### Prevention
+### Complete Documentation & Analysis
 
-This pattern ensures:
-✅ No more escaping nightmares
-✅ Easy to modify prompts
-✅ Easy to add new prompt types
-✅ Testable and maintainable
-✅ Team-friendly documentation
+For full details with implementation examples and analysis, read these postmortem documents:
+
+1. **`docs/postmortem-litellm-no-tool-results.md`** (25 min read)
+   - "No tool results extracted!" error deep analysis
+   - Temperature impact on consistency with data
+   - Phase 1-4 improvement roadmap
+   - Why LiteLLM differs from native Gemini API
+   - Key insights for future projects
+
+2. **`docs/postmortem-prompt-escaping-solid-refactoring.md`** (30 min read)
+   - JSON escaping problem explanation with real examples
+   - Complete SOLID-based solution
+   - Builder + Factory pattern implementation
+   - Future extension examples (conditional content, custom builders)
+   - Prevention checklist
+
+3. **`docs/PROMPT_SOLID_REFACTORING.md`** (Complete Implementation Reference)
+   - Before/after architecture comparison
+   - Full file structure with complete code
+   - Testing results and verification
+   - SOLID principles breakdown with code examples
+   - Future improvements roadmap
 
 ---
 
