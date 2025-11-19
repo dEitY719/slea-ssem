@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { profileService } from '../services/profileService'
-import { useNicknameValidation } from '../hooks/useNicknameValidation'
+import { useNicknameCheck } from '../hooks/useNicknameCheck'
 import { useUserProfile } from '../hooks/useUserProfile'
 import LevelSelector from '../components/LevelSelector'
 import NumberInput from '../components/NumberInput'
@@ -81,7 +81,6 @@ const ProfileEditPage: React.FC = () => {
   const [originalInterests, setOriginalInterests] = useState<string>('')
 
   // Current form values
-  const [nickname, setNickname] = useState<string>('')
   const [level, setLevel] = useState<number | null>(null)
   const [career, setCareer] = useState<number>(0)
   const [jobRole, setJobRole] = useState<string>('')
@@ -93,12 +92,14 @@ const ProfileEditPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  // Nickname validation
+  // Nickname validation using useNicknameCheck hook
   const {
+    nickname,
+    setNickname,
     checkStatus,
-    validateNickname,
+    checkNickname: validateNickname,
     setManualError,
-  } = useNicknameValidation(nickname)
+  } = useNicknameCheck()
 
   // Load existing profile data on mount
   useEffect(() => {
@@ -110,7 +111,7 @@ const ProfileEditPage: React.FC = () => {
         // Load nickname
         const currentNickname = await checkNickname()
         if (currentNickname) {
-          setNickname(currentNickname)
+          setNickname(currentNickname) // This will use the hook's setNickname
           setOriginalNickname(currentNickname)
         }
 
@@ -182,10 +183,10 @@ const ProfileEditPage: React.FC = () => {
 
   const handleNicknameChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setNickname(e.target.value)
+      setNickname(e.target.value) // This will use the hook's setNickname
       setErrorMessage(null)
     },
-    []
+    [setNickname]
   )
 
   const handleCheckNickname = useCallback(async () => {
