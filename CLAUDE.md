@@ -205,6 +205,197 @@ console.print("Usage: cmd [[level]] [[years]] [--option VALUE]")
 
 **Cache after changes**: Run `./tools/dev.sh clean` before testing CLI changes, as Python caches compiled modules.
 
+---
+
+## LLM-Based Development Guidelines
+
+### Problem: Prompt Template & JSON Escaping Issues
+
+**When working with LLM prompts and LangChain templates, be aware of this critical issue:**
+
+LangChain's `ChatPromptTemplate.from_template()` interprets ALL curly braces `{}` as template variables, which causes problems when you have JSON examples in your prompts.
+
+**Real Example from This Project:**
+```python
+# ❌ PROBLEM: JSON in prompt causes template variable errors
+system_prompt = """
+Example:
+Action Input: {"user_id": "123-456"}
+Observation: {"level": "초급"}
+"""
+
+template = ChatPromptTemplate.from_template(system_prompt)
+# Error: 'Input to ChatPromptTemplate is missing variables {"user_id"}'
+```
+
+### Root Causes to Avoid
+
+1. **Mixing Content and Logic**: Keeping prompt content and template logic in same file
+   - Makes testing hard
+   - Breaks when adding JSON examples
+   - Forces ugly escaping (`{{"user_id": ...}}`)
+
+2. **Using from_template() with JSON**: Interprets `{}` as variables
+   - JSON examples require double-brace escaping
+   - Error-prone on every prompt update
+   - Violates SOLID principles (mixed responsibilities)
+
+3. **Ignoring SOLID Principles**: Not separating concerns
+   - Content changes break template logic
+   - Hard to test and extend
+   - Difficult to add new prompt types
+
+### Recommended Solution: SOLID-Based Prompt Architecture
+
+Follow this pattern for ANY LLM prompt work:
+
+#### Step 1: Separate Content from Logic
+
+**File: `prompts/prompt_content.py`** (Pure text, NO escaping!)
+```python
+# Simple string constants - natural JSON, no escaping needed
+REACT_FORMAT_RULES = """..."""
+REACT_EXAMPLE = """
+Action Input: {"user_id": "..."}     # ✅ Natural JSON!
+Observation: {"level": "초급", ...}  # ✅ No escaping!
+"""
+
+def get_system_prompt() -> str:
+    # String concatenation (not f-strings)
+    parts = [
+        "Your role...",
+        REACT_FORMAT_RULES,
+        REACT_EXAMPLE,
+        "Instructions...",
+    ]
+    return "\n".join(parts)  # Simple concatenation
+```
+
+#### Step 2: Use Builder Pattern for Template Logic
+
+**File: `prompts/prompt_builder.py`** (Template logic only)
+```python
+from langchain_core.messages import SystemMessage  # KEY: Not from_template()
+
+class PromptBuilder(ABC):
+    @abstractmethod
+    def build(self) -> ChatPromptTemplate:
+        pass
+
+class ReactPromptBuilder(PromptBuilder):
+    def build(self) -> ChatPromptTemplate:
+        # KEY CHANGE: Use SystemMessage directly
+        # This avoids from_template() which interprets {}
+        system_prompt = get_system_prompt()  # Pure text from content module
+        system_message = SystemMessage(content=system_prompt)  # No interpretation!
+
+        return ChatPromptTemplate.from_messages([
+            system_message,  # {} stays as plain text
+            MessagesPlaceholder(variable_name="messages"),
+        ])
+```
+
+#### Step 3: Use Factory Pattern for Flexibility
+
+```python
+class PromptFactory:
+    _builders = {
+        "react": ReactPromptBuilder,
+        "simple": SimplePromptBuilder,
+    }
+
+    @staticmethod
+    def get_builder(builder_type: str) -> PromptBuilder:
+        return PromptFactory._builders[builder_type]()
+
+    @staticmethod
+    def register_builder(name: str, builder_class: type):
+        PromptFactory._builders[name] = builder_class
+```
+
+#### Step 4: Simplify Public API
+
+**File: `prompts/react_prompt.py`** (Simple delegation)
+```python
+def get_react_prompt() -> ChatPromptTemplate:
+    builder = PromptFactory.get_builder("react")
+    return builder.build()
+```
+
+### Benefits of This Approach
+
+| Aspect | Without SOLID | With SOLID |
+|--------|---|---|
+| **JSON escaping** | `{{"user_id": ...}}` | `{"user_id": ...}` |
+| **Prompt updates** | Risky (escaping errors) | Safe (edit content.py only) |
+| **Adding new prompts** | Copy-paste mess | Add one builder class |
+| **Testing** | Hard (mixed concerns) | Easy (separate modules) |
+| **Maintenance** | High friction | Low friction |
+
+### SOLID Principles Applied
+
+1. **Single Responsibility**: Content ≠ Template Logic
+   - `prompt_content.py`: Content only
+   - `prompt_builder.py`: Logic only
+
+2. **Open/Closed**: Easy to extend
+   ```python
+   class CustomPromptBuilder(PromptBuilder):
+       def build(self) -> ChatPromptTemplate:
+           # Custom implementation
+           pass
+
+   PromptFactory.register_builder("custom", CustomPromptBuilder)
+   ```
+
+3. **Liskov Substitution**: All builders implement same interface
+
+4. **Interface Segregation**: Clients use simple `build()` method
+
+5. **Dependency Inversion**: Depends on abstractions (PromptBuilder, SystemMessage)
+
+### Key Technical Insight
+
+The crucial difference:
+```python
+# ❌ WRONG: from_template() interprets {} as variables
+SystemMessagePromptTemplate.from_template(system_prompt)
+
+# ✅ CORRECT: SystemMessage treats {} as plain text
+SystemMessage(content=system_prompt)
+```
+
+### Real-World Example
+
+See `docs/PROMPT_SOLID_REFACTORING.md` for the complete implementation from this project, including:
+- Before/after comparison
+- Full file structure
+- Testing results
+- Future extension examples
+
+### Checklist for Future LLM Projects
+
+When adding LLM prompts to ANY project:
+
+- [ ] Don't mix content and logic in same file
+- [ ] Separate into: `prompt_content.py` (text) + `prompt_builder.py` (logic)
+- [ ] Use `SystemMessage(content=...)` NOT `from_template()`
+- [ ] Use simple string concatenation, not f-strings
+- [ ] Apply Builder + Factory patterns
+- [ ] Write tests that mock content separately from template logic
+- [ ] Document the architecture (like PROMPT_SOLID_REFACTORING.md)
+
+### Prevention
+
+This pattern ensures:
+✅ No more escaping nightmares
+✅ Easy to modify prompts
+✅ Easy to add new prompt types
+✅ Testable and maintainable
+✅ Team-friendly documentation
+
+---
+
 ## Further Reading
 
 - **User Scenarios**: `docs/user_scenarios_mvp1.md`
