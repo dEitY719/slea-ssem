@@ -55,7 +55,8 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
 
   const handleEditProfileClick = () => {
     // REQ-F-A2-Profile-Access-5: Navigate to profile edit page
-    navigate('/profile/edit')
+    // Pass returnTo state so ProfileEditPage knows where to redirect after save
+    navigate('/profile/edit', { state: { returnTo: '/home' } })
     setIsDropdownOpen(false)
   }
 

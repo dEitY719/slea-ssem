@@ -146,7 +146,8 @@ const ProfileReviewPage: React.FC = () => {
   }, [state?.surveyId, navigate])
 
   const handleEditClick = useCallback(() => {
-    navigate('/profile/edit')
+    // Pass returnTo state so ProfileEditPage knows to return to profile-review after save
+    navigate('/profile/edit', { state: { returnTo: '/profile-review' } })
   }, [navigate])
 
   if (isLoading) {

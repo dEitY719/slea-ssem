@@ -1,6 +1,6 @@
 // REQ: REQ-F-A2-Edit
 import React, { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { profileService } from '../services/profileService'
 import { useNicknameCheck } from '../hooks/useNicknameCheck'
 import { useUserProfile } from '../hooks/useUserProfile'
@@ -62,7 +62,11 @@ const INTERESTS_OPTIONS: RadioButtonOption[] = [
 
 const ProfileEditPage: React.FC = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { checkNickname } = useUserProfile()
+
+  // Get returnTo path from navigation state (default to /profile-review)
+  const returnTo = (location.state as { returnTo?: string })?.returnTo || '/profile-review'
 
   // Original values (for change detection)
   const [originalNickname, setOriginalNickname] = useState<string>('')
@@ -256,9 +260,9 @@ const ProfileEditPage: React.FC = () => {
       setSuccessMessage('저장되었습니다')
       setIsSubmitting(false)
 
-      // Redirect to profile review after 1 second
+      // Redirect to returnTo path after 1 second
       setTimeout(() => {
-        navigate('/profile-review', { replace: true })
+        navigate(returnTo, { replace: true })
       }, 1000)
     } catch (error) {
       const message =
@@ -282,6 +286,7 @@ const ProfileEditPage: React.FC = () => {
     checkStatus,
     isSubmitting,
     navigate,
+    returnTo,
   ])
 
   const isSaveEnabled = level !== null && !isSubmitting && !isLoading
