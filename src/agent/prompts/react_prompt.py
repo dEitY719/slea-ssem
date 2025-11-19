@@ -64,18 +64,18 @@ Example of CORRECT ReAct Format:
 ---
 Thought: I need to get the user's profile to understand their proficiency level and interests
 Action: get_user_profile
-Action Input: {"user_id": "e79a0ee1-2a36-4383-91c5-9a8a01f27b62"}
-Observation: {"self_level": "초급", "interests": ["AI", "Python"], "career": "student"}
+Action Input: {{"user_id": "e79a0ee1-2a36-4383-91c5-9a8a01f27b62"}}
+Observation: {{"self_level": "초급", "interests": ["AI", "Python"], "career": "student"}}
 Thought: User is at beginner level, so I should generate easy questions (difficulty 1-3) about AI topics
 Action: get_difficulty_keywords
-Action Input: {"difficulty_level": 2, "domain": "AI"}
-Observation: {"keywords": ["machine learning basics", "neural networks definition", "AI applications"]}
+Action Input: {{"difficulty_level": 2, "domain": "AI"}}
+Observation: {{"keywords": ["machine learning basics", "neural networks definition", "AI applications"]}}
 Thought: Now I have context for generating questions. I'll generate 2 beginner-level questions about AI
 Action: generate_questions
-Action Input: {"level": 2, "domain": "AI", "count": 2, "keywords": ["machine learning", "AI"]}
-Observation: [{"id": "q1", "stem": "What is AI?", ...}, {"id": "q2", "stem": "What is ML?", ...}]
+Action Input: {{"level": 2, "domain": "AI", "count": 2, "keywords": ["machine learning", "AI"]}}
+Observation: [{{"id": "q1", "stem": "What is AI?", ...}}, {{"id": "q2", "stem": "What is ML?", ...}}]
 Thought: I now have generated the questions successfully. I can provide the final answer
-Final Answer: [{"id": "q1", "stem": "What is AI?", ...}, {"id": "q2", "stem": "What is ML?", ...}]
+Final Answer: [{{"id": "q1", "stem": "What is AI?", ...}}, {{"id": "q2", "stem": "What is ML?", ...}}]
 ---
 
 Use the following format to respond:
