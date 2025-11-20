@@ -174,8 +174,19 @@ const TestPage: React.FC = () => {
         setAnswer('')
         setIsSubmitting(false)
       } else {
-        // All questions answered, navigate to results
-        navigate('/test-results', { state: { sessionId, surveyId: state.surveyId } })
+        // All questions answered
+        try {
+          // Calculate score and auto-complete session
+          await questionService.calculateScore(sessionId, true)
+
+          // Navigate to results
+          navigate('/test-results', { state: { sessionId, surveyId: state.surveyId } })
+        } catch (scoreError) {
+          // Even if score calculation fails, still navigate to results
+          // (results page will handle the error)
+          console.error('Score calculation failed:', scoreError)
+          navigate('/test-results', { state: { sessionId, surveyId: state.surveyId } })
+        }
       }
     } catch (err) {
       const message =

@@ -10,6 +10,7 @@ const API_PROFILE_CONSENT = '/api/profile/consent'
 const API_PROFILE_SURVEY = '/api/profile/survey'
 const API_QUESTIONS_GENERATE = '/api/questions/generate'
 const API_QUESTIONS_AUTOSAVE = '/api/questions/autosave'
+const API_QUESTIONS_SCORE = '/api/questions/score'
 const API_RESULTS_PREVIOUS = '/api/results/previous'
 
 const ensureApiPath = (url: string): string => {
@@ -115,9 +116,9 @@ const mockData: Record<string, any> = {
       ],
     },
     [API_QUESTIONS_AUTOSAVE]: {
-      saved: true,
-      session_id: 'mock_session_123',
-      question_id: '',
+      success: true,
+      message: 'Answer autosaved successfully',
+      autosave_id: 'autosave_mock_123',
       saved_at: new Date().toISOString(),
     },
   // Add more mock endpoints here
@@ -148,7 +149,7 @@ type PreviousResultSummary = {
 const RESULT_SEQUENCE: GradeResultMock[] = [
   {
     user_id: 1,
-    grade: 'Beginner',
+    grade: 'Elite',
     score: 58,
     rank: 420,
     total_cohort_size: 506,
@@ -577,10 +578,26 @@ class MockTransport implements HttpTransport {
     if (normalizedUrl === API_QUESTIONS_AUTOSAVE && method === 'POST') {
       console.log('[Mock Transport] Autosaving answer:', requestData)
       const response = {
-        saved: true,
-        session_id: requestData?.session_id || 'mock_session_123',
-        question_id: requestData?.question_id || '',
+        success: true,
+        message: 'Answer autosaved successfully',
+        autosave_id: `autosave_${Date.now()}`,
         saved_at: new Date().toISOString(),
+      }
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
+    // Handle questions score endpoint
+    if (normalizedUrl.startsWith(API_QUESTIONS_SCORE) && method === 'POST') {
+      console.log('[Mock Transport] Calculating score for session:', normalizedUrl)
+      const response = {
+        session_id: requestData?.session_id || 'mock_session_123',
+        round: 1,
+        score: 85.0,
+        correct_count: 4,
+        total_count: 5,
+        wrong_categories: { 'ML Fundamentals': 1 },
+        auto_completed: true,
       }
       console.log('[Mock Transport] Response:', response)
       return response as T
