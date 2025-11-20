@@ -214,6 +214,7 @@ console.print("Usage: cmd [[level]] [[years]] [--option VALUE]")
 When working with LLM prompts and LangChain, **always separate content from template logic**. Mixing them causes escaping nightmares when you add JSON examples to prompts.
 
 **Key Pattern**:
+
 ```python
 # ✅ CORRECT: Use SystemMessage, not from_template()
 system_message = SystemMessage(content=prompt_text)  # {} stays as plain text
@@ -226,12 +227,14 @@ ChatPromptTemplate.from_template(prompt_text)  # JSON needs escaping!
 ### Two Critical Issues Learned the Hard Way
 
 #### 1. ReAct Format Completeness (LiteLLM Issue)
+
 - **Problem**: LLM sometimes skips Action Input or Observation fields
 - **Root Cause**: High temperature (0.7) + vague prompt instructions
 - **Solution**: Use temperature 0.3 + explicit format requirements
 - **Reference**: `docs/postmortem-litellm-no-tool-results.md`
 
 #### 2. JSON Escaping in Prompts (Template Logic Issue)
+
 - **Problem**: `{"user_id": "..."}` in prompt → interpreted as template variable
 - **Root Cause**: Mixing content and logic; using `from_template()`
 - **Solution**: SOLID-based refactoring (Builder + Factory patterns)
@@ -240,6 +243,7 @@ ChatPromptTemplate.from_template(prompt_text)  # JSON needs escaping!
 ### SOLID-Based Solution (Condensed)
 
 **File Structure**:
+
 ```
 src/agent/prompts/
 ├── prompt_content.py  (pure text, no escaping!)
@@ -248,6 +252,7 @@ src/agent/prompts/
 ```
 
 **Key Code Pattern**:
+
 ```python
 # Content: Just plain text, no escaping needed
 def get_system_prompt() -> str:

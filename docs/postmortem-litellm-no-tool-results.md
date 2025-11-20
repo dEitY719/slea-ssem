@@ -43,12 +43,15 @@ When using LiteLLM backend with `gemini-2.0-flash`, the ReAct agent occasionally
 ### Root Causes
 
 #### 1. Temperature Too High (0.7)
+
 - Temperature controls LLM randomness
 - 0.7 = "creative mode" → LLM felt free to skip steps
 - Optimal for tool calling = **0.3** (deterministic)
 
 #### 2. Prompt Ambiguity
+
 **Old prompt** (unclear):
+
 ```
 Use the following format to respond:
 Thought: ...
@@ -59,11 +62,13 @@ Observation: ...
 ```
 
 **Problems**:
+
 - "can repeat N times" doesn't clarify each iteration must be **complete**
 - No emphasis that Action Input is **MANDATORY** for every Action
 - Generic language allowed flexible interpretation
 
 #### 3. LiteLLM Proxy Inconsistency
+
 Same `gemini-2.0-flash` model behaves differently when routed through LiteLLM proxy:
 
 | Aspect | Native Gemini | LiteLLM Proxy |
@@ -84,6 +89,7 @@ Reason: Proxy layer adds transformation steps (OpenAI → Gemini format conversi
 **File**: `src/agent/prompts/react_prompt.py` (Modified)
 
 **Added explicit rules**:
+
 ```
 ========== CRITICAL: MANDATORY ReAct Format Rules ==========
 
@@ -119,6 +125,7 @@ temperature=0.3,  # Changed from 0.7
 ```
 
 **Temperature Scale**:
+
 - 0.0 = Completely deterministic (too rigid for reasoning)
 - **0.3 = Optimal for tool calling** ✅ (structured, deterministic)
 - 0.7 = Balanced (good for general tasks, BAD for tool calling)
@@ -153,11 +160,13 @@ def _is_complete_react_response(self, content: str) -> tuple[bool, str]:
 **File**: `src/agent/llm_agent.py`
 
 **Before**:
+
 ```python
 logger.warning("⚠️  No tool results extracted!")
 ```
 
 **After**:
+
 ```python
 logger.warning(
     f"⚠️  No tool results extracted! "
@@ -176,12 +185,14 @@ logger.warning(
 ### Test Results
 
 ✅ **Format & Lint**: All checks pass
+
 ```
 ruff format . → OK
 ruff check . → All checks passed!
 ```
 
 ✅ **ReAct Format Validation**: Passes on first attempt
+
 ```
 Input variables: ['messages']
 JSON examples render correctly without escaping
@@ -189,6 +200,7 @@ Format rules present and enforced
 ```
 
 ✅ **Temperature Impact**: Lower temperature improves consistency
+
 ```
 Before: 70% first-attempt success rate
 After: 95%+ first-attempt success rate (estimated based on improvements)
@@ -205,19 +217,25 @@ After: 95%+ first-attempt success rate (estimated based on improvements)
 ## Key Insights
 
 ### 1. Temperature Controls Consistency for Structured Tasks
+
 For tool calling and structured output, use temperature **0.3**, not 0.7. The difference is significant:
+
 - 0.3: 95%+ first-attempt success
 - 0.7: 70% first-attempt success
 
 ### 2. Explicit Prompts Beat Generic Guidelines
+
 Generic instructions like "follow ReAct format" are interpreted flexibly. Explicit rules with examples work better:
+
 - "Can repeat N times" → Vague
 - "EVERY Action MUST have Action Input" → Clear
 
 ### 3. LiteLLM Proxy Adds Variability
+
 Same model (`gemini-2.0-flash`) behaves differently through LiteLLM proxy. When consistency is critical, consider native APIs.
 
 ### 4. Validation Enables Debugging
+
 Adding validation helpers makes failures visible and debuggable, not just "retry and hope".
 
 ---
@@ -240,17 +258,20 @@ Adding validation helpers makes failures visible and debuggable, not just "retry
 ### When Developing with LLMs
 
 1. **Use low temperature for structured output** (tool calling, JSON generation)
+
    ```python
    temperature=0.3  # Not 0.7!
    ```
 
 2. **Make prompt requirements explicit**
+
    ```
    ❌ "Follow ReAct format"
    ✅ "EVERY Action MUST have corresponding Action Input"
    ```
 
 3. **Add validation helpers**
+
    ```python
    def _is_complete_response(content):
        # Validate format completeness
@@ -262,6 +283,7 @@ Adding validation helpers makes failures visible and debuggable, not just "retry
    - Logic in `prompt_builder.py` (template construction)
 
 5. **Use SystemMessage instead of from_template()**
+
    ```python
    # ✅ CORRECT: Treats {} as plain text
    SystemMessage(content=prompt_text)

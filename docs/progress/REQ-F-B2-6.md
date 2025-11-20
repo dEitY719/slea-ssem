@@ -250,11 +250,13 @@ cd src/frontend && npm test -- TestPage.test.tsx --run
 **Reason for Change**: The original requirement (REQ-F-B2-6) specifies **"다음" 버튼을 클릭할 때 현재 문항의 응답을 저장해야 한다"**, which means **save on next button click**, not autosave.
 
 **Previous Implementation (068b2ff)**:
+
 - Used `useAutosave` hook with 1-second debounce
 - Automatically saved answers as user typed
 - Tracked `lastSavedAnswer` to prevent duplicates
 
 **Current Implementation (Updated)**:
+
 - Removed `useAutosave` hook
 - Save happens explicitly when "다음" button is clicked
 - Simpler implementation, matches requirement exactly

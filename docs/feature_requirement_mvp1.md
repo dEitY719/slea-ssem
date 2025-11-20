@@ -140,11 +140,13 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 | 담당 업무 | 텍스트 입력 | 자유 입력 (최대 500자) | "" | 선택 | `duty` (문자열) |
 
 **라우팅**:
+
 - 이전: `/set-nickname` (닉네임 설정)
 - 현재: `/career-info` (경력 정보 입력)
 - 다음: `/self-assessment` (관심분야 및 기술 수준 입력)
 
 **데이터 저장 방식**:
+
 - "다음" 버튼 클릭 시 입력 데이터를 localStorage에 임시 저장
 - REQ-F-A2-3 페이지에서 "완료" 버튼 클릭 시 모든 데이터를 합쳐서 `PUT /profile/survey` 호출
 
@@ -177,6 +179,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 | 수준 | 슬라이더 (1~5) | 1, 2, 3, 4, 5 | None | **필수** | `level` (문자열 변환 필요**) |
 
 **라우팅**:
+
 - 이전: `/career-info` (경력 정보 입력)
 - 현재: `/self-assessment` (관심분야 및 기술 수준 입력)
 - 다음: `/profile-review` (프로필 리뷰)
@@ -184,11 +187,13 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 **백엔드 API 변환 규칙**:
 
 *관심분야(interests) 변환:
+
 - 프론트엔드: "AI" | "ML" | "Backend" | "Frontend" (단일 선택)
 - 백엔드: ["AI"] | ["ML"] | ["Backend"] | ["Frontend"] (배열)
 - 변환: 선택한 값을 배열로 감싸서 전송 (예: "AI" → ["AI"], "" → [])
 
 **수준(level) 변환:
+
 - 프론트엔드: 1~5 정수
 - 백엔드: "beginner" | "intermediate" | "advanced"
 - 매핑: 1→"beginner", 2-3→"intermediate", 4-5→"advanced"
@@ -196,6 +201,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 **백엔드 API 엔드포인트**: `PUT /profile/survey` (인증 필수)
 
 **요청 예시**:
+
 ```json
 {
   "level": "advanced",
@@ -244,11 +250,13 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 **백엔드 API 변환 규칙**:
 
 *수준(level) 변환:
+
 - 프론트엔드: 1~5 정수
 - 백엔드: "Beginner" | "Intermediate" | "Intermediate-Advanced" | "Advanced" | "Elite"
 - 매핑: 1→Beginner, 2→Intermediate, 3→Intermediate-Advanced, 4→Advanced, 5→Elite
 
 **관심분야(interests) 변환:
+
 - 프론트엔드: "AI" | "ML" | "Backend" | "Frontend" (단일 선택)
 - 백엔드: ["AI"] | ["ML"] | ["Backend"] | ["Frontend"] (배열)
 - 변환: 선택한 값을 배열로 감싸서 전송 (예: "AI" → ["AI"])
@@ -256,6 +264,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 **백엔드 API 엔드포인트**: `PUT /profile/survey` (인증 필수)
 
 **요청 예시**:
+
 ```json
 {
   "level": "Advanced",

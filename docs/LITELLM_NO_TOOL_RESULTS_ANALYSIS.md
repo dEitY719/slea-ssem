@@ -17,17 +17,20 @@ When using LiteLLM backend with `gemini-2.0-flash` model, the agent sometimes pr
 ### Observed Behavior
 
 **First Attempt (FAILED)**: Incomplete ReAct format
+
 ```
 AIMessage(content="Thought: I need to generate 2 questions...
 Action: default_api.get_user_profile(user_id='e79a0ee1-2a36-4383-91c5-9a8a01f27b62')\n"
 ```
 
 Missing components:
+
 - ❌ `Action Input`: Tool parameters not provided
 - ❌ `Observation`: Tool result not included
 - ❌ Subsequent `Thought` after `Observation`
 
 **Second Attempt (SUCCEEDED)**: Complete ReAct format
+
 ```
 Thought: I need to generate 2 questions...
 Action: default_api.get_user_profile(...)
@@ -68,11 +71,13 @@ All components present ✓
 Looking at `src/agent/llm_agent.py` (lines 385-512), the `_extract_tool_results()` method:
 
 ✅ Correctly handles:
+
 - Extracting tool_calls from AIMessage
 - Matching tool_call_id with ToolMessage
 - Both AgentExecutor and LangGraph formats
 
 ❌ Limitations:
+
 - Assumes tool_calls are already properly structured by LLM
 - If LLM doesn't generate proper ToolCall objects (just Action text), extraction fails
 - No fallback mechanism for incomplete ReAct responses
@@ -80,6 +85,7 @@ Looking at `src/agent/llm_agent.py` (lines 385-512), the `_extract_tool_results(
 ### 2.3 Why Second Attempt Succeeds
 
 The retry mechanism in `src/backend/services/question_gen_service.py` (lines 417-428) automatically:
+
 1. Detects empty results (agent_response.items is empty)
 2. Waits before retrying (configurable delays)
 3. Retries with fresh LLM call
@@ -94,6 +100,7 @@ The retry mechanism in `src/backend/services/question_gen_service.py` (lines 417
 **File**: `src/agent/prompts/react_prompt.py`
 
 **Current Issue** (lines 43-51):
+
 ```python
 Use the following format to respond:
 
@@ -105,11 +112,13 @@ Observation: the result of the action
 ```
 
 **Problems**:
+
 - Generic description allows flexible interpretation
 - "... can repeat N times" doesn't clarify EACH iteration must be complete
 - No emphasis on mandatory Action Input for every Action
 
 **Recommended Fix**:
+
 ```python
 # Add BEFORE line 43, in system_prompt
 CRITICAL_REACT_FORMAT = """
@@ -179,6 +188,7 @@ return ChatOpenAI(
 ```
 
 **Justification**:
+
 - Temperature 0.3: Optimal for structured tool calling (stable, deterministic)
 - Temperature 0.7: Better for creative tasks (stories, ideas), BAD for tool calling
 - Temperature 0.0: Too rigid, may cause output variance issues
@@ -244,6 +254,7 @@ for message in result.get("messages", []):
 **File**: `src/agent/config.py` and `src/agent/llm_agent.py`
 
 **Current Config** (lines 366-376 in llm_agent.py):
+
 ```python
 self.executor = create_react_agent(
     model=self.llm,
@@ -255,6 +266,7 @@ self.executor = create_react_agent(
 ```
 
 **Recommended Enhancement**:
+
 ```python
 # Add to AGENT_CONFIG in config.py
 AGENT_CONFIG = {
@@ -287,11 +299,13 @@ result = await self.executor.ainvoke(
 **File**: `src/agent/llm_agent.py` (line 1022)
 
 **Current**:
+
 ```python
 logger.warning("⚠️  No tool results extracted!")
 ```
 
 **Improved**:
+
 ```python
 logger.warning(
     "⚠️  No tool results extracted! "
@@ -307,6 +321,7 @@ logger.warning(
 ## 4. Implementation Plan
 
 ### Phase 1: High-Impact Changes (Immediate)
+
 **Effort**: ~30 minutes
 
 1. **Update System Prompt** (`react_prompt.py`):
@@ -319,6 +334,7 @@ logger.warning(
    - Test with gemini-2.0-flash and LiteLLM
 
 ### Phase 2: Medium-Impact Changes (This week)
+
 **Effort**: ~1 hour
 
 3. **Add ReAct Validation** (`llm_agent.py`):
@@ -331,6 +347,7 @@ logger.warning(
    - Include diagnostics (message counts, tool names, etc.)
 
 ### Phase 3: Optional Enhancements
+
 **Effort**: ~1.5 hours
 
 5. **Max Iterations Config** (`config.py`, `llm_agent.py`):
@@ -401,11 +418,13 @@ pytest tests/agent/test_llm_agent.py -v
 ## 6. Expected Outcomes
 
 ### Before (Current State)
+
 - First attempt success rate: ~70% (depends on model/time)
 - Failure caused: Incomplete ReAct format from LLM
 - User experience: Automatic retry (hidden, but causes latency)
 
 ### After (With Improvements)
+
 - First attempt success rate: **~95%+** (with temperature=0.3 + explicit prompt)
 - Failures become rare and detectable
 - Better error messages for debugging
@@ -432,15 +451,18 @@ pytest tests/agent/test_llm_agent.py -v
 ## 8. Summary & Recommendations
 
 ### Critical Actions (Do First)
+
 1. ✅ **Update system prompt** with explicit ReAct format rules (MANDATORY!)
 2. ✅ **Reduce temperature to 0.3** for both providers
 3. ✅ **Add ReAct validation helper** for better diagnostics
 
 ### Nice-to-Have (Do Later)
+
 4. ⭐ **Improve error messages** with detailed diagnostics
 5. ⭐ **Add max_iterations config** for explicit iteration control
 
 ### Expected Impact
+
 - **Immediate**: 20-30% improvement in first-attempt success
 - **With all changes**: 95%+ success rate
 - **Side benefit**: Better debugging information for future issues
@@ -449,6 +471,6 @@ pytest tests/agent/test_llm_agent.py -v
 
 ## References
 
-- LangChain ReAct: https://python.langchain.com/docs/concepts/agents
-- LLM Temperature Tuning: https://github.com/langchain-ai/langchain/discussions/5825
-- Tool Calling Best Practices: https://github.com/langchain-ai/langchain/blob/master/docs/docs/concepts/agents.md
+- LangChain ReAct: <https://python.langchain.com/docs/concepts/agents>
+- LLM Temperature Tuning: <https://github.com/langchain-ai/langchain/discussions/5825>
+- Tool Calling Best Practices: <https://github.com/langchain-ai/langchain/blob/master/docs/docs/concepts/agents.md>

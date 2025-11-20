@@ -10,26 +10,32 @@
 ## Executive Summary
 
 ### Problem
+
 The agent's first attempt to generate questions occasionally failed with **"No tool results extracted!"** error, but the second retry succeeded. This inconsistency was caused by the LLM (especially LiteLLM with `gemini-2.0-flash`) generating **incomplete ReAct format** responses.
 
 ### Root Cause
+
 **Incomplete ReAct Response on First Attempt**:
+
 ```
 AIMessage(content="Thought: I need to generate 2 questions...
 Action: default_api.get_user_profile(user_id='...')\n"
 ```
 
 Missing:
+
 - ❌ `Action Input`: {"user_id": "..."}
 - ❌ `Observation`: Tool result
 - ❌ Subsequent `Thought` for next step
 
 **Why the LLM skipped these**:
+
 1. **Temperature too high (0.7)** - Allowed LLM to be "creative" and skip steps
 2. **Prompt clarity** - System prompt didn't explicitly forbid incomplete formats
 3. **Model behavior** - LiteLLM + `gemini-2.0-flash` more variable than native Gemini
 
 ### Solution Implemented
+
 Four high-impact changes were implemented to fix this:
 
 1. ✅ **Enhanced System Prompt** - Made ReAct format requirements explicit
@@ -125,6 +131,7 @@ Temperature 1.0+ = Maximum randomness (bad for tool calling)
 ```
 
 **In Tool Calling**:
+
 - Low temperature (0.3): LLM follows format strictly → 95% first-attempt success
 - High temperature (0.7): LLM feels "creative freedom" → 70% first-attempt success (may skip steps)
 
@@ -137,6 +144,7 @@ Temperature 1.0+ = Maximum randomness (bad for tool calling)
 **File**: `src/agent/prompts/react_prompt.py`
 
 Added explicit section:
+
 ```python
 ========== CRITICAL: MANDATORY ReAct Format Rules ==========
 
@@ -213,6 +221,7 @@ logger.warning(
 ## Expected Improvements
 
 ### Before Implementation
+
 - **First attempt success**: ~70%
 - **Failure cause**: LLM skips Action Input or Observation
 - **Retry frequency**: ~1 in 3 attempts
@@ -220,6 +229,7 @@ logger.warning(
 - **Total latency**: 8-10 seconds (including retry)
 
 ### After Implementation
+
 - **First attempt success**: ~90-95%
 - **Failure cause**: Rare (better prompt + lower temperature)
 - **Retry frequency**: ~1 in 10-20 attempts
@@ -290,18 +300,23 @@ def test_incomplete_react_format():
 ## Key Insights
 
 ### 1. Temperature Controls LLM Consistency
+
 For structured tasks like tool calling, use low temperature (0.3) not high (0.7).
 
 ### 2. Explicit Prompts Prevent Ambiguity
+
 Generic instructions like "follow ReAct format" can be interpreted flexibly. Explicit rules with examples work better.
 
 ### 3. LiteLLM Proxy Adds Latency & Variability
+
 Same model behaves differently through proxy. Consider native APIs when consistency is critical.
 
 ### 4. Retry Masks Root Cause
+
 The automatic retry mechanism (in QuestionGenerationService) hid the problem. Better monitoring would have caught this sooner.
 
 ### 5. Validation Helps Debugging
+
 Adding validation helpers makes failures visible and debuggable, not just "retry and hope".
 
 ---
@@ -309,17 +324,20 @@ Adding validation helpers makes failures visible and debuggable, not just "retry
 ## Recommendations
 
 ### Immediate Actions (Done ✅)
+
 1. ✅ Implement Phase 1 changes (all 4 improvements above)
 2. ✅ Test with LiteLLM to verify improvement
 3. ✅ Monitor first-attempt success rate
 
 ### Short-term (Phase 2 - This Week)
+
 1. Add comprehensive unit tests for ReAct validation
 2. Implement max_iterations config to prevent infinite loops
 3. Add retry logic triggered by validation failures
 4. Monitor and collect metrics in production
 
 ### Long-term (Phase 3)
+
 1. Consider switching critical operations to native Google Gemini API
 2. Implement proper monitoring/alerting for first-attempt success rate
 3. A/B test different temperature values for different task types
@@ -343,6 +361,7 @@ These changes should improve first-attempt success rate from **70% → 90-95%** 
 ## Documentation References
 
 For more details, see:
+
 - `docs/LITELLM_NO_TOOL_RESULTS_ANALYSIS.md` - Full root cause analysis (8 sections)
 - `docs/LITELLM_IMPROVEMENTS_IMPLEMENTED.md` - Implementation summary
 

@@ -9,9 +9,11 @@
 ## Changes Implemented
 
 ### 1. System Prompt Enhancement ✅
+
 **File**: `src/agent/prompts/react_prompt.py`
 
 **What Changed**:
+
 - Added explicit "CRITICAL: MANDATORY ReAct Format Rules" section
 - Defined 5-component structure requirement (Thought → Action → Action Input → Observation → Thought)
 - Added 8 mandatory compliance rules with clear formatting
@@ -19,11 +21,13 @@
 - Emphasized that every Action MUST have Action Input (was cause of first failure)
 
 **Why This Helps**:
+
 - Makes ReAct format requirements unambiguous
 - Prevents LLM from skipping "Action Input" (root cause of "No tool results extracted!")
 - Provides concrete example for model to follow
 
 **Before**:
+
 ```
 Use the following format to respond:
 Thought: Do I need to use a tool? Yes
@@ -33,6 +37,7 @@ Action Input: the input to the action
 ```
 
 **After**:
+
 ```
 ========== CRITICAL: MANDATORY ReAct Format Rules ==========
 
@@ -51,18 +56,22 @@ MANDATORY COMPLIANCE RULES (DO NOT SKIP):
 ```
 
 ### 2. Temperature Reduction for Deterministic Output ✅
+
 **Files**: `src/agent/config.py` (2 providers)
 
 **What Changed**:
+
 - **GoogleGenerativeAIProvider**: `temperature=0.7` → `temperature=0.3`
 - **LiteLLMProvider**: `temperature=0.7` → `temperature=0.3`
 
 **Why This Helps**:
+
 - Temperature 0.7 = More creative, less consistent (was causing variable ReAct format)
 - Temperature 0.3 = More deterministic, better for structured tool calling
 - Lower temperature reduces "creativity" that causes skipped steps
 
 **Scientific Basis**:
+
 | Temperature | Use Case | Tool Calling Success |
 |------------|----------|----------------------|
 | 0.0-0.3 | Structured tasks (tool calling) | 95%+ |
@@ -73,11 +82,13 @@ MANDATORY COMPLIANCE RULES (DO NOT SKIP):
 ---
 
 ### 3. ReAct Format Validation Helper ✅
+
 **File**: `src/agent/llm_agent.py`
 
 **New Method**: `_is_complete_react_response(content: str) -> tuple[bool, str]`
 
 **What It Does**:
+
 ```python
 def _is_complete_react_response(self, content: str) -> tuple[bool, str]:
     """
@@ -90,11 +101,13 @@ def _is_complete_react_response(self, content: str) -> tuple[bool, str]:
 ```
 
 **Implementation Details**:
+
 - Counts occurrences: `Action:`, `Action Input:`, `Observation:`
 - Detects mismatches (e.g., Action without Action Input)
 - Returns clear diagnostic message
 
 **Example Detection**:
+
 ```python
 # First attempt output (INCOMPLETE - would be detected)
 content = "Thought: I need to get user profile\nAction: get_user_profile\n"
@@ -108,6 +121,7 @@ is_complete, reason = agent._is_complete_react_response(content)
 ```
 
 **Usage Location**: `generate_questions()` method
+
 - Validates after agent execution
 - Logs warnings for incomplete responses
 - Helps identify when retry is needed
@@ -115,9 +129,11 @@ is_complete, reason = agent._is_complete_react_response(content)
 ---
 
 ### 4. Enhanced Error Messages for Debugging ✅
+
 **File**: `src/agent/llm_agent.py` (in `_parse_agent_output_generate()`)
 
 **What Changed**:
+
 ```python
 # OLD: Single generic message
 logger.warning("⚠️  No tool results extracted!")
@@ -132,6 +148,7 @@ logger.warning(
 ```
 
 **Benefits**:
+
 - Lists possible root causes for investigation
 - Includes diagnostic metrics (message counts, AIMessage count)
 - Helps developers debug issues faster
@@ -142,11 +159,13 @@ logger.warning(
 ## Expected Outcomes
 
 ### Before Implementation (Current State)
+
 - First attempt success rate: ~70% (varies with model/time)
 - Failure cause: Incomplete ReAct format (LLM skipping Action Input)
 - User experience: Automatic retry + 3-5s latency
 
 ### After Implementation (Expected)
+
 - First attempt success rate: **~90-95%**
 - Improved consistency with deterministic temperature
 - Clearer prompt prevents LLM confusion
@@ -158,6 +177,7 @@ logger.warning(
 ## Testing Plan
 
 ### 1. Manual Testing
+
 ```bash
 # Test with LiteLLM backend
 export USE_LITE_LLM=True
@@ -183,6 +203,7 @@ done
 ```
 
 ### 2. Unit Tests (Optional - Phase 2)
+
 ```python
 def test_is_complete_react_response_valid():
     """Test detection of complete ReAct format."""
@@ -225,6 +246,7 @@ Observation: {"level": "초급"}"""  # Missing Action Input!
 ## Backward Compatibility
 
 ✅ **All changes are backward compatible**:
+
 - System prompt changes: Only make requirements more explicit (no breaking changes)
 - Temperature change: Reduces randomness (improves output quality)
 - New validation method: Only used for logging/diagnostics (non-blocking)

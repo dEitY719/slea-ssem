@@ -12,6 +12,7 @@
 While fixing the "No tool results extracted!" issue, adding JSON examples to the system prompt caused a **critical side effect**: LangChain's `ChatPromptTemplate.from_template()` interpreted curly braces `{}` as template variables.
 
 **Problem**:
+
 ```python
 # ❌ JSON in prompt causes template variable errors
 system_prompt = """
@@ -42,6 +43,7 @@ Observation: {{"level": "초급"}}         # More escaping!
 ```
 
 **Problems with escaping approach**:
+
 1. Error-prone - easy to forget escaping on new additions
 2. Fragile - breaks if you forget even one place
 3. Violates SOLID principles (mixing concerns)
@@ -51,6 +53,7 @@ Observation: {{"level": "초급"}}         # More escaping!
 ### Why This Happened
 
 The original `react_prompt.py` file had **240 lines mixing**:
+
 - **Content** (system instructions, format rules, examples) - 180 lines
 - **Template logic** (ChatPromptTemplate construction) - 30 lines
 - **Public API** (simple function) - 30 lines
@@ -62,6 +65,7 @@ This coupling caused the escaping issue and violated multiple SOLID principles.
 ## Solution: SOLID-Based Refactoring
 
 ### Before: Monolithic Architecture
+
 ```
 react_prompt.py (240 lines)
 ├── System prompt content (180 lines)  ← Mixed!
@@ -71,6 +75,7 @@ react_prompt.py (240 lines)
 ```
 
 ### After: Modular, SOLID Architecture
+
 ```
 src/agent/prompts/
 ├── prompt_content.py (230 lines)   ← Pure text, NO escaping needed!
@@ -146,6 +151,7 @@ def get_react_system_prompt() -> str:
 ```
 
 **Benefits**:
+
 - JSON examples are **natural text**, no escaping needed
 - Easy to modify content without touching logic
 - Content can be tested independently
@@ -207,6 +213,7 @@ class SimpleReactPromptBuilder(PromptBuilder):
 ```
 
 **Benefits**:
+
 - Template logic is **isolated** from content
 - Easy to create new prompt variations
 - Testable independently
@@ -243,6 +250,7 @@ class PromptFactory:
 ```
 
 **Benefits**:
+
 - Extensibility without modifying existing code
 - Easy to register custom builders
 - Centralizes builder creation logic
@@ -274,6 +282,7 @@ def get_simple_react_prompt() -> ChatPromptTemplate:
 ## SOLID Principles Applied
 
 ### 1️⃣ Single Responsibility Principle
+
 Each module has ONE reason to change:
 
 | Module | Responsibility | Changes Only When |
@@ -285,6 +294,7 @@ Each module has ONE reason to change:
 ### 2️⃣ Open/Closed Principle
 
 **Open for extension**:
+
 ```python
 # Add custom prompt type without modifying factory
 class MyCustomPromptBuilder(PromptBuilder):
@@ -300,6 +310,7 @@ PromptFactory.register_builder("custom", MyCustomPromptBuilder)
 ### 3️⃣ Liskov Substitution Principle
 
 All builders implement same interface:
+
 ```python
 def build(self) -> ChatPromptTemplate:  # Same signature
     # Different implementations, same contract
@@ -310,6 +321,7 @@ Clients can use any builder interchangeably.
 ### 4️⃣ Interface Segregation Principle
 
 Clients only depend on `build()` method:
+
 ```python
 builder = PromptFactory.get_builder("react")
 prompt = builder.build()  # Simple, focused interface
@@ -344,6 +356,7 @@ SystemMessage(content="""
 ```
 
 **Why this matters**:
+
 - `from_template()` scans ALL curly braces and treats them as variable placeholders
 - `SystemMessage` just stores the string as-is, no interpretation
 - When wrapped in `ChatPromptTemplate.from_messages()`, the SystemMessage content is preserved
@@ -407,12 +420,14 @@ REACT_FORMAT_RULES = """Updated rules..."""
 ## Verification & Testing
 
 ### Format & Lint Checks
+
 ```
 ruff format . → ✅ OK
 ruff check . → ✅ All checks passed!
 ```
 
 ### Functionality Verification
+
 ```
 ✅ JSON examples render correctly without escaping
 ✅ Input variables: ['messages']
@@ -421,6 +436,7 @@ ruff check . → ✅ All checks passed!
 ```
 
 ### Design Verification
+
 ```
 ✅ Single Responsibility: Each module has one reason to change
 ✅ Open/Closed: Easy to extend with new builders
@@ -434,13 +450,16 @@ ruff check . → ✅ All checks passed!
 ## Files Created/Modified
 
 ### New Files
+
 - `src/agent/prompts/prompt_content.py` (230 lines)
 - `src/agent/prompts/prompt_builder.py` (180 lines)
 
 ### Modified Files
+
 - `src/agent/prompts/react_prompt.py` (240 → 10 lines)
 
 ### Documentation
+
 - `docs/PROMPT_SOLID_REFACTORING.md` (361 lines - complete reference)
 - `CLAUDE.md` (+191 lines - LLM guidelines)
 
@@ -449,7 +468,9 @@ ruff check . → ✅ All checks passed!
 ## Lessons for Future Projects
 
 ### Problem Pattern
+
 Mixing content and logic leads to:
+
 - Escaping nightmares when adding examples
 - Hard to test and maintain
 - Fragile when requirements change
@@ -485,15 +506,17 @@ When adding LLM prompts to ANY project:
 ## Related Documentation
 
 ### This Project's Artifacts
+
 - `docs/PROMPT_SOLID_REFACTORING.md` - Complete implementation reference
 - `docs/postmortem-litellm-no-tool-results.md` - Related issue (incomplete ReAct format)
 - `CLAUDE.md` → "LLM-Based Development Guidelines" - Best practices
 
 ### External References
-- **SOLID Principles**: https://en.wikipedia.org/wiki/SOLID
-- **Builder Pattern**: https://refactoring.guru/design-patterns/builder
-- **Factory Pattern**: https://refactoring.guru/design-patterns/factory-method
-- **LangChain Prompts**: https://python.langchain.com/docs/concepts/prompt_templates
+
+- **SOLID Principles**: <https://en.wikipedia.org/wiki/SOLID>
+- **Builder Pattern**: <https://refactoring.guru/design-patterns/builder>
+- **Factory Pattern**: <https://refactoring.guru/design-patterns/factory-method>
+- **LangChain Prompts**: <https://python.langchain.com/docs/concepts/prompt_templates>
 
 ---
 

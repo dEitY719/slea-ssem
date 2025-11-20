@@ -25,6 +25,7 @@ return ChatPromptTemplate.from_template(system_prompt)
 ## Root Cause Analysis
 
 ### 원인 1: 내용과 로직이 혼합됨
+
 ```
 react_prompt.py (240 lines)
 ├─ System prompt content (180 lines)
@@ -33,6 +34,7 @@ react_prompt.py (240 lines)
 ```
 
 ### 원인 2: from_template() 의존성
+
 ```python
 # from_template()은 모든 {} 를 template variable로 해석
 SystemMessagePromptTemplate.from_template(system_prompt)
@@ -41,6 +43,7 @@ SystemMessagePromptTemplate.from_template(system_prompt)
 ```
 
 ### 원인 3: 확장성 부족
+
 - 새로운 프롬프트 유형 추가 어려움
 - 테스트 불가능 (내용과 로직이 섞여있음)
 - 프롬프트 업데이트 시마다 이스케이핑 필요
@@ -69,6 +72,7 @@ src/agent/prompts/
 #### 1. Separate Content from Logic
 
 **prompt_content.py**:
+
 ```python
 # Pure text content blocks - NO escaping needed!
 REACT_FORMAT_RULES = """..."""
@@ -93,6 +97,7 @@ def get_react_system_prompt() -> str:
 #### 2. Builder Pattern for Template Logic
 
 **prompt_builder.py**:
+
 ```python
 class PromptBuilder(ABC):
     @abstractmethod
@@ -133,6 +138,7 @@ class PromptFactory:
 #### 4. Simplified Public API
 
 **react_prompt.py**:
+
 ```python
 def get_react_prompt() -> ChatPromptTemplate:
     # Just delegate to factory - clean and simple
@@ -145,13 +151,16 @@ def get_react_prompt() -> ChatPromptTemplate:
 ## SOLID Principles Applied
 
 ### 1️⃣ Single Responsibility Principle
+
 - **prompt_content.py**: Only manages prompt content
 - **prompt_builder.py**: Only manages template construction
 - **react_prompt.py**: Only provides public API
 - Each module has ONE reason to change
 
 ### 2️⃣ Open/Closed Principle
+
 ✅ **Open for extension**:
+
 ```python
 class CustomPromptBuilder(PromptBuilder):
     def build(self) -> ChatPromptTemplate:
@@ -164,20 +173,25 @@ PromptFactory.register_builder("custom", CustomPromptBuilder)
 ❌ **Closed for modification**: No need to modify existing code
 
 ### 3️⃣ Liskov Substitution Principle
+
 All builders implement the same interface:
+
 ```python
 def build(self) -> ChatPromptTemplate:  # Same signature
     # Different implementations, same contract
 ```
 
 ### 4️⃣ Interface Segregation Principle
+
 Clients only depend on `build()` method:
+
 ```python
 builder = PromptFactory.get_builder("react")
 prompt = builder.build()  # Simple, focused interface
 ```
 
 ### 5️⃣ Dependency Inversion Principle
+
 - Depends on abstraction (`PromptBuilder`)
 - Not on concrete implementations
 - Easy to swap implementations
@@ -263,12 +277,14 @@ src/agent/prompts/
 ### Verification Results
 
 ✅ **Format & Lint**: All checks pass
+
 ```
 ruff format . → OK
 ruff check . → All checks passed!
 ```
 
 ✅ **Functionality**: Prompts render correctly
+
 ```
 Input variables: ['messages']
 JSON: {"user_id": "..."} rendered without escaping
@@ -277,6 +293,7 @@ ReAct example present
 ```
 
 ✅ **Design**: SOLID principles verified
+
 ```
 Single Responsibility: Each module has one reason to change
 Open/Closed: Easy to extend with new builders
@@ -290,6 +307,7 @@ Dependency Inversion: Depends on abstractions
 ## Future Improvements (Easy Now!)
 
 ### Add Custom Prompt Type
+
 ```python
 # Step 1: Create builder
 class MyCustomPromptBuilder(PromptBuilder):
@@ -305,6 +323,7 @@ prompt = PromptFactory.get_builder("custom").build()
 ```
 
 ### Modify Prompt Content
+
 ```python
 # Before: Update prompt_content.py and react_prompt.py
 # After: Just update prompt_content.py - template logic untouched!
@@ -315,6 +334,7 @@ REACT_FORMAT_RULES = """Updated rules..."""
 ```
 
 ### Add Conditional Content
+
 ```python
 def get_react_system_prompt(include_examples: bool = True) -> str:
     parts = [...]
@@ -328,19 +348,23 @@ def get_react_system_prompt(include_examples: bool = True) -> str:
 ## Summary
 
 ### What Was Fixed
+
 ❌ JSON escaping issues → ✅ No escaping needed
 ❌ Mixed concerns → ✅ Separate modules
 ❌ Hard to test → ✅ Testable components
 ❌ Fragile code → ✅ Robust design
 
 ### How It Works
+
 1. **Content** stays as pure text (no escaping)
 2. **Logic** handles template construction cleanly
 3. **Factory** manages different prompt types
 4. **API** is simple and focused
 
 ### Why This Matters
+
 This refactoring ensures that **future prompt updates will never have escaping issues again**. The architecture is now:
+
 - ✅ Maintainable (clear separation of concerns)
 - ✅ Extensible (easy to add new prompts)
 - ✅ Testable (independent components)
@@ -350,10 +374,10 @@ This refactoring ensures that **future prompt updates will never have escaping i
 
 ## References
 
-- **SOLID Principles**: https://en.wikipedia.org/wiki/SOLID
-- **Builder Pattern**: https://refactoring.guru/design-patterns/builder
-- **Factory Pattern**: https://refactoring.guru/design-patterns/factory-method
-- **LangChain Prompts**: https://python.langchain.com/docs/concepts/prompt_templates
+- **SOLID Principles**: <https://en.wikipedia.org/wiki/SOLID>
+- **Builder Pattern**: <https://refactoring.guru/design-patterns/builder>
+- **Factory Pattern**: <https://refactoring.guru/design-patterns/factory-method>
+- **LangChain Prompts**: <https://python.langchain.com/docs/concepts/prompt_templates>
 
 ---
 
