@@ -1,4 +1,4 @@
-// REQ: REQ-F-B4-1
+// REQ: REQ-F-B4-1, REQ-F-B4-2
 /**
  * Grade utility functions for TestResultsPage
  */
@@ -29,6 +29,15 @@ export const getGradeClass = (grade: string): string => {
     Elite: 'grade-elite',
   }
   return classMap[grade] || 'grade-default'
+}
+
+/**
+ * Check if grade is Elite
+ *
+ * REQ: REQ-F-B4-2 - Elite 등급 확인하여 특수 배지 표시
+ */
+export const isEliteGrade = (grade: string): boolean => {
+  return grade === 'Elite'
 }
 
 /**
