@@ -205,6 +205,113 @@ console.print("Usage: cmd [[level]] [[years]] [--option VALUE]")
 
 **Cache after changes**: Run `./tools/dev.sh clean` before testing CLI changes, as Python caches compiled modules.
 
+---
+
+## LLM-Based Development Guidelines
+
+### Quick Summary
+
+When working with LLM prompts and LangChain, **always separate content from template logic**. Mixing them causes escaping nightmares when you add JSON examples to prompts.
+
+**Key Pattern**:
+
+```python
+# ✅ CORRECT: Use SystemMessage, not from_template()
+system_message = SystemMessage(content=prompt_text)  # {} stays as plain text
+return ChatPromptTemplate.from_messages([system_message, ...])
+
+# ❌ WRONG: from_template() interprets {} as variables
+ChatPromptTemplate.from_template(prompt_text)  # JSON needs escaping!
+```
+
+### Two Critical Issues Learned the Hard Way
+
+#### 1. ReAct Format Completeness (LiteLLM Issue)
+
+- **Problem**: LLM sometimes skips Action Input or Observation fields
+- **Root Cause**: High temperature (0.7) + vague prompt instructions
+- **Solution**: Use temperature 0.3 + explicit format requirements
+- **Reference**: `docs/postmortem-litellm-no-tool-results.md`
+
+#### 2. JSON Escaping in Prompts (Template Logic Issue)
+
+- **Problem**: `{"user_id": "..."}` in prompt → interpreted as template variable
+- **Root Cause**: Mixing content and logic; using `from_template()`
+- **Solution**: SOLID-based refactoring (Builder + Factory patterns)
+- **Reference**: `docs/postmortem-prompt-escaping-solid-refactoring.md`
+
+### SOLID-Based Solution (Condensed)
+
+**File Structure**:
+
+```
+src/agent/prompts/
+├── prompt_content.py  (pure text, no escaping!)
+├── prompt_builder.py  (Builder + Factory patterns)
+└── react_prompt.py    (simple API via factory delegation)
+```
+
+**Key Code Pattern**:
+
+```python
+# Content: Just plain text, no escaping needed
+def get_system_prompt() -> str:
+    parts = [
+        "Your role...",
+        REACT_FORMAT_RULES,
+        "Action Input: {\"user_id\": \"...\"}",  # ✅ Natural JSON!
+        "Instructions...",
+    ]
+    return "\n".join(parts)
+
+# Template: Uses SystemMessage, not from_template()
+class ReactPromptBuilder(PromptBuilder):
+    def build(self) -> ChatPromptTemplate:
+        system_prompt = get_system_prompt()  # Pure text
+        system_message = SystemMessage(content=system_prompt)  # No {} interpretation!
+        return ChatPromptTemplate.from_messages([
+            system_message,
+            MessagesPlaceholder(variable_name="messages"),
+        ])
+```
+
+### Checklist for Future LLM Projects
+
+When adding LLM prompts to ANY project:
+
+- [ ] **Separate content and logic**: Different files, never mix
+- [ ] **Use SystemMessage**: `SystemMessage(content=...)` NOT `from_template()`
+- [ ] **No escaping needed**: If you're using `{{`, you're doing it wrong
+- [ ] **Apply Builder + Factory**: For flexibility and testability
+- [ ] **Document the architecture**: Reference PROMPT_SOLID_REFACTORING.md
+
+### Complete Documentation & Analysis
+
+For full details with implementation examples and analysis, read these postmortem documents:
+
+1. **`docs/postmortem-litellm-no-tool-results.md`** (25 min read)
+   - "No tool results extracted!" error deep analysis
+   - Temperature impact on consistency with data
+   - Phase 1-4 improvement roadmap
+   - Why LiteLLM differs from native Gemini API
+   - Key insights for future projects
+
+2. **`docs/postmortem-prompt-escaping-solid-refactoring.md`** (30 min read)
+   - JSON escaping problem explanation with real examples
+   - Complete SOLID-based solution
+   - Builder + Factory pattern implementation
+   - Future extension examples (conditional content, custom builders)
+   - Prevention checklist
+
+3. **`docs/PROMPT_SOLID_REFACTORING.md`** (Complete Implementation Reference)
+   - Before/after architecture comparison
+   - Full file structure with complete code
+   - Testing results and verification
+   - SOLID principles breakdown with code examples
+   - Future improvements roadmap
+
+---
+
 ## Further Reading
 
 - **User Scenarios**: `docs/user_scenarios_mvp1.md`

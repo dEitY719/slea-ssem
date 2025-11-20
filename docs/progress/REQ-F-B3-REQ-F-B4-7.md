@@ -13,10 +13,12 @@
 **Priority**: M (Must-have)
 
 **Requirements**:
+
 - REQ-F-B3-1: 각 문항의 정답/오답 해설과 참고 링크를 보기 좋게 표시
 - REQ-F-B3-2: 해설 페이지에서 "다음 문항" 또는 "결과 보기" 네비게이션 제공
 
 **Acceptance Criteria**:
+
 - ✅ 해설에 정답 설명과 참고 링크가 포함되어 있다
 - ✅ 링크가 새 탭에서 열린다 (`target="_blank" rel="noopener noreferrer"`)
 - ✅ "다음 문항" 버튼 클릭 시 다음 해설로 이동
@@ -27,9 +29,11 @@
 **Priority**: M (Must-have)
 
 **Requirement**:
+
 - 결과 페이지에서 "문항별 해설 보기" 또는 "해설 다시 보기" 버튼을 제공하여 REQ-F-B3 (해설 화면)으로 이동
 
 **Acceptance Criteria**:
+
 - ✅ '해설 보기' 버튼 클릭 시 해설 화면(REQ-F-B3)으로 이동
 
 ---
@@ -39,6 +43,7 @@
 ### Phase 1: Specification
 
 **Location**:
+
 - Frontend: `src/frontend/src/pages/ExplanationPage.tsx` (신규)
 - Frontend: `src/frontend/src/pages/ExplanationPage.css` (신규)
 - Frontend: `src/frontend/src/App.tsx` (라우트 추가)
@@ -47,6 +52,7 @@
 - Styles: `src/frontend/src/pages/TestResultsPage.css` (수정)
 
 **Signature**:
+
 ```typescript
 // Route: /test-explanations/:sessionId
 interface QuestionExplanation {
@@ -63,6 +69,7 @@ interface QuestionExplanation {
 ```
 
 **Behavior**:
+
 1. 페이지 로드 시 sessionId로 세션의 모든 문항 가져오기
 2. questionIndex (기본값: 0)부터 시작하여 해설 표시
 3. 각 문항에 대해:
@@ -82,6 +89,7 @@ interface QuestionExplanation {
 **Test File**: `src/frontend/src/pages/__tests__/ExplanationPage.test.tsx` (TBD)
 
 **Test Cases** (설계 완료, 구현 대기):
+
 1. Happy Path - 해설 페이지 렌더링 및 첫 번째 문항 표시
 2. Happy Path - 다음/이전 문항 네비게이션
 3. Acceptance Criteria - 참고 링크가 새 탭에서 열림
@@ -127,11 +135,13 @@ interface QuestionExplanation {
    - 호버 효과
 
 **Dependencies**:
+
 - Backend API: 향후 실제 API 연동 필요
   - 현재: Mock 데이터 사용 (3개 문항 샘플)
   - 필요: `GET /api/questions/session/{session_id}/explanations` 또는 유사 엔드포인트
 
 **Non-functional Requirements**:
+
 - ✅ 페이지 로드 시간: 0.5초 (Mock 데이터)
 - ✅ 해설 텍스트: 200자 이상
 - ✅ 참고 링크: 3개 이상
@@ -155,25 +165,30 @@ interface QuestionExplanation {
 ### Manual Testing
 
 **Scenario 1: 해설 화면 로드**
+
 - ✅ URL: `/test-explanations/session-123` 접근 가능
 - ✅ 첫 번째 문항 해설 표시
 - ✅ 진행률 "1 / 3" 표시
 
 **Scenario 2: 네비게이션**
+
 - ✅ "다음 문항" 클릭 → 두 번째 문항으로 이동
 - ✅ "이전 문항" 클릭 → 첫 번째 문항으로 복귀
 - ✅ 첫 문항에서 "이전 문항" 버튼 숨김
 - ✅ 마지막 문항에서 "결과 보기" 버튼 표시
 
 **Scenario 3: 참고 링크**
+
 - ✅ 참고 링크 3개 표시
 - ✅ `target="_blank"` 및 `rel="noopener noreferrer"` 속성 확인
 
 **Scenario 4: 결과 페이지에서 해설 보기**
+
 - ✅ 결과 페이지에 "문항별 해설 보기" 버튼 표시
 - ✅ 버튼 클릭 시 `/test-explanations/:sessionId`로 이동
 
 ### Unit Testing
+
 - ⏳ 테스트 파일 생성 대기 (Phase 2 설계 완료)
 
 ---
@@ -200,6 +215,7 @@ interface QuestionExplanation {
 ## Git Commit
 
 **Commit Message**:
+
 ```
 feat: Add explanation page and view explanations button (REQ-F-B3, REQ-F-B4-7)
 
@@ -232,6 +248,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Files Changed**:
+
 - 신규: `src/frontend/src/pages/ExplanationPage.tsx`
 - 신규: `src/frontend/src/pages/ExplanationPage.css`
 - 수정: `src/frontend/src/App.tsx`

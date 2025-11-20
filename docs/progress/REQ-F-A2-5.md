@@ -13,12 +13,14 @@
 **Priority**: S (Should-have)
 
 **Requirements**:
+
 - 금칙어를 포함한 닉네임 입력 시, 명확한 거부 사유 표시
 - Exact match와 prefix match 모두 처리
 - 대소문자 구분 없이 검증
 - Backend와 동일한 검증 로직을 Mock Transport에도 적용
 
 **Acceptance Criteria**:
+
 - ✅ 금칙어 exact match 시, "'{nickname}'은(는) 사용할 수 없는 닉네임입니다. 다른 닉네임을 선택해주세요." 표시
 - ✅ 금칙어로 시작하는 닉네임 시, "닉네임에 사용할 수 없는 단어가 포함되어 있습니다. 다른 닉네임을 선택해주세요." 표시
 - ✅ 대소문자 무관하게 검증 (admin, ADMIN, Admin 모두 거부)
@@ -32,11 +34,13 @@
 ### Phase 1: Specification
 
 **현재 상태 분석**:
+
 - ✅ Backend: 금칙어 검증 이미 구현됨 (`src/backend/validators/nickname.py`)
 - ✅ Frontend: 에러 메시지 표시 로직 이미 구현됨 (`useNicknameCheck.ts`, `NicknameInputSection.tsx`)
 - ❌ Mock Transport: 금칙어 검증 미구현 → **구현 필요**
 
 **Banned Words List** (18개):
+
 - System: admin, administrator, system, root, moderator, mod
 - Service: staff, support, bot, service
 - Generic: account, user, test, temp, guest, anonymous
@@ -46,6 +50,7 @@
 **Test File**: `src/frontend/src/lib/transport/__tests__/mockTransport.nickname.test.ts` (신규 생성)
 
 **Test Cases** (총 29개):
+
 1. Length Validation Tests (4개)
    - 너무 짧음, 너무 김, 유효한 길이 (3자, 30자)
 
@@ -77,15 +82,15 @@
 1. **`src/frontend/src/lib/transport/mockTransport.ts`** (수정)
    - `FORBIDDEN_WORDS` 배열 추가 (18개 금칙어)
    - `validateNickname()` 함수 추가:
-     * 길이 검증 (3-30자)
-     * 형식 검증 (영문, 숫자, 언더스코어만)
-     * 금칙어 검증 (exact match + starts with)
-     * 대소문자 무관 검증
+     - 길이 검증 (3-30자)
+     - 형식 검증 (영문, 숫자, 언더스코어만)
+     - 금칙어 검증 (exact match + starts with)
+     - 대소문자 무관 검증
    - POST `/api/profile/nickname/check` 핸들러 업데이트:
-     * 중복 확인 전에 `validateNickname()` 호출
-     * 검증 실패 시 명확한 에러 메시지 반환
+     - 중복 확인 전에 `validateNickname()` 호출
+     - 검증 실패 시 명확한 에러 메시지 반환
    - POST `/api/profile/register` 핸들러 업데이트:
-     * 기존 inline 검증을 `validateNickname()` 호출로 통일
+     - 기존 inline 검증을 `validateNickname()` 호출로 통일
    - `takenNicknames` Set에서 금칙어 제거 (중복 방지)
 
 2. **`src/frontend/src/lib/transport/__tests__/mockTransport.nickname.test.ts`** (신규 생성)
@@ -94,10 +99,12 @@
    - 에러 메시지 명확성 검증
 
 **Dependencies**:
+
 - ✅ Backend: 이미 구현됨 (`src/backend/validators/nickname.py`)
 - ✅ Frontend: 이미 구현됨 (`useNicknameCheck.ts`, `NicknameInputSection.tsx`)
 
 **Non-functional Requirements**:
+
 - ✅ 에러 메시지: Backend와 일관성 있는 한국어 메시지
 - ✅ 응답 시간: < 1초 (Mock Transport이므로 즉시 응답)
 - ✅ 대소문자 구분 없음: toLowerCase() 사용
@@ -124,11 +131,13 @@
 **Results**: ✅ 29/29 tests passed
 
 **Test Execution**:
+
 ```bash
 cd src/frontend && npm test -- src/lib/transport/__tests__/mockTransport.nickname.test.ts --run
 ```
 
 **Output**:
+
 ```
  ✓ src/lib/transport/__tests__/mockTransport.nickname.test.ts  (29 tests) 50ms
 
@@ -138,6 +147,7 @@ cd src/frontend && npm test -- src/lib/transport/__tests__/mockTransport.nicknam
 ```
 
 **Test Coverage**:
+
 - ✅ Length validation (4/4 tests passed)
 - ✅ Format validation (5/5 tests passed)
 - ✅ **Banned words validation** (9/9 tests passed) - REQ-F-A2-5 핵심
@@ -148,17 +158,21 @@ cd src/frontend && npm test -- src/lib/transport/__tests__/mockTransport.nicknam
 ### Manual Testing
 
 **Scenario 1: 금칙어 exact match**
+
 - ✅ 닉네임 "admin" 입력 → "중복 확인" 클릭
 - ✅ 에러 메시지: "'admin'은(는) 사용할 수 없는 닉네임입니다. 다른 닉네임을 선택해주세요."
 
 **Scenario 2: 금칙어로 시작**
+
 - ✅ 닉네임 "admin123" 입력 → "중복 확인" 클릭
 - ✅ 에러 메시지: "닉네임에 사용할 수 없는 단어가 포함되어 있습니다. 다른 닉네임을 선택해주세요."
 
 **Scenario 3: 대소문자 무관**
+
 - ✅ 닉네임 "ADMIN", "Admin", "aDmIn" → 모두 거부
 
 **Scenario 4: 유효한 닉네임**
+
 - ✅ 닉네임 "player_123" 입력 → "사용 가능한 닉네임입니다."
 
 ---
@@ -182,6 +196,7 @@ cd src/frontend && npm test -- src/lib/transport/__tests__/mockTransport.nicknam
 ## Git Commit
 
 **Commit Message**:
+
 ```
 feat: Add banned words validation to nickname check (REQ-F-A2-5)
 
@@ -217,6 +232,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Files Changed**:
+
 - MOD: `src/frontend/src/lib/transport/mockTransport.ts`
 - NEW: `src/frontend/src/lib/transport/__tests__/mockTransport.nickname.test.ts`
 - NEW: `docs/progress/REQ-F-A2-5.md`

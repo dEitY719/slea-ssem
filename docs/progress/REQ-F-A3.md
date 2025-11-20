@@ -13,6 +13,7 @@
 **Priority**: M (Must-have)
 
 **Requirements**:
+
 - REQ-F-A3-1: 홈화면에서 "시작하기" 클릭 시, 개인정보 수집·이용 동의 모달/페이지 표시
 - REQ-F-A3-2: 동의 내용에 수집 항목, 이용 목적, 보유 기간 명시
 - REQ-F-A3-3: "동의함" 선택 시에만 다음 단계로 진행
@@ -20,6 +21,7 @@
 - REQ-F-A3-5: 동의 여부 DB 저장, 이미 동의한 사용자는 건너뛰기
 
 **Acceptance Criteria**:
+
 - ✅ 홈화면 "시작하기" 클릭 시, 동의하지 않은 사용자에게만 개인정보 동의 페이지 표시
 - ✅ 동의 내용이 명확하게 표시됨
 - ✅ "동의함" 선택 시 DB 저장 후 다음 단계로 진행
@@ -33,6 +35,7 @@
 ### Phase 1: Specification
 
 **Flow**:
+
 ```
 홈화면 → "시작하기" 클릭 →
   ↓
@@ -46,6 +49,7 @@
 ```
 
 **Backend API** (이미 구현됨):
+
 - `GET /api/profile/consent`: 동의 상태 조회
 - `POST /api/profile/consent`: 동의 업데이트
 - User 모델: `privacy_consent`, `consent_at` 필드
@@ -53,6 +57,7 @@
 ### Phase 2: Test Design
 
 **Test Cases** (설계 완료, 구현 대기):
+
 1. Happy Path - 동의 페이지 렌더링
 2. Acceptance Criteria - "동의함" 클릭 시 API 호출 및 다음 단계 진행
 3. Acceptance Criteria - "동의하지 않음" 클릭 시 홈화면 복귀
@@ -71,10 +76,10 @@
 2. **`src/frontend/src/pages/ConsentPage.tsx`** (신규 생성)
    - REQ-F-A3-1, REQ-F-A3-2: 개인정보 동의 페이지
    - 동의 내용 표시:
-     * 수집 항목 (닉네임, 자기평가, 테스트 응답/결과)
-     * 이용 목적 (맞춤형 학습, 평가, 통계)
-     * 보유 기간 (서비스 이용 기간)
-     * 동의 거부 권리
+     - 수집 항목 (닉네임, 자기평가, 테스트 응답/결과)
+     - 이용 목적 (맞춤형 학습, 평가, 통계)
+     - 보유 기간 (서비스 이용 기간)
+     - 동의 거부 권리
    - REQ-F-A3-3: "동의함" 버튼 → API 호출 → 닉네임 설정으로 이동
    - REQ-F-A3-4: "동의하지 않음" 버튼 → 홈화면으로 복귀
 
@@ -102,10 +107,12 @@
    - `setMockScenario` 함수에 'no-consent', 'has-consent' 시나리오 추가
 
 **Dependencies**:
+
 - ✅ Backend API: 이미 구현됨
 - ✅ User 모델: privacy_consent, consent_at 필드 존재
 
 **Non-functional Requirements**:
+
 - ✅ 동의 내용: 400자 내외 (명확하고 간결)
 - ✅ 응답 시간: 1초 이내
 - ✅ 반응형 디자인 (모바일 지원)
@@ -130,26 +137,31 @@
 ### Manual Testing
 
 **Scenario 1: 동의하지 않은 사용자**
+
 - ✅ 홈화면 "시작하기" 클릭
 - ✅ GET /api/profile/consent 호출 → { consented: false }
 - ✅ /consent 페이지로 이동
 - ✅ 동의 내용 표시 (수집 항목, 이용 목적, 보유 기간)
 
 **Scenario 2: "동의함" 선택**
+
 - ✅ "동의함" 버튼 클릭
 - ✅ POST /api/profile/consent { consent: true } 호출
 - ✅ /nickname-setup으로 이동
 
 **Scenario 3: "동의하지 않음" 선택**
+
 - ✅ "동의하지 않음" 버튼 클릭
 - ✅ API 호출 없이 /home으로 복귀
 
 **Scenario 4: 이미 동의한 사용자**
+
 - ✅ 홈화면 "시작하기" 클릭
 - ✅ GET /api/profile/consent → { consented: true }
 - ✅ /consent 건너뛰고 바로 닉네임 확인으로 진행
 
 ### Unit Testing
+
 - ⏳ 테스트 파일 생성 대기 (Phase 2 설계 완료)
 
 ---
@@ -172,6 +184,7 @@
 ## Git Commit
 
 **Commit Message**:
+
 ```
 feat: Add privacy consent page (REQ-F-A3)
 
@@ -215,6 +228,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Files Changed**:
+
 - NEW: `src/frontend/src/pages/ConsentPage.tsx`
 - NEW: `src/frontend/src/pages/ConsentPage.css`
 - NEW: `docs/progress/REQ-F-A3.md`

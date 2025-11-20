@@ -382,6 +382,41 @@ class ItemGenAgent:
             logger.error(f"❌ ItemGenAgent 초기화 실패: {e}")
             raise
 
+    def _is_complete_react_response(self, content: str) -> tuple[bool, str]:
+        """
+        Check if LLM response contains complete ReAct iterations.
+
+        Validates that:
+        - Every "Action:" has corresponding "Action Input:"
+        - Every "Action Input:" has corresponding "Observation:"
+        - Final Answer is present (unless intermediate stage)
+
+        Args:
+            content: LLM response text
+
+        Returns:
+            (is_complete: bool, reason: str): Whether response is complete and reason if not
+
+        """
+        if not content or not isinstance(content, str):
+            return False, "Empty or non-string response"
+
+        # Count occurrences of key components
+        action_count = content.count("Action:")
+        action_input_count = content.count("Action Input:")
+        observation_count = content.count("Observation:")
+
+        # Check for incomplete iterations
+        if action_count > 0 and action_count > action_input_count:
+            missing = action_count - action_input_count
+            return False, f"{missing} Action(s) missing 'Action Input' (incomplete ReAct format)"
+
+        if action_input_count > observation_count and action_input_count > 0:
+            missing = action_input_count - observation_count
+            return False, f"{missing} 'Action Input'(s) missing 'Observation' (tool not executed)"
+
+        return True, "Complete ReAct format"
+
     def _extract_tool_results(self, result: dict, tool_name: str) -> list[tuple[str, str]]:
         """
         Extract tool results from agent output in both formats.
@@ -593,6 +628,17 @@ Important:
             # 2. Tool 비동기화: 모든 Tool을 async 함수로 변경 (현재는 동기)
             # 3. 캐싱: 자주 호출되는 Tool (get_difficulty_keywords)에 캐싱 적용
             result = await self.executor.ainvoke({"messages": [HumanMessage(content=agent_input)]})
+
+            # ReAct 응답 완성도 검증 (디버깅 목적)
+            for message in result.get("messages", []):
+                if isinstance(message, AIMessage):
+                    content = getattr(message, "content", "")
+                    is_complete, reason = self._is_complete_react_response(content)
+                    if not is_complete:
+                        logger.warning(f"⚠️  Incomplete ReAct response detected: {reason}")
+                        logger.debug(f"Response preview (first 500 chars): {content[:500]}...")
+                    else:
+                        logger.debug("✓ ReAct response format validation passed")
 
             logger.info("✅ 에이전트 실행 완료")
 
@@ -1019,7 +1065,12 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
                         output_preview = str(tool_output_str)[:300]
                         logger.info(f"      output_preview={output_preview}...")
                 else:
-                    logger.warning("⚠️  No tool results extracted!")
+                    logger.warning(
+                        f"⚠️  No tool results extracted! "
+                        f"Possible causes: 1) Incomplete ReAct format (missing Action Input/Observation), "
+                        f"2) LLM selected wrong tool, 3) Tool call ID mismatch. "
+                        f"Messages: {len(messages)}, AIMessages: {sum(1 for m in messages if isinstance(m, AIMessage))}"
+                    )
 
                 # Tool results 파싱으로 items 구성
                 for tool_name, tool_output_str in tool_results:

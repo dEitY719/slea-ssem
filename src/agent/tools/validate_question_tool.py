@@ -228,6 +228,39 @@ def _get_recommendation(final_score: float) -> str:
         return "reject"
 
 
+def _should_discard_question(final_score: float, recommendation: str) -> bool:
+    """
+    Determine if question should be discarded.
+
+    REQ: REQ-A-Mode1-Tool4-Discard (should_discard logic)
+
+    Question should be discarded if:
+    1. Final score < MIN_VALID_SCORE (0.70), OR
+    2. Recommendation is "reject"
+
+    A question is only valid and kept if:
+    - final_score >= 0.70 AND recommendation != "reject"
+
+    Args:
+        final_score: Final validation score (0.0-1.0)
+        recommendation: Recommendation string ("pass"|"revise"|"reject")
+
+    Returns:
+        True if question should be discarded, False if should be kept
+
+    """
+    # Discard if score is below threshold
+    if final_score < MIN_VALID_SCORE:
+        return True
+
+    # Discard if recommendation is reject
+    if recommendation == "reject":
+        return True
+
+    # Otherwise keep the question
+    return False
+
+
 def _build_feedback(
     score: float,
     rule_score: float,
@@ -357,7 +390,15 @@ def _validate_single_question(
         correct_answer: Correct answer
 
     Returns:
-        Validation result dict
+        Validation result dict with:
+            - is_valid: bool (True if final_score >= 0.70)
+            - score: float (LLM semantic score)
+            - rule_score: float (rule-based score)
+            - final_score: float (min of score and rule_score)
+            - feedback: str (human-readable feedback)
+            - issues: list[str] (detected problems)
+            - recommendation: "pass"|"revise"|"reject"
+            - should_discard: bool (True if should regenerate, False if should keep)
 
     """
     # Rule-based validation
@@ -375,8 +416,17 @@ def _validate_single_question(
     # Determine is_valid
     is_valid = final_score >= MIN_VALID_SCORE
 
+    # Determine should_discard (opposite of is_valid)
+    should_discard = _should_discard_question(final_score, recommendation)
+
     # Build feedback
     feedback = _build_feedback(llm_score, rule_score, issues, recommendation)
+
+    logger.debug(
+        f"Question validation: final_score={final_score:.2f}, "
+        f"is_valid={is_valid}, should_discard={should_discard}, "
+        f"recommendation={recommendation}"
+    )
 
     return {
         "is_valid": is_valid,
@@ -386,6 +436,7 @@ def _validate_single_question(
         "feedback": feedback,
         "issues": issues,
         "recommendation": recommendation,
+        "should_discard": should_discard,
     }
 
 
@@ -407,6 +458,7 @@ def validate_question_quality(
     2. Rule-based validation (length, choices count, format, duplicates)
 
     Final score = min(LLM_score, rule_score)
+    should_discard = (final_score < 0.70) OR (recommendation == "reject")
 
     Args:
         stem: Question stem text (max 250 chars) or list for batch
@@ -424,6 +476,7 @@ def validate_question_quality(
             - feedback: str (human-readable feedback in Korean)
             - issues: list[str] (detected problems)
             - recommendation: "pass" (>=0.85) | "revise" (0.70-0.85) | "reject" (<0.70)
+            - should_discard: bool (True if should regenerate, False if should keep)
 
     Raises:
         ValueError: If inputs are invalid
@@ -438,6 +491,8 @@ def validate_question_quality(
         ... )
         >>> result["recommendation"]
         "pass"
+        >>> result["should_discard"]
+        False
 
     Example (batch):
         >>> results = validate_question_quality(

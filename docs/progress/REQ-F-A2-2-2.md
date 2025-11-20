@@ -10,11 +10,13 @@
 ## Phase 1: Specification
 
 ### Requirements
+
 - **REQ ID**: REQ-F-A2-2-2
 - **Description**: 자기평가 입력 화면 - 5개 필드 레이아웃 및 백엔드 API 변환
 - **Priority**: M (Must have)
 
 ### Input Fields
+
 | Field | Type | Options | Default | Required | Backend Field |
 |-------|------|---------|---------|----------|---------------|
 | 수준 | Slider (1-5) | 1-5 | None | Yes | `level` (string) |
@@ -24,6 +26,7 @@
 | 관심분야 | Radio | AI/ML/Backend/Frontend | "" | No | `interests` (array) |
 
 ### Backend API Transformation
+
 ```typescript
 // Level mapping
 1 → "Beginner"
@@ -47,9 +50,11 @@
 ### Test Cases (17 total)
 
 #### 1. Field Rendering
+
 - ✅ `renders all 5 input fields with correct types`
 
 #### 2. Backend API Transformation
+
 - ✅ `submits all fields with correct backend API transformation`
 - ✅ `converts level 1 to "beginner" when submitting`
 - ✅ `converts level 2 and 3 to "intermediate" when submitting`
@@ -59,20 +64,24 @@
 - ✅ `converts "Backend" interest to ["Backend"] array`
 
 #### 3. Validation
+
 - ✅ `validates career input range (0-50)`
 - ✅ `validates duty input max length (500 chars)`
 
 #### 4. Optional Fields
+
 - ✅ `allows submission with only level selected (all other fields optional)`
 - ✅ `keeps complete button disabled when no level is selected`
 - ✅ `enables complete button after selecting a level`
 
 #### 5. Submit & Navigation
+
 - ✅ `navigates to profile review page after successful submission`
 - ✅ `shows error message when API call fails`
 - ✅ `disables complete button while submitting`
 
 #### 6. UI Display
+
 - ✅ `shows description for each level (1-5)`
 
 **Test Coverage**: 100% of acceptance criteria
@@ -84,7 +93,9 @@
 ### Modified Files
 
 #### 1. `src/frontend/src/pages/SelfAssessmentPage.tsx`
+
 **Changes**:
+
 - Added 4 new state variables: `career`, `jobRole`, `duty`, `interests`
 - Added 4 new change handlers
 - Updated `handleCompleteClick` with validation and all fields
@@ -92,6 +103,7 @@
 - Added validation for career range (0-50)
 
 **Key Code**:
+
 ```typescript
 const [career, setCareer] = useState<number>(0)
 const [jobRole, setJobRole] = useState<string>('')
@@ -117,11 +129,14 @@ await submitProfileSurvey({
 **Lines**: 107 → 294 (+187 lines)
 
 #### 2. `src/frontend/src/features/profile/profileSubmission.ts`
+
 **Changes**:
+
 - Updated `BaseProfileInput` type with 4 new fields
 - Updated `submitProfileSurvey` transformation logic
 
 **Key Code**:
+
 ```typescript
 type BaseProfileInput = {
   level: number
@@ -148,10 +163,13 @@ export async function submitProfileSurvey(input: BaseProfileInput) {
 **Lines**: 52 (type changes only)
 
 #### 3. `src/frontend/src/services/profileService.ts`
+
 **Changes**:
+
 - Updated `SurveyUpdateRequest` interface with all 5 fields
 
 **Key Code**:
+
 ```typescript
 export interface SurveyUpdateRequest {
   level: string
@@ -165,7 +183,9 @@ export interface SurveyUpdateRequest {
 **Lines**: 56 → 58 (+2 lines)
 
 #### 4. `src/frontend/src/pages/__tests__/SelfAssessmentPage.test.tsx`
+
 **Changes**:
+
 - Rewrote first test to check all 5 fields
 - Added 6 new tests for backend API transformation
 - Added 2 validation tests
@@ -179,6 +199,7 @@ export interface SurveyUpdateRequest {
 ## Phase 4: Testing & Validation
 
 ### Test Results
+
 ```
 ✅ Test Files  1 passed (1)
 ✅ Tests      17 passed (17)
@@ -186,6 +207,7 @@ Duration      3.50s
 ```
 
 ### Acceptance Criteria Verification
+
 - ✅ 5개 필드가 명확하게 레이아웃됨
 - ✅ 각 필드의 입력 타입이 정확히 구현됨
 - ✅ 백엔드 API 변환 규칙이 적용됨
@@ -210,6 +232,7 @@ Duration      3.50s
 ## Default Values Strategy
 
 **Frontend State Initialization**:
+
 ```typescript
 const [career, setCareer] = useState<number>(0)
 const [jobRole, setJobRole] = useState<string>('')
@@ -218,6 +241,7 @@ const [interests, setInterests] = useState<string>('')
 ```
 
 **Backend API Payload**:
+
 ```typescript
 {
   level: LEVEL_MAPPING[input.level],
