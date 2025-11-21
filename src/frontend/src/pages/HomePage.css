@@ -47,11 +47,31 @@
   box-shadow: var(--shadow-card);
 }
 
+.level-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
 .info-card-title {
   font-size: 0.875rem;
   color: var(--text-secondary);
-  margin-bottom: 0.5rem;
+  margin: 0;
   font-weight: 500;
+}
+
+.date-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0d47a1;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border: 1px solid #90caf9;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.1);
 }
 
 .info-card-value {

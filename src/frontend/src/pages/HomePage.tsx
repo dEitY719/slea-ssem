@@ -191,25 +191,23 @@ const HomePage: React.FC = () => {
           {/* REQ: REQ-F-A1-Home-1, REQ-F-A1-Home-2, REQ-F-A1-Home-3, REQ-F-A1-Home-4 */}
           <div className="info-card">
             <div style={{ marginBottom: '1.5rem' }}>
-              <p className="info-card-title">나의 현재 레벨</p>
+              <div className="level-card-header">
+                <p className="info-card-title">나의 현재 레벨</p>
+                {lastTestResult?.hasResult && lastTestResult.completedAt && (
+                  <span className="date-badge">{lastTestResult.completedAt} 기준</span>
+                )}
+              </div>
               {isLoadingResult ? (
                 <p className="info-card-value">...</p>
               ) : lastTestResult?.hasResult ? (
-                <>
-                  <div className={`home-grade-badge ${getGradeClass(lastTestResult.grade)}`}>
-                    <TrophyIcon className="home-grade-icon" />
-                    <div className="home-grade-info">
-                      <p className="home-grade-label">등급</p>
-                      <p className="home-grade-value">Level {lastTestResult.grade}</p>
-                      <p className="home-grade-english">{homeService.getBadgeLabel(lastTestResult.grade)}</p>
-                    </div>
+                <div className={`home-grade-badge ${getGradeClass(lastTestResult.grade)}`}>
+                  <TrophyIcon className="home-grade-icon" />
+                  <div className="home-grade-info">
+                    <p className="home-grade-label">등급</p>
+                    <p className="home-grade-value">Level {lastTestResult.grade}</p>
+                    <p className="home-grade-english">{homeService.getBadgeLabel(lastTestResult.grade)}</p>
                   </div>
-                  {lastTestResult.completedAt && (
-                    <p className="home-description" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                      마지막 테스트: {lastTestResult.completedAt}
-                    </p>
-                  )}
-                </>
+                </div>
               ) : (
                 <>
                   <p className="info-card-value">-</p>
