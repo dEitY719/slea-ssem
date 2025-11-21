@@ -1095,12 +1095,15 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
 | **REQ-B-B3-Explain-1** | Explain-Agent가 각 문항에 대해 정답/오답 해설(200자 이상) 및 참고 링크(3개 이상)를 생성해야 한다. | **M** |
+| **REQ-B-B3-Explain-2** | 세션의 모든 문항 해설을 한 번에 조회할 수 있는 API를 제공해야 한다. (GET /questions/explanations/session/{session_id}) | **M** |
 
 **수용 기준**:
 
 - "각 문항의 해설에 200자 이상의 설명이 포함된다."
 - "해설에 참고 링크 3개 이상이 포함되어 있다."
-- "해설은 채점 후 2초 내에 생성된다.|
+- "해설은 채점 후 2초 내에 생성된다."
+- "GET /questions/explanations/session/{session_id} 호출 시 해당 세션의 모든 문항 해설이 배열 형태로 반환된다."
+- "각 해설 객체는 question_id, question_number, question_text, user_answer, correct_answer, is_correct, explanation_text, explanation_sections, reference_links를 포함한다."|
 
 ## REQ-B-B3-Score: 채점 (정오답 판정) (Backend)
 
@@ -1143,11 +1146,14 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 | **REQ-B-B4-3** | 등급 산출 로직을 구현해야 한다: <br> - 기본: 종합 점수 + 난이도 보정 (문항별 정답률 기반 가중) <br> - 초기: 베이지안 평활로 컷오프 업데이트 | **M** |
 | **REQ-B-B4-4** | 동일 기간(최근 90일) 응시자 풀을 기준으로 상대 순위(RANK() OVER)와 백분위(percentile)를 계산해야 한다. | **M** |
 | **REQ-B-B4-5** | 모집단 < 100일 경우, percentile_confidence를 "medium"으로 설정해야 한다. | **S** |
+| **REQ-B-B4-6** | 등급 조회 API(GET /profile/ranking)는 전사 등급 분포 데이터(grade_distribution)를 포함하여 반환해야 한다. 각 등급별로 인원 수(count)와 비율(percentage)을 제공해야 한다. | **M** |
 
 **수용 기준**:
 
 - "최종 점수 80/100 시 등급이 'Advanced'로 정확히 산출된다."
 - "점수 80일 때 상대 순위(예: 3/506)와 백분위(상위 28%)가 정확히 계산된다."
+- "GET /profile/ranking 응답에 grade_distribution 배열이 포함되며, 각 객체는 grade, count, percentage 필드를 포함한다."
+- "grade_distribution의 모든 등급(Beginner ~ Elite)이 포함되어야 하며, 인원이 없는 등급은 count=0, percentage=0.0으로 표시된다."
 
 ---
 

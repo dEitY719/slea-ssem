@@ -297,6 +297,119 @@ SLEA-SSEM의 Frontend-Backend API 통신 플로우를 정리했습니다.
 
 ---
 
+## 📖 해설 조회 API
+
+### 세션 해설 일괄 조회 (권장)
+
+```
+📍 시점: 사용자가 "해설 보기" 버튼 클릭 (결과 페이지에서)
+┗━ 호출: GET /questions/explanations/session/{session_id}
+   ├─ 요청: 경로 파라미터로 session_id 전달
+   └─ 응답: {explanations: [...]}
+   └─ 역할: 세션의 모든 문항 해설을 배열로 반환
+
+**응답 예시**:
+```json
+{
+  "explanations": [
+    {
+      "question_id": "q1",
+      "question_number": 1,
+      "question_text": "LLM은 무엇의 약자인가?",
+      "user_answer": "Large Language Model",
+      "correct_answer": "Large Language Model",
+      "is_correct": true,
+      "explanation_text": "LLM은 Large Language Model의 약자입니다...",
+      "explanation_sections": [
+        {
+          "title": "핵심 개념",
+          "content": "LLM은 수십억 개의 파라미터를 가진..."
+        }
+      ],
+      "reference_links": [
+        {"title": "LLM 소개", "url": "https://..."},
+        {"title": "Transformer 아키텍처", "url": "https://..."}
+      ]
+    },
+    // ... 나머지 문항들
+  ]
+}
+```
+
+**특징**:
+- 한 번의 API 호출로 모든 해설 조회
+- 네트워크 효율적 (N+1 문제 방지)
+- ExplanationPage.tsx에서 사용
+
+**REQ 참조**: REQ-B-B3-Explain-2, REQ-F-B3-1, REQ-F-B3-2
+
+---
+
+## 📊 등급 및 순위 조회 API
+
+### 전사 등급 분포 포함 조회
+
+```
+📍 시점: 세션 완료 후, 프론트엔드가 결과 페이지로 이동하기 전
+┗━ 호출: GET /profile/ranking
+   ├─ 요청: (인증된 사용자 기준, 별도 파라미터 불필요)
+   └─ 응답: {user_id, grade, score, rank, total_cohort_size, percentile, percentile_confidence, percentile_description, grade_distribution}
+   └─ 역할: 사용자 등급, 순위, 백분위 및 전사 등급 분포 반환
+
+**응답 예시**:
+```json
+{
+  "user_id": "knox123",
+  "grade": "Advanced",
+  "score": 85,
+  "rank": 15,
+  "total_cohort_size": 506,
+  "percentile": 97.0,
+  "percentile_confidence": "high",
+  "percentile_description": "상위 3%",
+  "grade_distribution": [
+    {
+      "grade": "Beginner",
+      "count": 50,
+      "percentage": 9.9
+    },
+    {
+      "grade": "Intermediate",
+      "count": 120,
+      "percentage": 23.7
+    },
+    {
+      "grade": "Intermediate-Advanced",
+      "count": 180,
+      "percentage": 35.6
+    },
+    {
+      "grade": "Advanced",
+      "count": 130,
+      "percentage": 25.7
+    },
+    {
+      "grade": "Elite",
+      "count": 26,
+      "percentage": 5.1
+    }
+  ]
+}
+```
+
+**특징**:
+- 사용자의 개인 등급 정보와 전사 분포를 한 번에 조회
+- 최근 90일 기준 응시자 풀 데이터
+- grade_distribution으로 전사 등급 분포 시각화 가능
+- 모집단 < 100일 경우 percentile_confidence = "medium"
+
+**프론트엔드 사용**:
+- TestResultsPage.tsx에서 사용
+- GradeDistributionChart.tsx로 분포 차트 렌더링
+- 사용자 위치 하이라이트 표시
+
+**REQ 참조**: REQ-B-B4-6, REQ-F-B4-3
+
 ---
 
 ## 🚀 NEW: Auto-Complete After Score (자동 완료)
