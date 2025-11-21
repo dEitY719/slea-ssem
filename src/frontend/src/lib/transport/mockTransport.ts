@@ -11,6 +11,7 @@ const API_PROFILE_SURVEY = '/api/profile/survey'
 const API_QUESTIONS_GENERATE = '/api/questions/generate'
 const API_QUESTIONS_AUTOSAVE = '/api/questions/autosave'
 const API_QUESTIONS_SCORE = '/api/questions/score'
+const API_SESSION_COMPLETE = '/api/session'
 const API_RESULTS_PREVIOUS = '/api/results/previous'
 
 const ensureApiPath = (url: string): string => {
@@ -598,6 +599,23 @@ class MockTransport implements HttpTransport {
         total_count: 5,
         wrong_categories: { 'ML Fundamentals': 1 },
         auto_completed: true,
+      }
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
+    // Handle session complete endpoint
+    if (normalizedUrl.startsWith(API_SESSION_COMPLETE) && normalizedUrl.includes('/complete') && method === 'POST') {
+      // Extract session_id from URL: /api/session/{session_id}/complete
+      const sessionIdMatch = normalizedUrl.match(/\/api\/session\/([^/]+)\/complete/)
+      const sessionId = sessionIdMatch ? sessionIdMatch[1] : 'mock_session_123'
+
+      console.log('[Mock Transport] Completing session:', sessionId)
+      const response = {
+        status: 'completed',
+        session_id: sessionId,
+        round: 1,
+        message: 'Round 1 session completed successfully',
       }
       console.log('[Mock Transport] Response:', response)
       return response as T

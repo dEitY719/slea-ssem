@@ -71,6 +71,16 @@ export interface CalculateScoreResponse {
 }
 
 /**
+ * Complete session response
+ */
+export interface CompleteSessionResponse {
+  status: string
+  session_id: string
+  round: number
+  message: string
+}
+
+/**
  * Question service
  * Handles all question-related API calls
  */
@@ -112,6 +122,21 @@ export const questionService = {
   ): Promise<CalculateScoreResponse> {
     return transport.post<CalculateScoreResponse>(
       `/api/questions/score?session_id=${sessionId}&auto_complete=${autoComplete}`,
+      {}
+    )
+  },
+
+  /**
+   * Complete test session
+   *
+   * REQ: REQ-F-B3-Plus-1
+   *
+   * @param sessionId - Test session ID to complete
+   * @returns Complete session response with status
+   */
+  async completeSession(sessionId: string): Promise<CompleteSessionResponse> {
+    return transport.post<CompleteSessionResponse>(
+      `/api/session/${sessionId}/complete`,
       {}
     )
   },
