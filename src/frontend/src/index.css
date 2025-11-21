@@ -34,7 +34,14 @@
   --color-accent-dark: #5568d3;
   --color-accent-light: #ede9fe;
   --color-accent-hover: #5568d3;
-  
+
+  /* Special Badge Colors (Purple Gradient) - REQ-F-B4-2 */
+  --color-badge-primary: #667eea;
+  --color-badge-secondary: #764ba2;
+  --color-badge-shadow: rgba(102, 126, 234, 0.3);
+  --color-badge-shadow-hover: rgba(102, 126, 234, 0.5);
+  --color-badge-icon: #ffd700;
+
   /* Text Colors */
   --text-primary: #333;
   --text-secondary: #666;
