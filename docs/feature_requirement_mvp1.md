@@ -884,15 +884,59 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 
 ---
 
-## REQ-B-A2-Profile: 자기평가 정보 수정 (Backend)
+## REQ-B-A2-Profile: 자기평가 정보 관리 (Backend)
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
 | **REQ-B-A2-Prof-1** | JWT 토큰으로 현재 사용자를 식별하여 자기평가 정보 변경 요청을 처리해야 한다. (인증 필수) | **M** |
 | **REQ-B-A2-Prof-2** | 자기평가 정보(수준 1~5, 경력 숫자, 직군 S/E/M/G/F, 업무 텍스트, 관심분야 단일 선택) 변경 요청을 받아, user_profile_surveys 테이블에 새 레코드를 생성해야 한다. | **M** |
 | **REQ-B-A2-Prof-3** | 자기평가 수정 API는 1초 내에 응답해야 한다. | **M** |
+| **REQ-B-A2-Prof-4** | JWT 토큰으로 현재 사용자의 가장 최근 자기평가 정보를 조회할 수 있어야 한다. (인증 필수) | **M** |
+| **REQ-B-A2-Prof-5** | 자기평가 정보가 없는 경우 null 값으로 응답해야 한다. | **M** |
+| **REQ-B-A2-Prof-6** | 자기평가 조회 API는 1초 내에 응답해야 한다. | **M** |
 
-**API 엔드포인트**: `PUT /profile/survey` (인증 필수: Authorization 헤더의 JWT)
+### API 엔드포인트
+
+#### GET /profile/survey (조회)
+
+**인증**: Authorization 헤더의 JWT 필수
+
+**요청**: 없음
+
+**응답**:
+
+```json
+{
+  "level": "advanced",
+  "career": 10,
+  "job_role": "Senior Engineer",
+  "duty": "System Architecture",
+  "interests": ["AI", "Cloud", "ML"]
+}
+```
+
+**응답 (자기평가 정보 없는 경우)**:
+
+```json
+{
+  "level": null,
+  "career": null,
+  "job_role": null,
+  "duty": null,
+  "interests": null
+}
+```
+
+**수용 기준**:
+
+- "JWT 토큰 없이 요청 시 401 Unauthorized 응답"
+- "가장 최근 submitted_at의 자기평가 정보를 반환한다"
+- "자기평가 정보가 없으면 모든 필드가 null인 응답을 반환한다"
+- "조회 요청 후 1초 내 응답이 반환된다"
+
+---
+
+#### PUT /profile/survey (수정/생성)
 
 **요청**:
 
