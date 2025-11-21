@@ -1,6 +1,7 @@
 // REQ: REQ-F-A2-Signup-3, REQ-F-A2-Signup-4, REQ-F-A2-Signup-5, REQ-F-A2-Signup-6
 import React, { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { PageLayout } from '../components'
 import { useNicknameCheck } from '../hooks/useNicknameCheck'
 import { completeProfileSignup } from '../features/profile/profileSubmission'
 import NicknameInputSection from '../components/NicknameInputSection'
@@ -83,9 +84,8 @@ const SignupPage: React.FC = () => {
     }, [nickname, level, isSubmitting, isSubmitDisabled, navigate])
 
   return (
-    <main className="signup-page">
-      <div className="signup-container">
-        <h1 className="page-title">회원가입</h1>
+    <PageLayout mainClassName="signup-page" containerClassName="signup-container">
+      <h1 className="page-title">회원가입</h1>
         <p className="page-description">
           닉네임과 자기평가 정보를 입력하여 가입을 완료하세요.
         </p>
@@ -133,8 +133,7 @@ const SignupPage: React.FC = () => {
             {isSubmitting ? '가입 중...' : '가입 완료'}
           </button>
         </div>
-      </div>
-    </main>
+    </PageLayout>
   )
 }
 

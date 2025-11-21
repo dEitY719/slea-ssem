@@ -1,5 +1,6 @@
 // REQ: REQ-F-A1-1
 import React from 'react'
+import { PageLayout } from '../components'
 import './LoginPage.css'
 
 const LoginPage: React.FC = () => {
@@ -38,8 +39,8 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <main className="login-page">
-      <div className="login-container" data-testid="login-container">
+    <PageLayout mainClassName="login-page" containerClassName="login-container">
+      <div data-testid="login-container">
         <h1 className="login-title">SLEA-SSEM</h1>
         <button
           type="button"
@@ -50,7 +51,7 @@ const LoginPage: React.FC = () => {
           Samsung AD로 로그인
         </button>
       </div>
-    </main>
+    </PageLayout>
   )
 }
 

@@ -1,6 +1,7 @@
 // REQ: REQ-F-A1-2
 import React from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { PageLayout } from '../components'
 import { useAuthCallback } from '../hooks/useAuthCallback'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { ErrorMessage } from '../components/ErrorMessage'
@@ -23,34 +24,30 @@ const CallbackPage: React.FC = () => {
 
   if (loading && !error) {
     return (
-      <div className="callback-page">
-        <div className="callback-container">
-          <LoadingSpinner message="로그인 처리 중입니다..." />
-        </div>
-      </div>
+      <PageLayout mainClassName="callback-page" containerClassName="callback-container">
+        <LoadingSpinner message="로그인 처리 중입니다..." />
+      </PageLayout>
     )
   }
 
   if (error) {
     return (
-      <div className="callback-page">
-        <div className="callback-container">
-          <ErrorMessage
-            title="로그인 실패"
-            message={error}
-            helpLinks={[
-              {
-                text: '계정 정보 확인',
-                href: 'https://account.samsung.com',
-              },
-              {
-                text: '관리자 문의',
-                href: 'mailto:support@samsung.com',
-              },
-            ]}
-          />
-        </div>
-      </div>
+      <PageLayout mainClassName="callback-page" containerClassName="callback-container">
+        <ErrorMessage
+          title="로그인 실패"
+          message={error}
+          helpLinks={[
+            {
+              text: '계정 정보 확인',
+              href: 'https://account.samsung.com',
+            },
+            {
+              text: '관리자 문의',
+              href: 'mailto:support@samsung.com',
+            },
+          ]}
+        />
+      </PageLayout>
     )
   }
 

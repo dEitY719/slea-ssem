@@ -1,6 +1,7 @@
 // REQ: REQ-F-A2-3
 import React, { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { PageLayout } from '../components'
 import { submitProfileSurvey } from '../features/profile/profileSubmission'
 import LevelSelector from '../components/LevelSelector'
 import RadioButtonGrid, { type RadioButtonOption } from '../components/RadioButtonGrid'
@@ -98,9 +99,8 @@ const SelfAssessmentPage: React.FC = () => {
   const isCompleteEnabled = level !== null && !isSubmitting
 
   return (
-    <main className="self-assessment-page">
-      <div className="self-assessment-container">
-        <h1 className="page-title">관심분야 및 기술 수준 입력</h1>
+    <PageLayout mainClassName="self-assessment-page" containerClassName="self-assessment-container">
+      <h1 className="page-title">관심분야 및 기술 수준 입력</h1>
         <p className="page-description">
           관심 있는 분야와 현재 본인의 기술 수준을 선택해주세요. 기술 수준은 필수 항목입니다.
         </p>
@@ -147,8 +147,7 @@ const SelfAssessmentPage: React.FC = () => {
             <li>나중에 프로필 수정에서 변경할 수 있습니다</li>
           </ul>
         </InfoBox>
-      </div>
-    </main>
+    </PageLayout>
   )
 }
 
