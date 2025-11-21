@@ -143,16 +143,17 @@
   border-color: var(--color-accent);
 }
 
-.button-group {
+.testpage-button-group {
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
   margin-bottom: 1.5rem;
 }
 
-.next-button {
-  display: inline-flex;
+.testpage-next-button {
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 2rem;
   font-size: 1rem;
@@ -163,14 +164,14 @@
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  margin-top: 2rem;
+  margin: 2rem auto 0 auto;
 }
 
-.next-button:hover:not(:disabled) {
+.testpage-next-button:hover:not(:disabled) {
   background-color: var(--color-primary-hover);
 }
 
-.next-button:disabled {
+.testpage-next-button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
 }

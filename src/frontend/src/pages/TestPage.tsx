@@ -304,7 +304,7 @@ const TestPage: React.FC = () => {
       {/* Next Button */}
       <button
         type="button"
-        className="next-button"
+        className="testpage-next-button"
         onClick={handleNextClick}
         disabled={!answer.trim() || isSubmitting}
       >
