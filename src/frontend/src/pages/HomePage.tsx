@@ -5,7 +5,7 @@ import { PlayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { getToken } from '../utils/auth'
 import { useUserProfile } from '../hooks/useUserProfile'
 import { profileService } from '../services/profileService'
-import { Header } from '../components/Header'
+import { PageLayout } from '../components'
 import './HomePage.css'
 
 type SurveyProgress = {
@@ -94,32 +94,31 @@ const HomePage: React.FC = () => {
   }
 
   return (
-    <>
-      {/* REQ-F-A2-Signup-1: Header with conditional signup button */}
-      <Header nickname={nickname} isLoading={nicknameLoading} />
-
-      <main className="home-page">
-        <div className="home-container">
-          <h1 className="home-title">S.LSI Learning Platform</h1>
-          <p className="home-description">
-            AI 기반 학습 플랫폼에 오신 것을 환영합니다.
-          </p>
-          <p className="home-subtitle">
-            개인 맞춤형 레벨 테스트로 학습을 시작하세요.
-          </p>
-          {errorMessage && (
-            <div className="error-message">
-              <ExclamationTriangleIcon className="error-icon" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-          <button className="start-button" onClick={handleStart}>
-            <PlayIcon className="button-icon" />
-            시작하기
-          </button>
+    <PageLayout
+      showHeader
+      nickname={nickname}
+      isNicknameLoading={nicknameLoading}
+      mainClassName="home-page"
+      containerClassName="home-container"
+    >
+      <h1 className="home-title">S.LSI Learning Platform</h1>
+      <p className="home-description">
+        AI 기반 학습 플랫폼에 오신 것을 환영합니다.
+      </p>
+      <p className="home-subtitle">
+        개인 맞춤형 레벨 테스트로 학습을 시작하세요.
+      </p>
+      {errorMessage && (
+        <div className="error-message">
+          <ExclamationTriangleIcon className="error-icon" />
+          <span>{errorMessage}</span>
         </div>
-      </main>
-    </>
+      )}
+      <button className="start-button" onClick={handleStart}>
+        <PlayIcon className="button-icon" />
+        시작하기
+      </button>
+    </PageLayout>
   )
 }
 

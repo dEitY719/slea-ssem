@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { profileService } from '../services/profileService'
 import { useNicknameCheck } from '../hooks/useNicknameCheck'
 import { useUserProfile } from '../hooks/useUserProfile'
+import { PageLayout } from '../components'
 import LevelSelector from '../components/LevelSelector'
 import NumberInput from '../components/NumberInput'
 import RadioButtonGrid, { type RadioButtonOption } from '../components/RadioButtonGrid'
@@ -293,17 +294,14 @@ const ProfileEditPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <main className="profile-edit-page">
-        <div className="profile-edit-container">
-          <p className="loading-message">프로필 정보를 불러오는 중...</p>
-        </div>
-      </main>
+      <PageLayout mainClassName="profile-edit-page" containerClassName="profile-edit-container">
+        <p className="loading-message">프로필 정보를 불러오는 중...</p>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="profile-edit-page">
-      <div className="profile-edit-container">
+    <PageLayout mainClassName="profile-edit-page" containerClassName="profile-edit-container">
         <h1 className="page-title">프로필 수정</h1>
         <p className="page-description">
           닉네임과 자기평가 정보를 수정할 수 있습니다. 기술 수준은 필수 항목입니다.
@@ -427,8 +425,7 @@ const ProfileEditPage: React.FC = () => {
             <li>저장 후 프로필 리뷰 페이지로 이동합니다</li>
           </ul>
         </InfoBox>
-      </div>
-    </main>
+    </PageLayout>
   )
 }
 
