@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { ArrowLeftIcon, ArrowRightIcon, HomeIcon } from '@heroicons/react/24/outline'
+import { transport } from '../lib/transport'
 import './ExplanationPage.css'
 
 /**
@@ -75,14 +76,10 @@ const ExplanationPage: React.FC = () => {
       setError(null)
 
       try {
-        // Fetch explanations from backend API
-        const response = await fetch(`/api/questions/explanations/session/${sessionId}`)
-
-        if (!response.ok) {
-          throw new Error('해설을 불러오는데 실패했습니다.')
-        }
-
-        const data = await response.json()
+        // Fetch explanations from backend API using transport layer
+        const data = await transport.get<{ explanations: QuestionExplanation[] }>(
+          `/api/questions/explanations/session/${sessionId}`
+        )
         const fetchedExplanations: QuestionExplanation[] = data.explanations || []
 
         /* Mock data for reference (remove after testing):
