@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { PencilIcon, PlayIcon } from '@heroicons/react/24/outline'
+import { PageLayout } from '../components'
 import { profileService } from '../services'
 import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
 import './ProfileReviewPage.css'
@@ -152,27 +153,22 @@ const ProfileReviewPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <main className="profile-review-page">
-        <div className="profile-review-container">
-          <p className="loading-message">로딩 중...</p>
-        </div>
-      </main>
+      <PageLayout mainClassName="profile-review-page" containerClassName="profile-review-container">
+        <p className="loading-message">로딩 중...</p>
+      </PageLayout>
     )
   }
 
   if (error) {
     return (
-      <main className="profile-review-page">
-        <div className="profile-review-container">
-          <p className="error-message">{error}</p>
-        </div>
-      </main>
+      <PageLayout mainClassName="profile-review-page" containerClassName="profile-review-container">
+        <p className="error-message">{error}</p>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="profile-review-page">
-      <div className="profile-review-container">
+    <PageLayout mainClassName="profile-review-page" containerClassName="profile-review-container">
         <h1 className="page-title">프로필 확인</h1>
         <p className="page-description">
           입력하신 정보를 확인해주세요. 수정이 필요하면 "수정하기"를 클릭하세요.
@@ -217,8 +213,7 @@ const ProfileReviewPage: React.FC = () => {
             1차 문제 5개가 생성되며, 약 10분이 소요됩니다.
           </p>
         </InfoBox>
-      </div>
-    </main>
+    </PageLayout>
   )
 }
 

@@ -15,6 +15,8 @@ const API_SESSION_COMPLETE = '/api/questions/session'
 const API_QUESTIONS_EXPLANATIONS = '/api/questions/explanations/session'
 const API_PROFILE_RANKING = '/api/profile/ranking'
 const API_RESULTS_PREVIOUS = '/api/results/previous'
+const API_PROFILE_LAST_TEST_RESULT = '/api/profile/last-test-result'
+const API_STATISTICS_TOTAL_PARTICIPANTS = '/api/statistics/total-participants'
 
 const ensureApiPath = (url: string): string => {
   if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -124,6 +126,17 @@ const mockData: Record<string, any> = {
       autosave_id: 'autosave_mock_123',
       saved_at: new Date().toISOString(),
     },
+  // REQ: REQ-F-A1-Home - Last test result
+  [API_PROFILE_LAST_TEST_RESULT]: {
+    hasResult: true,
+    grade: 3,
+    completedAt: '2025-01-15',
+    badgeUrl: null,
+  },
+  // REQ: REQ-F-A1-Home - Total participants
+  [API_STATISTICS_TOTAL_PARTICIPANTS]: {
+    totalParticipants: 1234,
+  },
   // Add more mock endpoints here
 }
 
@@ -871,6 +884,20 @@ class MockTransport implements HttpTransport {
       return response as T
     }
 
+    // REQ: REQ-F-A1-Home - Handle GET /api/profile/last-test-result endpoint
+    if (normalizedUrl === API_PROFILE_LAST_TEST_RESULT && method === 'GET') {
+      const response = mockData[API_PROFILE_LAST_TEST_RESULT]
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
+    // REQ: REQ-F-A1-Home - Handle GET /api/statistics/total-participants endpoint
+    if (normalizedUrl === API_STATISTICS_TOTAL_PARTICIPANTS && method === 'GET') {
+      const response = mockData[API_STATISTICS_TOTAL_PARTICIPANTS]
+      console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
     // Handle GET /profile/ranking endpoint
     if (normalizedUrl === API_PROFILE_RANKING && method === 'GET') {
       if (hasMockOverride(normalizedUrl)) {
@@ -1004,7 +1031,7 @@ export function resetMockResults() {
 
 // Helper to simulate different scenarios
 export function setMockScenario(
-  scenario: 'no-nickname' | 'has-nickname' | 'no-consent' | 'has-consent' | 'no-survey' | 'has-survey' | 'error' | 'reset-results'
+  scenario: 'no-nickname' | 'has-nickname' | 'no-consent' | 'has-consent' | 'no-survey' | 'has-survey' | 'error' | 'reset-results' | 'no-test-result' | 'has-test-result'
 ) {
   switch (scenario) {
     case 'no-nickname':
@@ -1056,6 +1083,24 @@ export function setMockScenario(
       break
     case 'reset-results':
       resetMockResults()
+      mockConfig.simulateError = false
+      break
+    case 'no-test-result':
+      mockData[API_PROFILE_LAST_TEST_RESULT] = {
+        hasResult: false,
+        grade: null,
+        completedAt: null,
+        badgeUrl: null,
+      }
+      mockConfig.simulateError = false
+      break
+    case 'has-test-result':
+      mockData[API_PROFILE_LAST_TEST_RESULT] = {
+        hasResult: true,
+        grade: 3,
+        completedAt: '2025-01-15',
+        badgeUrl: null,
+      }
       mockConfig.simulateError = false
       break
   }

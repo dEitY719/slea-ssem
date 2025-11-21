@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowRightIcon, ArrowLeftIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { questionService } from '../services'
+import { PageLayout } from '../components'
 import { Timer, SaveStatus, Question, type QuestionData, type SaveStatusType } from '../components/test'
 import './TestPage.css'
 
@@ -232,104 +233,96 @@ const TestPage: React.FC = () => {
   // Loading state
   if (isLoading) {
     return (
-      <main className="test-page">
-        <div className="test-container">
-          <p className="loading-message">문제를 생성하는 중입니다...</p>
-        </div>
-      </main>
+      <PageLayout mainClassName="test-page" containerClassName="test-container">
+        <p className="loading-message">문제를 생성하는 중입니다...</p>
+      </PageLayout>
     )
   }
 
   // Error state
   if (loadingError) {
     return (
-      <main className="test-page">
-        <div className="test-container">
-          <p className="error-message">{loadingError}</p>
-          <button
-            type="button"
-            className="back-button"
-            onClick={() => navigate('/profile-review')}
-          >
-            <ArrowLeftIcon className="button-icon" />
-            프로필 리뷰로 돌아가기
-          </button>
-        </div>
-      </main>
+      <PageLayout mainClassName="test-page" containerClassName="test-container">
+        <p className="error-message">{loadingError}</p>
+        <button
+          type="button"
+          className="back-button"
+          onClick={() => navigate('/profile-review')}
+        >
+          <ArrowLeftIcon className="button-icon" />
+          프로필 리뷰로 돌아가기
+        </button>
+      </PageLayout>
     )
   }
 
   // No questions state
   if (questions.length === 0) {
     return (
-      <main className="test-page">
-        <div className="test-container">
-          <p className="error-message">생성된 문제가 없습니다.</p>
-        </div>
-      </main>
+      <PageLayout mainClassName="test-page" containerClassName="test-container">
+        <p className="error-message">생성된 문제가 없습니다.</p>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="test-page">
-      <div className="test-container">
-        {/* Header with Timer and Save Status */}
-        <div className="test-header">
-          <Timer timeRemaining={timeRemaining} />
-          <SaveStatus status={saveStatus} />
-        </div>
-
-        {/* Question */}
-        <Question
-          question={currentQuestion}
-          currentIndex={currentIndex}
-          totalQuestions={questions.length}
-          answer={answer}
-          onAnswerChange={setAnswer}
-          disabled={isSubmitting}
-        />
-
-        {/* Submit Error */}
-        {submitError && <p className="error-message">{submitError}</p>}
-
-        {/* Complete Error - REQ-F-B3-Plus-3 */}
-        {completeError && (
-          <div className="error-container">
-            <p className="error-message">{completeError}</p>
-            <button
-              type="button"
-              className="retry-button"
-              onClick={handleCompleteSession}
-              disabled={isCompleting}
-            >
-              {isCompleting ? '재시도 중...' : '재시도'}
-            </button>
-          </div>
-        )}
-
-        {/* Next Button */}
-        <button
-          type="button"
-          className="next-button"
-          onClick={handleNextClick}
-          disabled={!answer.trim() || isSubmitting}
-        >
-          {isSubmitting ? (
-            '제출 중...'
-          ) : currentIndex < questions.length - 1 ? (
-            <>
-              다음
-              <ArrowRightIcon className="button-icon" />
-            </>
-          ) : (
-            <>
-              완료
-              <CheckIcon className="button-icon" />
-            </>
-          )}
-        </button>
+    <PageLayout mainClassName="test-page" containerClassName="test-container">
+      {/* Header with Timer and Save Status */}
+      <div className="test-header">
+        <Timer timeRemaining={timeRemaining} />
+        <SaveStatus status={saveStatus} />
       </div>
-    </main>
+
+      {/* Question */}
+      <Question
+        question={currentQuestion}
+        currentIndex={currentIndex}
+        totalQuestions={questions.length}
+        answer={answer}
+        onAnswerChange={setAnswer}
+        disabled={isSubmitting}
+      />
+
+      {/* Submit Error */}
+      {submitError && <p className="error-message">{submitError}</p>}
+
+      {/* Complete Error - REQ-F-B3-Plus-3 */}
+      {completeError && (
+        <div className="error-container">
+          <p className="error-message">{completeError}</p>
+          <button
+            type="button"
+            className="retry-button"
+            onClick={handleCompleteSession}
+            disabled={isCompleting}
+          >
+            {isCompleting ? '재시도 중...' : '재시도'}
+          </button>
+        </div>
+      )}
+
+      {/* Next Button */}
+      <button
+        type="button"
+        className="next-button"
+        onClick={handleNextClick}
+        disabled={!answer.trim() || isSubmitting}
+      >
+        {isSubmitting ? (
+          '제출 중...'
+        ) : currentIndex < questions.length - 1 ? (
+          <>
+            다음
+            <ArrowRightIcon className="button-icon" />
+          </>
+        ) : (
+          <>
+            완료
+            <CheckIcon className="button-icon" />
+          </>
+        )}
+      </button>
+    </PageLayout>
   )
 }
 

@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import { PageLayout } from '../components'
 import { profileService } from '../services/profileService'
 import { useUserProfile } from '../hooks/useUserProfile'
 import './ConsentPage.css'
@@ -87,9 +88,8 @@ const ConsentPage: React.FC = () => {
   }
 
   return (
-    <main className="consent-page">
-      <div className="consent-container">
-        <h1 className="consent-title">개인정보 수집 및 이용 동의</h1>
+    <PageLayout mainClassName="consent-page" containerClassName="consent-container">
+      <h1 className="consent-title">개인정보 수집 및 이용 동의</h1>
 
         <div className="consent-content">
           {/* REQ: REQ-F-A3-2 - Collection items, purpose, retention period */}
@@ -177,8 +177,7 @@ const ConsentPage: React.FC = () => {
         <p className="consent-footer">
           위 내용을 확인하였으며, 개인정보 수집 및 이용에 동의합니다.
         </p>
-      </div>
-    </main>
+    </PageLayout>
   )
 }
 

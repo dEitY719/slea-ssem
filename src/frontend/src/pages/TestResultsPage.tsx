@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowPathIcon, HomeIcon } from '@heroicons/react/24/outline'
+import { PageLayout } from '../components'
 import { useTestResults } from '../hooks/useTestResults'
 import { GradeBadge, MetricCard, ActionButtons, GradeDistributionChart, ComparisonSection } from '../components/TestResults'
 import { resultService, type PreviousResult } from '../services/resultService'
@@ -59,47 +60,41 @@ const TestResultsPage: React.FC = () => {
   // Loading state
   if (isLoading) {
     return (
-      <main className="results-page">
-        <div className="results-container">
-          <p className="loading-text">결과를 불러오는 중입니다...</p>
-        </div>
-      </main>
+      <PageLayout mainClassName="results-page" containerClassName="results-container">
+        <p className="loading-text">결과를 불러오는 중입니다...</p>
+      </PageLayout>
     )
   }
 
   // Error state
   if (error) {
     return (
-      <main className="results-page">
-        <div className="results-container">
-          <div className="error-container">
-            <p className="error-message">{error}</p>
-            <button type="button" className="retry-button" onClick={retry}>
-              <ArrowPathIcon className="button-icon" />
-              다시 시도
-            </button>
-            <button
-              type="button"
-              className="back-button"
-              onClick={() => navigate('/home')}
-            >
-              <HomeIcon className="button-icon" />
-              홈화면으로 돌아가기
-            </button>
-          </div>
+      <PageLayout mainClassName="results-page" containerClassName="results-container">
+        <div className="error-container">
+          <p className="error-message">{error}</p>
+          <button type="button" className="retry-button" onClick={retry}>
+            <ArrowPathIcon className="button-icon" />
+            다시 시도
+          </button>
+          <button
+            type="button"
+            className="back-button"
+            onClick={() => navigate('/home')}
+          >
+            <HomeIcon className="button-icon" />
+            홈화면으로 돌아가기
+          </button>
         </div>
-      </main>
+      </PageLayout>
     )
   }
 
   // No data state (shouldn't happen if loading/error handled correctly)
   if (!resultData) {
     return (
-      <main className="results-page">
-        <div className="results-container">
-          <p className="error-message">결과 데이터가 없습니다.</p>
-        </div>
-      </main>
+      <PageLayout mainClassName="results-page" containerClassName="results-container">
+        <p className="error-message">결과 데이터가 없습니다.</p>
+      </PageLayout>
     )
   }
 
@@ -107,78 +102,76 @@ const TestResultsPage: React.FC = () => {
   const showConfidenceWarning = resultData.total_cohort_size < 100
 
   return (
-    <main className="results-page">
-      <div className="results-container">
-        <h1 className="results-title">테스트 결과</h1>
+    <PageLayout mainClassName="results-page" containerClassName="results-container">
+      <h1 className="results-title">테스트 결과</h1>
 
-        {/* Grade Badge (Large, Prominent) */}
-        <GradeBadge grade={resultData.grade} />
+      {/* Grade Badge (Large, Prominent) */}
+      <GradeBadge grade={resultData.grade} />
 
-        {/* Metrics Grid */}
-        <div className="metrics-grid">
-          <MetricCard type="score" title="점수" score={resultData.score} />
+      {/* Metrics Grid */}
+      <div className="metrics-grid">
+        <MetricCard type="score" title="점수" score={resultData.score} />
 
-          <MetricCard
-            type="rank"
-            title="순위"
-            rank={resultData.rank}
-            totalCohortSize={resultData.total_cohort_size}
-            showConfidenceWarning={showConfidenceWarning}
-          />
+        <MetricCard
+          type="rank"
+          title="순위"
+          rank={resultData.rank}
+          totalCohortSize={resultData.total_cohort_size}
+          showConfidenceWarning={showConfidenceWarning}
+        />
 
-          <MetricCard
-            type="percentile"
-            title="백분위"
-            percentileDescription={resultData.percentile_description}
-            percentile={resultData.percentile}
-          />
-        </div>
-
-        {/* Grade Distribution Chart - REQ: REQ-F-B4-3, REQ-F-B4-4 */}
-        {resultData.grade_distribution && (
-          <GradeDistributionChart
-            distribution={resultData.grade_distribution}
-            userGrade={resultData.grade}
-            rank={resultData.rank}
-            totalCohortSize={resultData.total_cohort_size}
-            percentileDescription={resultData.percentile_description}
-            showConfidenceWarning={showConfidenceWarning}
-          />
-        )}
-
-        {/* Comparison Section - REQ: REQ-F-B5-1 */}
-        {!isPreviousLoading && (
-          <ComparisonSection
-            currentGrade={resultData.grade}
-            currentScore={resultData.score}
-            previousResult={previousResult}
-          />
-        )}
-
-        {/* Action Buttons */}
-        <ActionButtons
-          onGoHome={() => navigate('/home')}
-          onRetake={() => {
-            // REQ-F-B5-2, REQ-F-B5-3: Retake - go to profile review to confirm info
-            const surveyId = state?.surveyId || localStorage.getItem('lastSurveyId')
-
-            if (surveyId) {
-              // Save to localStorage for profile review page
-              localStorage.setItem('lastSurveyId', surveyId)
-            }
-
-            // Always go to profile review first for retake
-            navigate('/profile-review')
-          }}
-          onViewExplanations={() => {
-            // REQ: REQ-F-B4-7 - Navigate to explanation page
-            if (state?.sessionId) {
-              navigate(`/test-explanations/${state.sessionId}`)
-            }
-          }}
+        <MetricCard
+          type="percentile"
+          title="백분위"
+          percentileDescription={resultData.percentile_description}
+          percentile={resultData.percentile}
         />
       </div>
-    </main>
+
+      {/* Grade Distribution Chart - REQ: REQ-F-B4-3, REQ-F-B4-4 */}
+      {resultData.grade_distribution && (
+        <GradeDistributionChart
+          distribution={resultData.grade_distribution}
+          userGrade={resultData.grade}
+          rank={resultData.rank}
+          totalCohortSize={resultData.total_cohort_size}
+          percentileDescription={resultData.percentile_description}
+          showConfidenceWarning={showConfidenceWarning}
+        />
+      )}
+
+      {/* Comparison Section - REQ: REQ-F-B5-1 */}
+      {!isPreviousLoading && (
+        <ComparisonSection
+          currentGrade={resultData.grade}
+          currentScore={resultData.score}
+          previousResult={previousResult}
+        />
+      )}
+
+      {/* Action Buttons */}
+      <ActionButtons
+        onGoHome={() => navigate('/home')}
+        onRetake={() => {
+          // REQ-F-B5-2, REQ-F-B5-3: Retake - go to profile review to confirm info
+          const surveyId = state?.surveyId || localStorage.getItem('lastSurveyId')
+
+          if (surveyId) {
+            // Save to localStorage for profile review page
+            localStorage.setItem('lastSurveyId', surveyId)
+          }
+
+          // Always go to profile review first for retake
+          navigate('/profile-review')
+        }}
+        onViewExplanations={() => {
+          // REQ: REQ-F-B4-7 - Navigate to explanation page
+          if (state?.sessionId) {
+            navigate(`/test-explanations/${state.sessionId}`)
+          }
+        }}
+      />
+    </PageLayout>
   )
 }
 

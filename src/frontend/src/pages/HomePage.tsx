@@ -1,12 +1,27 @@
-// REQ: REQ-F-A1-2, REQ-F-A2-1, REQ-F-A3, REQ-F-A2-Signup-1
+// REQ: REQ-F-A1-2, REQ-F-A2-1, REQ-F-A3, REQ-F-A2-Signup-1, REQ-F-A1-Home
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PlayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { TrophyIcon } from '@heroicons/react/24/solid'
 import { getToken } from '../utils/auth'
 import { useUserProfile } from '../hooks/useUserProfile'
 import { profileService } from '../services/profileService'
-import { Header } from '../components/Header'
+import { homeService, type LastTestResult } from '../services/homeService'
+import { PageLayout } from '../components'
 import './HomePage.css'
+
+// Map numeric grade (1-5) to string grade for CSS classes
+const getGradeClass = (grade: number | null): string => {
+  if (!grade) return 'grade-default'
+  const gradeMap: Record<number, string> = {
+    1: 'grade-beginner',
+    2: 'grade-intermediate',
+    3: 'grade-intermediate',
+    4: 'grade-advanced',
+    5: 'grade-elite',
+  }
+  return gradeMap[grade] || 'grade-default'
+}
 
 type SurveyProgress = {
   surveyId: string | null
@@ -32,6 +47,14 @@ const HomePage: React.FC = () => {
   const { nickname, loading: nicknameLoading, checkNickname } = useUserProfile()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
+  // REQ: REQ-F-A1-Home - Last test result state
+  const [lastTestResult, setLastTestResult] = useState<LastTestResult | null>(null)
+  const [isLoadingResult, setIsLoadingResult] = useState(true)
+
+  // REQ: REQ-F-A1-Home - Total participants state
+  const [totalParticipants, setTotalParticipants] = useState<number | null>(null)
+  const [isLoadingStats, setIsLoadingStats] = useState(true)
+
   // REQ-F-A2-Signup-1: Load nickname on mount to determine if signup button should show
   useEffect(() => {
     const loadNickname = async () => {
@@ -45,6 +68,43 @@ const HomePage: React.FC = () => {
 
     loadNickname()
   }, [checkNickname])
+
+  // REQ: REQ-F-A1-Home-1, REQ-F-A1-Home-2 - Fetch last test result
+  useEffect(() => {
+    const fetchLastTestResult = async () => {
+      setIsLoadingResult(true)
+      try {
+        const result = await homeService.getLastTestResult()
+        setLastTestResult(result)
+      } catch (err) {
+        console.error('Failed to fetch last test result:', err)
+        // Set default no-result state
+        setLastTestResult({ hasResult: false, grade: null, completedAt: null, badgeUrl: null })
+      } finally {
+        setIsLoadingResult(false)
+      }
+    }
+
+    fetchLastTestResult()
+  }, [])
+
+  // REQ: REQ-F-A1-Home-4 - Fetch total participants
+  useEffect(() => {
+    const fetchTotalParticipants = async () => {
+      setIsLoadingStats(true)
+      try {
+        const stats = await homeService.getTotalParticipants()
+        setTotalParticipants(stats.totalParticipants)
+      } catch (err) {
+        console.error('Failed to fetch total participants:', err)
+        setTotalParticipants(null)
+      } finally {
+        setIsLoadingStats(false)
+      }
+    }
+
+    fetchTotalParticipants()
+  }, [])
 
     const handleStart = async () => {
       try {
@@ -94,32 +154,91 @@ const HomePage: React.FC = () => {
   }
 
   return (
-    <>
-      {/* REQ-F-A2-Signup-1: Header with conditional signup button */}
-      <Header nickname={nickname} isLoading={nicknameLoading} />
+    <PageLayout
+      showHeader
+      nickname={nickname}
+      isNicknameLoading={nicknameLoading}
+      mainClassName="home-page"
+      containerClassName="home-container"
+    >
+      <div className="home-sections">
+        {/* Section 1: 메인 CTA */}
+        <section className="home-section">
+          <div className="home-content">
+            <p className="home-label">TODAY'S LEARNING TEST</p>
+            <h1 className="home-title">
+              오늘 당신의 AI 역량은?<br/>
+            </h1>
+            <p className="home-description">
+              슬아샘과 함께 개인 맞춤형 테스트로 당신의 실력을 객관적으로 측정해보세요.
+            </p>
 
-      <main className="home-page">
-        <div className="home-container">
-          <h1 className="home-title">S.LSI Learning Platform</h1>
-          <p className="home-description">
-            AI 기반 학습 플랫폼에 오신 것을 환영합니다.
-          </p>
-          <p className="home-subtitle">
-            개인 맞춤형 레벨 테스트로 학습을 시작하세요.
-          </p>
-          {errorMessage && (
-            <div className="error-message">
-              <ExclamationTriangleIcon className="error-icon" />
-              <span>{errorMessage}</span>
+            {errorMessage && (
+              <div className="error-message">
+                <ExclamationTriangleIcon className="error-icon" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            <div className="button-group">
+              <button className="start-button" onClick={handleStart}>
+                <PlayIcon className="button-icon" />
+                레벨테스트 시작하기
+              </button>
             </div>
-          )}
-          <button className="start-button" onClick={handleStart}>
-            <PlayIcon className="button-icon" />
-            시작하기
-          </button>
-        </div>
-      </main>
-    </>
+          </div>
+
+          {/* REQ: REQ-F-A1-Home-1, REQ-F-A1-Home-2, REQ-F-A1-Home-3, REQ-F-A1-Home-4 */}
+          <div className="info-card">
+            <div style={{ marginBottom: '1.5rem' }}>
+              <p className="info-card-title">나의 현재 레벨</p>
+              {isLoadingResult ? (
+                <p className="info-card-value">...</p>
+              ) : lastTestResult?.hasResult ? (
+                <>
+                  <div className={`home-grade-badge ${getGradeClass(lastTestResult.grade)}`}>
+                    <TrophyIcon className="home-grade-icon" />
+                    <div className="home-grade-info">
+                      <p className="home-grade-label">등급</p>
+                      <p className="home-grade-value">Level {lastTestResult.grade}</p>
+                      <p className="home-grade-english">{homeService.getBadgeLabel(lastTestResult.grade)}</p>
+                    </div>
+                  </div>
+                  {lastTestResult.completedAt && (
+                    <p className="home-description" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                      마지막 테스트: {lastTestResult.completedAt}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="info-card-value">-</p>
+                  <p className="home-description" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                    테스트를 완료하면<br/>당신의 레벨이 표시됩니다
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--border-card)', paddingTop: '1rem' }}>
+              {isLoadingStats ? (
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  로딩 중...
+                </p>
+              ) : totalParticipants !== null ? (
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  전체 <strong style={{ color: 'var(--text-primary)' }}>{totalParticipants.toLocaleString()}</strong>명 참여
+                </p>
+              ) : (
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  참여자 정보 없음
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
+    </PageLayout>
   )
 }
 

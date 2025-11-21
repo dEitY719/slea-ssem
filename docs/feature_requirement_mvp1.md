@@ -98,6 +98,52 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 ---
 
+## REQ-F-A1-Home: 홈화면 마지막 테스트 결과 표시
+
+**Note**: 로그인 완료 후 홈화면에서 사용자의 마지막 레벨테스트 결과를 시각적으로 표시합니다.
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-F-A1-Home-1** | 홈화면 우측 카드 영역에 "나의 현재 레벨" 정보를 표시해야 한다. 레벨 테스트를 완료한 경우 등급(1~5)과 뱃지 이미지를 표시하고, 미완료인 경우 "-" 및 안내 메시지를 표시해야 한다. | **M** |
+| **REQ-F-A1-Home-2** | 레벨 테스트 완료 시, 마지막 테스트 완료 날짜를 "YYYY-MM-DD" 형식으로 표시해야 한다. | **M** |
+| **REQ-F-A1-Home-3** | 등급에 따른 뱃지 이미지를 표시해야 한다. 등급별 뱃지는 다음과 같다: <br> - Level 1: Beginner 뱃지 <br> - Level 2: Elementary 뱃지 <br> - Level 3: Intermediate 뱃지 <br> - Level 4: Advanced 뱃지 <br> - Level 5: Expert 뱃지 | **M** |
+| **REQ-F-A1-Home-4** | 홈화면에 2개의 정보 카드를 표시해야 한다: <br> 1) "나의 현재 레벨" 카드: 등급, 뱃지, 날짜 <br> 2) "전체 참여자" 카드: 전체 테스트 참여 인원 수 | **S** |
+
+**수용 기준**:
+
+- "로그인 후 홈화면에 '나의 현재 레벨' 카드가 우측에 표시된다."
+- "레벨 테스트 완료 시, 등급 숫자와 뱃지 이미지가 카드에 표시된다."
+- "레벨 테스트 미완료 시, '-' 및 '테스트를 완료하면 당신의 레벨이 표시됩니다' 안내 메시지가 표시된다."
+- "마지막 테스트 날짜가 'YYYY-MM-DD' 형식으로 표시된다."
+- "등급별 뱃지 이미지가 올바르게 매핑되어 표시된다."
+
+**API 요구사항**:
+
+```
+GET /api/profile/last-test-result
+
+Response:
+{
+  "hasResult": true,
+  "grade": 3,              // 1~5
+  "completedAt": "2025-01-15",
+  "badgeUrl": "/badges/level-3.svg"
+}
+```
+
+**API 요구사항 (전체 참여자 수)**:
+
+```
+GET /api/statistics/total-participants
+
+Response:
+{
+  "totalParticipants": 1234
+}
+```
+
+---
+
 ## REQ-F-A2: 닉네임 설정 화면
 
 | REQ ID | 요구사항 | 우선순위 |
@@ -809,6 +855,69 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 - "GET /profile/consent 요청 후 1초 내에 동의 여부 반환"
 - "POST /profile/consent 요청 시 users.privacy_consent 업데이트 및 consent_at 기록"
 - "동의 철회(consent: false) 시에도 정상 처리"
+
+---
+
+## REQ-B-A1-Home: 홈화면 마지막 테스트 결과 API (Backend)
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-B-A1-Home-1** | JWT 토큰으로 현재 사용자의 마지막 레벨테스트 결과를 조회하는 API를 제공해야 한다. | **M** |
+| **REQ-B-A1-Home-2** | 마지막 테스트 결과가 있는 경우, 등급(1~5), 완료 날짜, 뱃지 URL을 반환해야 한다. | **M** |
+| **REQ-B-A1-Home-3** | 마지막 테스트 결과가 없는 경우, hasResult=false로 응답해야 한다. | **M** |
+| **REQ-B-A1-Home-4** | 전체 테스트 참여 인원 수를 조회하는 API를 제공해야 한다. (인증 불필요) | **S** |
+
+**API 엔드포인트 1**: `GET /api/profile/last-test-result` (인증 필수: Authorization 헤더의 JWT)
+
+**응답 (테스트 완료한 경우)**:
+
+```json
+{
+  "hasResult": true,
+  "grade": 3,
+  "completedAt": "2025-01-15",
+  "badgeUrl": "/badges/level-3.svg"
+}
+```
+
+**응답 (테스트 미완료한 경우)**:
+
+```json
+{
+  "hasResult": false,
+  "grade": null,
+  "completedAt": null,
+  "badgeUrl": null
+}
+```
+
+**API 엔드포인트 2**: `GET /api/statistics/total-participants` (인증 불필요)
+
+**응답**:
+
+```json
+{
+  "totalParticipants": 1234
+}
+```
+
+**수용 기준**:
+
+- "JWT 토큰으로 현재 사용자의 마지막 테스트 결과를 1초 내에 조회할 수 있다."
+- "테스트 완료 시, 등급(1~5), 완료 날짜(YYYY-MM-DD), 뱃지 URL이 반환된다."
+- "테스트 미완료 시, hasResult=false로 응답한다."
+- "전체 참여자 수 조회는 인증 없이 1초 내에 응답한다."
+
+**구현 세부사항**:
+
+- `test_results` 테이블에서 현재 사용자의 가장 최근 결과를 조회
+- 등급별 뱃지 URL 매핑:
+  - Level 1: `/badges/level-1.svg` (Beginner)
+  - Level 2: `/badges/level-2.svg` (Elementary)
+  - Level 3: `/badges/level-3.svg` (Intermediate)
+  - Level 4: `/badges/level-4.svg` (Advanced)
+  - Level 5: `/badges/level-5.svg` (Expert)
+- 참여 인원은 `test_results` 테이블에서 DISTINCT user_id COUNT
 
 ---
 

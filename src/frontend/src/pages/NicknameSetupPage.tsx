@@ -1,6 +1,7 @@
 // REQ: REQ-F-A2-2
 import React, { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { PageLayout } from '../components'
 import { useNicknameCheck } from '../hooks/useNicknameCheck'
 import { profileService } from '../services'
 import { setCachedNickname } from '../utils/nicknameCache'
@@ -59,36 +60,34 @@ const NicknameSetupPage: React.FC = () => {
   const isNextDisabled = !isNextEnabled || isSubmitting
 
   return (
-    <main className="nickname-setup-page">
-      <div className="nickname-setup-container">
-        <h1 className="page-title">닉네임 설정</h1>
-        <p className="page-description">
-          사용할 닉네임을 입력하고 중복 확인을 해주세요.
-        </p>
+    <PageLayout mainClassName="nickname-setup-page" containerClassName="nickname-setup-container">
+      <h1 className="page-title">닉네임 설정</h1>
+      <p className="page-description">
+        사용할 닉네임을 입력하고 중복 확인을 해주세요.
+      </p>
 
-        <NicknameInputSection
-          nickname={nickname}
-          setNickname={setNickname}
-          checkStatus={checkStatus}
-          errorMessage={errorMessage}
-          suggestions={suggestions}
-          onCheckClick={handleCheckClick}
-          disabled={isSubmitting}
-          showInfoBox={true}
-        />
+      <NicknameInputSection
+        nickname={nickname}
+        setNickname={setNickname}
+        checkStatus={checkStatus}
+        errorMessage={errorMessage}
+        suggestions={suggestions}
+        onCheckClick={handleCheckClick}
+        disabled={isSubmitting}
+        showInfoBox={true}
+      />
 
-        <div className="form-actions">
-          <button
-            type="button"
-            className="next-button"
-            onClick={handleNextClick}
-            disabled={isNextDisabled}
-          >
-            {isSubmitting ? '저장 중...' : '다음'}
-          </button>
-        </div>
+      <div className="form-actions">
+        <button
+          type="button"
+          className="next-button"
+          onClick={handleNextClick}
+          disabled={isNextDisabled}
+        >
+          {isSubmitting ? '저장 중...' : '다음'}
+        </button>
       </div>
-    </main>
+    </PageLayout>
   )
 }
 
