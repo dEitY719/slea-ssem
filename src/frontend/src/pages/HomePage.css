@@ -160,3 +160,78 @@
 .secondary-button:hover {
   color: var(--text-primary);
 }
+
+/* Reuse grade-badge styles from TestResultsPage */
+.home-grade-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  margin-top: 0.75rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.home-grade-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.home-grade-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.home-grade-info {
+  text-align: left;
+}
+
+.home-grade-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 0.25rem;
+}
+
+.home-grade-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.home-grade-english {
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.5);
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+/* Grade Color Coding - Reuse from TestResultsPage */
+.grade-beginner {
+  background: linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%);
+  color: #424242;
+}
+
+.grade-intermediate {
+  background: linear-gradient(135deg, #90caf9 0%, #42a5f5 100%);
+  color: #0d47a1;
+}
+
+.grade-advanced {
+  background: linear-gradient(135deg, #ce93d8 0%, #ab47bc 100%);
+  color: #4a148c;
+}
+
+.grade-elite {
+  background: linear-gradient(135deg, #ffd54f 0%, #ffb300 100%);
+  color: #e65100;
+  border: 3px solid #ff6f00;
+}
+
+.grade-default {
+  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+  color: #616161;
+}
