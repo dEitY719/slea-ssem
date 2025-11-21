@@ -58,6 +58,17 @@ export interface SurveyUpdateRequest {
 }
 
 /**
+ * Survey data response from GET /api/profile/survey
+ */
+export interface SurveyDataResponse {
+  level: string | null
+  career: number | null
+  job_role: string | null
+  duty: string | null
+  interests: string[] | null
+}
+
+/**
  * Survey update response
  */
 export interface SurveyUpdateResponse {
@@ -124,6 +135,15 @@ export const profileService = {
     return transport.post<NicknameRegisterResponse>('/api/profile/register', {
       nickname,
     })
+  },
+
+  /**
+   * Get user profile survey data
+   *
+   * @returns Survey data with level, career, job_role, duty, interests
+   */
+  async getSurvey(): Promise<SurveyDataResponse> {
+    return transport.get<SurveyDataResponse>('/api/profile/survey')
   },
 
   /**

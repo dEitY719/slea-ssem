@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import { profileService } from '../services/profileService'
+import { useUserProfile } from '../hooks/useUserProfile'
 import './ConsentPage.css'
 
 /**
@@ -20,10 +21,30 @@ import './ConsentPage.css'
  * Route: /consent
  */
 
+type SurveyProgress = {
+  surveyId: string | null
+  level: number | null
+}
+
+const getSurveyProgress = (): SurveyProgress => {
+  if (typeof window === 'undefined') {
+    return { surveyId: null, level: null }
+  }
+
+  const surveyId = localStorage.getItem('lastSurveyId')
+  const levelRaw = localStorage.getItem('lastSurveyLevel')
+
+  return {
+    surveyId,
+    level: levelRaw ? Number(levelRaw) : null,
+  }
+}
+
 const ConsentPage: React.FC = () => {
   const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { checkNickname } = useUserProfile()
 
   const handleAgree = async () => {
     setIsSubmitting(true)
@@ -33,9 +54,26 @@ const ConsentPage: React.FC = () => {
       // REQ: REQ-F-A3-5 - Save consent to DB
       await profileService.updateConsent(true)
 
-      // REQ: REQ-F-A3-3 - Proceed to next step
-      // Navigate to nickname setup (or profile review if nickname already set)
-      navigate('/nickname-setup')
+      // REQ: REQ-F-A3-3 - Proceed to next step based on user status
+      // Check nickname and profile status to determine the right page
+      const currentNickname = await checkNickname()
+      const { surveyId, level } = getSurveyProgress()
+
+      if (currentNickname === null) {
+        // User hasn't set nickname yet, redirect to nickname setup
+        navigate('/nickname-setup')
+      } else if (surveyId) {
+        // User has nickname and completed profile, show review page
+        navigate('/profile-review', {
+          state: {
+            surveyId,
+            level: level ?? undefined,
+          },
+        })
+      } else {
+        // User has nickname but no profile yet, proceed to career info
+        navigate('/career-info')
+      }
     } catch (err) {
       console.error('Failed to save consent:', err)
       setError('동의 처리 중 오류가 발생했습니다. 다시 시도해주세요.')
