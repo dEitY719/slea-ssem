@@ -180,8 +180,8 @@ const HomePage: React.FC = () => {
               </div>
             )}
 
-            <div className="button-group">
-              <button className="start-button" onClick={handleStart}>
+            <div className="level-button-group">
+              <button className="level-start-button" onClick={handleStart}>
                 <PlayIcon className="button-icon" />
                 레벨테스트 시작하기
               </button>
