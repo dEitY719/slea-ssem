@@ -36,7 +36,9 @@ const TestPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [loadingError, setLoadingError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [completeError, setCompleteError] = useState<string | null>(null) // REQ-F-B3-Plus-3: Complete error state
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false) // REQ-F-B3-Plus-3: Completing state
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now())
   const [timeRemaining, setTimeRemaining] = useState<number>(1200) // 20 minutes = 1200 seconds
   const [saveStatus, setSaveStatus] = useState<SaveStatusType>('idle') // REQ-F-B2-6: Save status management
@@ -128,6 +130,35 @@ const TestPage: React.FC = () => {
     return () => clearInterval(interval)
   }, [sessionId, questions])
 
+  // Handle session completion
+  // REQ: REQ-F-B3-Plus-1, REQ-F-B3-Plus-3
+  const handleCompleteSession = useCallback(async () => {
+    if (!sessionId) return
+
+    setIsCompleting(true)
+    setCompleteError(null)
+
+    try {
+      // Complete session
+      await questionService.completeSession(sessionId)
+
+      // Reset state before navigation
+      setIsCompleting(false)
+
+      // Navigate to results
+      navigate('/test-results', { state: { sessionId, surveyId: state.surveyId } })
+    } catch (completeErr) {
+      const message =
+        completeErr instanceof Error
+          ? completeErr.message
+          : '세션 완료에 실패했습니다.'
+
+      // REQ-F-B3-Plus-3: Show error and enable retry
+      setCompleteError(message)
+      setIsCompleting(false)
+    }
+  }, [sessionId, navigate, state.surveyId])
+
   // Handle next button click
   const handleNextClick = useCallback(async () => {
     if (!sessionId || !answer.trim() || isSubmitting) {
@@ -174,8 +205,19 @@ const TestPage: React.FC = () => {
         setAnswer('')
         setIsSubmitting(false)
       } else {
-        // All questions answered, navigate to results
-        navigate('/test-results', { state: { sessionId, surveyId: state.surveyId } })
+        // All questions answered
+        try {
+          // REQ-F-B3-Plus-1: Calculate score WITHOUT auto-complete
+          await questionService.calculateScore(sessionId, false)
+
+          // REQ-F-B3-Plus-1: Complete session separately
+          await handleCompleteSession()
+        } catch (scoreError) {
+          // Even if score calculation fails, still navigate to results
+          // (results page will handle the error)
+          console.error('Score calculation failed:', scoreError)
+          navigate('/test-results', { state: { sessionId, surveyId: state.surveyId } })
+        }
       }
     } catch (err) {
       const message =
@@ -186,7 +228,7 @@ const TestPage: React.FC = () => {
       setSubmitError(message)
       setIsSubmitting(false)
     }
-  }, [sessionId, answer, isSubmitting, currentIndex, questions, questionStartTime, navigate, state.surveyId])
+  }, [sessionId, answer, isSubmitting, currentIndex, questions, questionStartTime, navigate, state.surveyId, handleCompleteSession])
 
   // Loading state
   if (isLoading) {
@@ -250,6 +292,21 @@ const TestPage: React.FC = () => {
 
         {/* Submit Error */}
         {submitError && <p className="error-message">{submitError}</p>}
+
+        {/* Complete Error - REQ-F-B3-Plus-3 */}
+        {completeError && (
+          <div className="error-container">
+            <p className="error-message">{completeError}</p>
+            <button
+              type="button"
+              className="retry-button"
+              onClick={handleCompleteSession}
+              disabled={isCompleting}
+            >
+              {isCompleting ? '재시도 중...' : '재시도'}
+            </button>
+          </div>
+        )}
 
         {/* Next Button */}
         <button

@@ -58,6 +58,29 @@ export interface AutosaveResponse {
 }
 
 /**
+ * Calculate score response
+ */
+export interface CalculateScoreResponse {
+  session_id: string
+  round: number
+  score: number
+  correct_count: number
+  total_count: number
+  wrong_categories: Record<string, number>
+  auto_completed: boolean
+}
+
+/**
+ * Complete session response
+ */
+export interface CompleteSessionResponse {
+  status: string
+  session_id: string
+  round: number
+  message: string
+}
+
+/**
  * Question service
  * Handles all question-related API calls
  */
@@ -82,5 +105,39 @@ export const questionService = {
    */
   async autosave(autosaveData: AutosaveRequest): Promise<AutosaveResponse> {
     return transport.post<AutosaveResponse>('/api/questions/autosave', autosaveData)
+  },
+
+  /**
+   * Calculate round score and auto-complete session
+   *
+   * REQ: REQ-B-B3-Score
+   *
+   * @param sessionId - Test session ID
+   * @param autoComplete - Whether to auto-complete session if all answers scored (default true)
+   * @returns Score result with auto_completed status
+   */
+  async calculateScore(
+    sessionId: string,
+    autoComplete: boolean = true
+  ): Promise<CalculateScoreResponse> {
+    return transport.post<CalculateScoreResponse>(
+      `/api/questions/score?session_id=${sessionId}&auto_complete=${autoComplete}`,
+      {}
+    )
+  },
+
+  /**
+   * Complete test session
+   *
+   * REQ: REQ-F-B3-Plus-1
+   *
+   * @param sessionId - Test session ID to complete
+   * @returns Complete session response with status
+   */
+  async completeSession(sessionId: string): Promise<CompleteSessionResponse> {
+    return transport.post<CompleteSessionResponse>(
+      `/api/session/${sessionId}/complete`,
+      {}
+    )
   },
 }
