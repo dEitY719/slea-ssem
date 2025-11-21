@@ -64,13 +64,13 @@
   font-weight: 500;
 }
 
-.button-group {
+.profile-review-button-group {
   display: flex;
   gap: 1rem;
   margin-bottom: 2rem;
 }
 
-.edit-button {
+.profile-review-edit-button {
   flex: 1;
   display: inline-flex;
   align-items: center;
@@ -87,12 +87,12 @@
   transition: all 0.3s;
 }
 
-.edit-button:hover {
+.profile-review-edit-button:hover {
   background-color: var(--color-secondary);
   color: var(--text-white);
 }
 
-.start-button {
+.profile-review-start-button {
   flex: 1;
   display: inline-flex;
   align-items: center;
@@ -109,7 +109,7 @@
   transition: background-color 0.3s;
 }
 
-.start-button:hover {
+.profile-review-start-button:hover {
   background-color: var(--color-primary-hover);
 }
 

@@ -188,10 +188,10 @@ const ProfileReviewPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="button-group">
+        <div className="profile-review-button-group">
           <button
             type="button"
-            className="edit-button"
+            className="profile-review-edit-button"
             onClick={handleEditClick}
           >
             <PencilIcon className="button-icon" />
@@ -199,7 +199,7 @@ const ProfileReviewPage: React.FC = () => {
           </button>
           <button
             type="button"
-            className="start-button"
+            className="profile-review-start-button"
             onClick={handleStartClick}
           >
             <PlayIcon className="button-icon" />
