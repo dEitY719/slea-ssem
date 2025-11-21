@@ -135,14 +135,16 @@ const TestResultsPage: React.FC = () => {
         </div>
 
         {/* Grade Distribution Chart - REQ: REQ-F-B4-3, REQ-F-B4-4 */}
-        <GradeDistributionChart
-          distribution={resultData.grade_distribution}
-          userGrade={resultData.grade}
-          rank={resultData.rank}
-          totalCohortSize={resultData.total_cohort_size}
-          percentileDescription={resultData.percentile_description}
-          showConfidenceWarning={showConfidenceWarning}
-        />
+        {resultData.grade_distribution && (
+          <GradeDistributionChart
+            distribution={resultData.grade_distribution}
+            userGrade={resultData.grade}
+            rank={resultData.rank}
+            totalCohortSize={resultData.total_cohort_size}
+            percentileDescription={resultData.percentile_description}
+            showConfidenceWarning={showConfidenceWarning}
+          />
+        )}
 
         {/* Comparison Section - REQ: REQ-F-B5-1 */}
         {!isPreviousLoading && (

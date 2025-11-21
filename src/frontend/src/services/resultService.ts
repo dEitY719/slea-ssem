@@ -26,7 +26,7 @@ export interface GradeDistribution {
  * Test result data
  */
 export interface GradeResult {
-  user_id: number
+  user_id: number | string  // Backend returns string (knox_id)
   grade: Grade
   score: number // 0-100
   rank: number // 1-indexed
@@ -34,7 +34,7 @@ export interface GradeResult {
   percentile: number // 0-100
   percentile_confidence: PercentileConfidence
   percentile_description: string // e.g., "상위 28%"
-  grade_distribution: GradeDistribution[] // REQ: REQ-F-B4-3
+  grade_distribution?: GradeDistribution[] // REQ: REQ-F-B4-3 (Optional: Backend may not provide)
 }
 
 /**
@@ -56,11 +56,13 @@ export const resultService = {
    *
    * REQ: REQ-F-B4-1
    *
-   * @param sessionId - Test session ID
+   * @param sessionId - Test session ID (not used in API, kept for validation)
    * @returns Grade result with score, rank, percentile
    */
   async getResults(sessionId: string): Promise<GradeResult> {
-    return transport.get<GradeResult>(`/api/results/${sessionId}`)
+    // Backend uses /profile/ranking (user-level, not session-level)
+    // sessionId parameter kept for future extensibility
+    return transport.get<GradeResult>('/api/profile/ranking')
   },
 
   /**
@@ -71,11 +73,8 @@ export const resultService = {
    * @returns Previous test result or null if first attempt
    */
   async getPreviousResult(): Promise<PreviousResult | null> {
-    try {
-      return await transport.get<PreviousResult>('/api/results/previous')
-    } catch (error) {
-      // If no previous result exists (404), return null
-      return null
-    }
+    // TODO: Backend endpoint not yet implemented
+    // For now, return null (no previous result available)
+    return null
   },
 }

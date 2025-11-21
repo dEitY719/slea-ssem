@@ -174,14 +174,13 @@ const TestPage: React.FC = () => {
       const currentQuestion = questions[currentIndex]
 
       // Build user_answer based on question type
-      let userAnswer: { selected?: string; text?: string }
-      if (
-        currentQuestion.item_type === 'multiple_choice' ||
-        currentQuestion.item_type === 'true_false'
-      ) {
-        userAnswer = { selected: answer }
+      let userAnswer: { selected_key?: string; answer?: string; text?: string }
+      if (currentQuestion.item_type === 'multiple_choice') {
+        userAnswer = { selected_key: answer }  // Backend expects "selected_key"
+      } else if (currentQuestion.item_type === 'true_false') {
+        userAnswer = { answer: answer }  // Backend expects "answer"
       } else {
-        userAnswer = { text: answer }
+        userAnswer = { text: answer }  // Backend expects "text"
       }
 
       // Submit answer to backend
@@ -189,8 +188,8 @@ const TestPage: React.FC = () => {
         await questionService.autosave({
         session_id: sessionId,
         question_id: currentQuestion.id,
-          user_answer: JSON.stringify(userAnswer),
-          response_time_ms: responseTime,
+        user_answer: userAnswer,  // Send as JSON object, not string
+        response_time_ms: responseTime,
       })
 
       // REQ-F-B2-6: Show "저장됨" after successful save

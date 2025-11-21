@@ -43,7 +43,7 @@ export interface GenerateQuestionsResponse {
 export interface AutosaveRequest {
   session_id: string
   question_id: string
-  user_answer: string
+  user_answer: Record<string, any>  // Changed from string to object (matches backend)
   response_time_ms?: number
 }
 
@@ -136,7 +136,7 @@ export const questionService = {
    */
   async completeSession(sessionId: string): Promise<CompleteSessionResponse> {
     return transport.post<CompleteSessionResponse>(
-      `/api/session/${sessionId}/complete`,
+      `/api/questions/session/${sessionId}/complete`,
       {}
     )
   },

@@ -53,6 +53,15 @@ const ExplanationPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Helper function to convert answer to string
+  const formatAnswer = (answer: any): string => {
+    if (typeof answer === 'string') return answer
+    if (typeof answer === 'object' && answer !== null) {
+      return answer.selected_key || answer.answer || answer.text || JSON.stringify(answer)
+    }
+    return String(answer)
+  }
+
   // Fetch explanations on mount
   useEffect(() => {
     const fetchExplanations = async () => {
@@ -66,8 +75,17 @@ const ExplanationPage: React.FC = () => {
       setError(null)
 
       try {
-        // TODO: Replace with actual API call
-        // For now, using mock data
+        // Fetch explanations from backend API
+        const response = await fetch(`/api/questions/explanations/session/${sessionId}`)
+
+        if (!response.ok) {
+          throw new Error('해설을 불러오는데 실패했습니다.')
+        }
+
+        const data = await response.json()
+        const fetchedExplanations: QuestionExplanation[] = data.explanations || []
+
+        /* Mock data for reference (remove after testing):
         const mockExplanations: QuestionExplanation[] = [
           {
             question_id: 'q1',
@@ -198,11 +216,9 @@ const ExplanationPage: React.FC = () => {
             ],
           },
         ]
+        */
 
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 500))
-
-        setExplanations(mockExplanations)
+        setExplanations(fetchedExplanations)
         setIsLoading(false)
       } catch (err) {
         setError('해설을 불러오는 중 오류가 발생했습니다.')
@@ -294,7 +310,7 @@ const ExplanationPage: React.FC = () => {
         <div className="answer-comparison">
           <div className={`answer-row ${currentExplanation.is_correct ? 'correct' : 'incorrect'}`}>
             <span className="answer-label">내 답변:</span>
-            <span className="answer-value">{currentExplanation.user_answer}</span>
+            <span className="answer-value">{formatAnswer(currentExplanation.user_answer)}</span>
             <span className={`answer-badge ${currentExplanation.is_correct ? 'correct' : 'incorrect'}`}>
               {currentExplanation.is_correct ? '정답' : '오답'}
             </span>
@@ -302,7 +318,7 @@ const ExplanationPage: React.FC = () => {
           {!currentExplanation.is_correct && (
             <div className="answer-row correct">
               <span className="answer-label">정답:</span>
-              <span className="answer-value">{currentExplanation.correct_answer}</span>
+              <span className="answer-value">{formatAnswer(currentExplanation.correct_answer)}</span>
             </div>
           )}
         </div>
