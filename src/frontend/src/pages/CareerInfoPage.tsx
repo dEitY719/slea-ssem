@@ -1,6 +1,6 @@
-// REQ: REQ-F-A2-2
-import React, { useCallback, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+// REQ: REQ-F-A2-2, REQ-F-B5-Retake-1
+import React, { useCallback, useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { PageLayout } from '../components'
 import NumberInput from '../components/NumberInput'
 import RadioButtonGrid, { type RadioButtonOption } from '../components/RadioButtonGrid'
@@ -47,12 +47,40 @@ export interface CareerTempData {
   duty: string
 }
 
+/**
+ * Location state for retake mode - REQ: REQ-F-B5-Retake-1
+ */
+type LocationState = {
+  retakeMode?: boolean
+  profileData?: {
+    surveyId: string
+    level: string
+    career: number
+    jobRole: string
+    duty: string
+    interests: string[]
+  }
+}
+
 const CareerInfoPage: React.FC = () => {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const state = location.state as LocationState | null
+
   const [career, setCareer] = useState<number>(0)
   const [jobRole, setJobRole] = useState<string>('')
   const [duty, setDuty] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const navigate = useNavigate()
+
+  // REQ-F-B5-Retake-1: Auto-fill form data when in retake mode
+  useEffect(() => {
+    if (state?.retakeMode && state?.profileData) {
+      console.log('[CareerInfo] Retake mode detected, auto-filling form:', state.profileData)
+      setCareer(state.profileData.career)
+      setJobRole(state.profileData.jobRole)
+      setDuty(state.profileData.duty)
+    }
+  }, [state])
 
   const handleCareerChange = useCallback((value: number) => {
     setCareer(value)
@@ -84,9 +112,26 @@ const CareerInfoPage: React.FC = () => {
     }
     localStorage.setItem(CAREER_TEMP_STORAGE_KEY, JSON.stringify(careerData))
 
-    // Navigate to next page
-    navigate('/self-assessment', { replace: true })
-  }, [career, jobRole, duty, navigate])
+    // REQ-F-B5-Retake-1: Pass profile data to next page if in retake mode
+    if (state?.retakeMode && state?.profileData) {
+      navigate('/self-assessment', {
+        replace: true,
+        state: {
+          retakeMode: true,
+          profileData: {
+            ...state.profileData,
+            // Update with potentially modified career info
+            career,
+            jobRole,
+            duty,
+          },
+        },
+      })
+    } else {
+      // Normal flow: navigate without state
+      navigate('/self-assessment', { replace: true })
+    }
+  }, [career, jobRole, duty, navigate, state])
 
   return (
     <PageLayout mainClassName="career-info-page" containerClassName="career-info-container">

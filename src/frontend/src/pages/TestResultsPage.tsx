@@ -1,4 +1,4 @@
-// REQ: REQ-F-B4-1, REQ-F-B4-3, REQ-F-B4-4, REQ-F-B5-1
+// REQ: REQ-F-B4-1, REQ-F-B4-3, REQ-F-B4-4, REQ-F-B5-1, REQ-F-B5-Retake-1
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowPathIcon, HomeIcon } from '@heroicons/react/24/outline'
@@ -6,6 +6,7 @@ import { PageLayout } from '../components'
 import { useTestResults } from '../hooks/useTestResults'
 import { GradeBadge, MetricCard, ActionButtons, GradeDistributionChart, ComparisonSection } from '../components/TestResults'
 import { resultService, type PreviousResult } from '../services/resultService'
+import { profileService } from '../services/profileService'
 import './TestResultsPage.css'
 
 /**
@@ -152,17 +153,37 @@ const TestResultsPage: React.FC = () => {
       {/* Action Buttons */}
       <ActionButtons
         onGoHome={() => navigate('/home')}
-        onRetake={() => {
-          // REQ-F-B5-2, REQ-F-B5-3: Retake - go to profile review to confirm info
-          const surveyId = state?.surveyId || localStorage.getItem('lastSurveyId')
+        onRetake={async () => {
+          // REQ-F-B5-Retake-1: Load profile history and navigate to career info with pre-filled data
+          try {
+            // Call GET /profile/history to load previous assessment data
+            const profileHistory = await profileService.getProfileHistory()
 
-          if (surveyId) {
-            // Save to localStorage for profile review page
-            localStorage.setItem('lastSurveyId', surveyId)
+            console.log('[Retake] Loaded profile history:', profileHistory)
+
+            // Navigate to CareerInfoPage with pre-filled data
+            navigate('/career-info', {
+              state: {
+                retakeMode: true,
+                profileData: {
+                  surveyId: profileHistory.survey.survey_id,
+                  level: profileHistory.survey.level,
+                  career: profileHistory.survey.career,
+                  jobRole: profileHistory.survey.job_role,
+                  duty: profileHistory.survey.duty,
+                  interests: profileHistory.survey.interests,
+                },
+              },
+            })
+          } catch (err) {
+            console.error('[Retake] Failed to load profile history:', err)
+            // Fallback: navigate to career-info without pre-filled data
+            navigate('/career-info', {
+              state: {
+                retakeMode: true,
+              },
+            })
           }
-
-          // Always go to profile review first for retake
-          navigate('/profile-review')
         }}
         onViewExplanations={() => {
           // REQ: REQ-F-B4-7 - Navigate to explanation page

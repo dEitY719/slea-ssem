@@ -1,6 +1,6 @@
-// REQ: REQ-F-A2-3
-import React, { useCallback, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+// REQ: REQ-F-A2-3, REQ-F-B5-Retake-1, REQ-F-B5-Retake-2
+import React, { useCallback, useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { PageLayout } from '../components'
 import { submitProfileSurvey } from '../features/profile/profileSubmission'
 import LevelSelector from '../components/LevelSelector'
@@ -39,12 +39,51 @@ const INTERESTS_OPTIONS: RadioButtonOption[] = [
   { value: 'Frontend', label: 'Frontend' },
 ]
 
+/**
+ * Location state for retake mode - REQ: REQ-F-B5-Retake-1
+ */
+type LocationState = {
+  retakeMode?: boolean
+  profileData?: {
+    surveyId: string
+    level: string
+    career: number
+    jobRole: string
+    duty: string
+    interests: string[]
+  }
+}
+
 const SelfAssessmentPage: React.FC = () => {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const state = location.state as LocationState | null
+
   const [level, setLevel] = useState<number | null>(null)
   const [interests, setInterests] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const navigate = useNavigate()
+
+  // REQ-F-B5-Retake-1: Auto-fill form data when in retake mode
+  useEffect(() => {
+    if (state?.retakeMode && state?.profileData) {
+      console.log('[SelfAssessment] Retake mode detected, auto-filling form:', state.profileData)
+
+      // Convert level string to number for LevelSelector
+      const levelMap: Record<string, number> = {
+        'beginner': 1,
+        'intermediate': 2,
+        'inter-advanced': 3,
+        'advanced': 4,
+        'elite': 5,
+      }
+      const levelNum = levelMap[state.profileData.level] || null
+      setLevel(levelNum)
+
+      // Join interests array to comma-separated string
+      setInterests(state.profileData.interests.join(', '))
+    }
+  }, [state])
 
   const handleLevelChange = useCallback((selectedLevel: number) => {
     setLevel(selectedLevel)

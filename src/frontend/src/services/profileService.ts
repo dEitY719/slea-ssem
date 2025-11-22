@@ -100,6 +100,23 @@ export interface ConsentUpdateResponse {
 }
 
 /**
+ * Profile history response - REQ: REQ-F-B5-Retake-1
+ * Returns user's previous assessment data for retake
+ */
+export interface ProfileHistoryResponse {
+  nickname: string
+  survey: {
+    survey_id: string
+    level: string
+    career: number
+    job_role: string
+    duty: string
+    interests: string[]
+  }
+  last_test_date: string | null
+}
+
+/**
  * Profile service
  * Handles all profile-related API calls
  */
@@ -177,6 +194,18 @@ export const profileService = {
    */
   async updateConsent(consent: boolean): Promise<ConsentUpdateResponse> {
     return transport.post<ConsentUpdateResponse>('/api/profile/consent', { consent })
+  },
+
+  /**
+   * Get user's profile history for retake
+   *
+   * REQ: REQ-F-B5-Retake-1
+   * Returns previous assessment data to auto-fill retake form
+   *
+   * @returns Profile history with survey data and last test date
+   */
+  async getProfileHistory(): Promise<ProfileHistoryResponse> {
+    return transport.get<ProfileHistoryResponse>('/api/profile/history')
   },
 
 }

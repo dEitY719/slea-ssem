@@ -8,6 +8,7 @@ const API_PROFILE_NICKNAME_CHECK = '/api/profile/nickname/check'
 const API_PROFILE_REGISTER = '/api/profile/register'
 const API_PROFILE_CONSENT = '/api/profile/consent'
 const API_PROFILE_SURVEY = '/api/profile/survey'
+const API_PROFILE_HISTORY = '/api/profile/history'
 const API_QUESTIONS_GENERATE = '/api/questions/generate'
 const API_QUESTIONS_AUTOSAVE = '/api/questions/autosave'
 const API_QUESTIONS_SCORE = '/api/questions/score'
@@ -64,6 +65,18 @@ const mockData: Record<string, any> = {
     job_role: null,
     duty: null,
     interests: null,
+  },
+  [API_PROFILE_HISTORY]: {
+    nickname: 'mockuser',
+    survey: {
+      survey_id: 'survey_previous_123',
+      level: 'intermediate',
+      career: 5,
+      job_role: 'SW',
+      duty: 'Backend Development',
+      interests: ['AI', 'Backend'],
+    },
+    last_test_date: '2025-11-15T10:30:00Z',
   },
   [API_QUESTIONS_GENERATE]: {
     session_id: 'mock_session_123',
@@ -881,6 +894,13 @@ class MockTransport implements HttpTransport {
     if (normalizedUrl === API_PROFILE_CONSENT && method === 'GET') {
       const response = mockData[API_PROFILE_CONSENT]
       console.log('[Mock Transport] Response:', response)
+      return response as T
+    }
+
+    // REQ: REQ-F-B5-Retake-1 - Handle GET /profile/history endpoint
+    if (normalizedUrl === API_PROFILE_HISTORY && method === 'GET') {
+      const response = mockData[API_PROFILE_HISTORY]
+      console.log('[Mock Transport] GET /profile/history - Response:', response)
       return response as T
     }
 
