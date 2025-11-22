@@ -8,6 +8,7 @@ import RadioButtonGrid, { type RadioButtonOption } from '../components/RadioButt
 import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
 import { CAREER_TEMP_STORAGE_KEY, type CareerTempData } from './CareerInfoPage'
 import { type RetakeLocationState } from '../types/profile'
+import { debugLog } from '../utils/logger'
 import './SelfAssessmentPage.css'
 
 /**
@@ -53,7 +54,7 @@ const SelfAssessmentPage: React.FC = () => {
   // REQ-F-B5-Retake-1: Auto-fill form data when in retake mode
   useEffect(() => {
     if (state?.retakeMode && state?.profileData) {
-      console.log('[SelfAssessment] Retake mode detected, auto-filling form:', state.profileData)
+      debugLog('[SelfAssessment] Retake mode detected, auto-filling form:', state.profileData)
 
       // Convert level string to number for LevelSelector
       const levelMap: Record<string, number> = {

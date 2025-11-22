@@ -7,6 +7,7 @@ import RadioButtonGrid, { type RadioButtonOption } from '../components/RadioButt
 import TextAreaInput from '../components/TextAreaInput'
 import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
 import { type RetakeLocationState } from '../types/profile'
+import { debugLog } from '../utils/logger'
 import './CareerInfoPage.css'
 
 /**
@@ -61,7 +62,7 @@ const CareerInfoPage: React.FC = () => {
   // REQ-F-B5-Retake-1: Auto-fill form data when in retake mode
   useEffect(() => {
     if (state?.retakeMode && state?.profileData) {
-      console.log('[CareerInfo] Retake mode detected, auto-filling form:', state.profileData)
+      debugLog('[CareerInfo] Retake mode detected, auto-filling form:', state.profileData)
       setCareer(state.profileData.career)
       setJobRole(state.profileData.jobRole)
       setDuty(state.profileData.duty)

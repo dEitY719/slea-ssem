@@ -5,6 +5,7 @@ import { ArrowRightIcon, ArrowLeftIcon, CheckIcon } from '@heroicons/react/24/ou
 import { questionService } from '../services'
 import { PageLayout } from '../components'
 import { Timer, SaveStatus, Question, type QuestionData, type SaveStatusType } from '../components/test'
+import { debugLog, debugWarn } from '../utils/logger'
 import './TestPage.css'
 
 /**
@@ -53,9 +54,9 @@ const TestPage: React.FC = () => {
   useEffect(() => {
     if (state?.surveyId) {
       sessionStorage.setItem('current_test_survey_id', state.surveyId)
-      console.log('[TestPage] Saved surveyId to sessionStorage:', state.surveyId)
+      debugLog('[TestPage] Saved surveyId to sessionStorage:', state.surveyId)
     } else {
-      console.warn('[TestPage] No surveyId in state to save')
+      debugWarn('[TestPage] No surveyId in state to save')
     }
   }, [state?.surveyId])
 
@@ -63,7 +64,7 @@ const TestPage: React.FC = () => {
     if (state?.surveyId) return state.surveyId
     const storedSurveyId = sessionStorage.getItem('current_test_survey_id') || undefined
     if (!storedSurveyId) {
-      console.warn('[TestPage] No surveyId found in sessionStorage')
+      debugWarn('[TestPage] No surveyId found in sessionStorage')
     }
     return storedSurveyId
   }, [state?.surveyId])
@@ -179,7 +180,7 @@ const TestPage: React.FC = () => {
 
         // Navigate to results with round info for Round 2 flow
         const surveyId = resolvedSurveyId
-        console.log('[TestPage] Navigating to results with:', {
+        debugLog('[TestPage] Navigating to results with:', {
           sessionId,
           surveyId,
           round: state.round || 1,

@@ -7,6 +7,7 @@ import { useTestResults } from '../hooks/useTestResults'
 import { usePersistedTestResultsState, type TestResultsLocationState } from '../hooks/usePersistedTestResultsState'
 import { GradeBadge, MetricCard, ActionButtons, GradeDistributionChart, ComparisonSection } from '../components/TestResults'
 import { resultService, type PreviousResult } from '../services/resultService'
+import { debugLog, debugWarn } from '../utils/logger'
 import './TestResultsPage.css'
 
 /**
@@ -152,13 +153,13 @@ const TestResultsPage: React.FC = () => {
         onGoHome={() => navigate('/home')}
         onRetake={async () => {
           // REQ-F-B5-Retake-4: Round 1 완료 시 Round 2 adaptive 시작
-          const currentRound = round
+            const currentRound = round
 
           if (currentRound === 1) {
             // Round 1 → Round 2 adaptive
-            console.log('[Retake] Persisted state:', persistedState)
-            console.log('[Retake] surveyId:', persistedState?.surveyId)
-            console.log('[Retake] sessionId:', persistedState?.sessionId)
+              debugLog('[Retake] Persisted state:', persistedState)
+              debugLog('[Retake] surveyId:', persistedState?.surveyId)
+              debugLog('[Retake] sessionId:', persistedState?.sessionId)
 
             if (!persistedState?.surveyId || !persistedState?.sessionId) {
               console.error('[Retake] Missing surveyId or sessionId', {
@@ -170,7 +171,7 @@ const TestResultsPage: React.FC = () => {
               return
             }
 
-            console.log('[Retake] Round 1 completed, starting Round 2')
+              debugLog('[Retake] Round 1 completed, starting Round 2')
             navigate('/test', {
               state: {
                 surveyId: persistedState.surveyId,
@@ -181,7 +182,7 @@ const TestResultsPage: React.FC = () => {
           } else {
             // Round 2 완료 후 재응시는 없음 (버튼도 숨겨져 있어야 함)
             // 혹시 호출되면 fallback으로 home으로 이동
-            console.warn('[Retake] Unexpected retake after Round 2, round:', currentRound)
+              debugWarn('[Retake] Unexpected retake after Round 2, round:', currentRound)
             navigate('/home')
           }
         }}

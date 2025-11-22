@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { debugLog, debugWarn } from '../utils/logger'
 
 const LATEST_SESSION_ID_KEY = 'latest_test_session_id'
 const TEST_RESULTS_STATE_PREFIX = 'test_results_state_'
@@ -26,9 +27,9 @@ export const usePersistedTestResultsState = (
     if (state?.sessionId) {
       sessionStorage.setItem(LATEST_SESSION_ID_KEY, state.sessionId)
       sessionStorage.setItem(`${TEST_RESULTS_STATE_PREFIX}${state.sessionId}`, JSON.stringify(state))
-      console.log('[TestResults] Saved state for session:', state.sessionId)
-      console.log('[TestResults] Full saved state:', state)
-      console.log('[TestResults] State has surveyId?', !!state.surveyId, 'Value:', state.surveyId)
+      debugLog('[TestResults] Saved state for session:', state.sessionId)
+      debugLog('[TestResults] Full saved state:', state)
+      debugLog('[TestResults] State has surveyId?', !!state.surveyId, 'Value:', state.surveyId)
     }
   }, [state])
 
@@ -39,7 +40,7 @@ export const usePersistedTestResultsState = (
 
     const sessionIdFromStorage = sessionStorage.getItem(LATEST_SESSION_ID_KEY) || undefined
     if (!sessionIdFromStorage) {
-      console.warn('[TestResults] No latest session ID found')
+      debugWarn('[TestResults] No latest session ID found')
       return { persistedState: null, latestSessionId: undefined }
     }
 
@@ -47,7 +48,7 @@ export const usePersistedTestResultsState = (
     if (stored) {
       try {
         const restoredState = JSON.parse(stored) as TestResultsLocationState
-        console.log('[TestResults] Restored state from sessionStorage:', restoredState)
+        debugLog('[TestResults] Restored state from sessionStorage:', restoredState)
         return { persistedState: restoredState, latestSessionId: sessionIdFromStorage }
       } catch {
         console.error('[TestResults] Failed to parse stored state')

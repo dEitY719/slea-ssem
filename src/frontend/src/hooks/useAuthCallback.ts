@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { saveToken } from '../utils/auth'
 import { parseUserData } from '../utils/parseUserData'
 import { authService, type LoginResponse } from '../services'
+import { debugLog } from '../utils/logger'
 
 interface UseAuthCallbackResult {
   loading: boolean
@@ -43,7 +44,7 @@ export function useAuthCallback(searchParams: URLSearchParams): UseAuthCallbackR
         if (isApiMock) {
           // Mock mode: 백엔드 없이 프론트엔드만 테스트할 때 사용
           // 실제 API 호출 없이 mock 응답 반환
-          console.log('🎭 Mock mode: 백엔드 API 호출 생략 (api_mock)')
+            debugLog('🎭 Mock mode: 백엔드 API 호출 생략 (api_mock)')
 
           // Save mock mode flag to localStorage to persist across page navigation
           localStorage.setItem('slea_ssem_api_mock', 'true')
@@ -65,7 +66,7 @@ export function useAuthCallback(searchParams: URLSearchParams): UseAuthCallbackR
           if (isSsoMock) {
             // SSO mock mode: 가짜 SSO 데이터를 생성하여 백엔드에 전달
             // 백엔드는 이를 처리하여 실제 JWT 토큰 반환
-            console.log('🎭 SSO mock mode: 가짜 SSO 데이터로 백엔드 호출')
+              debugLog('🎭 SSO mock mode: 가짜 SSO 데이터로 백엔드 호출')
             userData = {
               knox_id: 'test_mock_user_' + Date.now(),
               name: 'Test Mock User',
