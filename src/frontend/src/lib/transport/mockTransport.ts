@@ -490,11 +490,11 @@ class MockTransport implements HttpTransport {
 
     // Handle survey update endpoint
     if (normalizedUrl === API_PROFILE_SURVEY && method === 'PUT') {
-      const validLevels = ['beginner', 'intermediate', 'advanced']
+      const validLevels = ['beginner', 'intermediate', 'inter-advanced', 'advanced', 'elite']
 
       // Validate level if provided
       if (requestData?.level && !validLevels.includes(requestData.level)) {
-        throw new Error('Invalid level. Must be one of: beginner, intermediate, advanced')
+        throw new Error('Invalid level. Must be one of: beginner, intermediate, inter-advanced, advanced, elite')
       }
 
       // Validate career if provided

@@ -50,7 +50,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
       mockTransport.put('/profile/survey', {
         level: 'expert',
       })
-    ).rejects.toThrow('Invalid level. Must be one of: beginner, intermediate, advanced')
+    ).rejects.toThrow('Invalid level. Must be one of: beginner, intermediate, inter-advanced, advanced, elite')
   })
 
   test('PUT /profile/survey with valid career (0-60)', async () => {

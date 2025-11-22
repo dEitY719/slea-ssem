@@ -1,8 +1,14 @@
 // REQ: REQ-F-A2-Signup-1, REQ-F-A2-Profile-Access-1, REQ-F-A2-Profile-Access-2, REQ-F-A2-Profile-Access-3
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UserPlusIcon, UserCircleIcon, PencilSquareIcon } from '@heroicons/react/24/outline'
+import {
+  UserPlusIcon,
+  UserCircleIcon,
+  PencilSquareIcon,
+  ChevronDownIcon,
+} from '@heroicons/react/24/outline'
 import './Header.css'
+import './ProfileMenu.css'
 
 interface HeaderProps {
   /**
@@ -114,23 +120,47 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
                     <div className="profile-icon">
                       <UserCircleIcon />
                     </div>
-                    <span className="nickname-text">{nickname}</span>
-                  </button>
-
-                  {/* REQ-F-A2-Profile-Access-3: Dropdown menu */}
-                  {isDropdownOpen && (
-                    <div className="dropdown-menu" role="menu">
-                      <button
-                        type="button"
-                        className="dropdown-item"
-                        onClick={handleEditProfileClick}
-                        role="menuitem"
-                      >
-                        <PencilSquareIcon className="menu-icon" />
-                        프로필 수정
-                      </button>
+                    <div className="nickname-content">
+                      {/* <span className="nickname-label">프로필 관리</span> */}
+                      <span className="nickname-text" title={nickname}>
+                        {nickname}
+                      </span>
                     </div>
-                  )}
+                    <div className={`profile-dropdown-chevron${isDropdownOpen ? ' open' : ''}`} aria-hidden="true">
+                      <ChevronDownIcon />
+                    </div>
+                    </button>
+                    {/* REQ-F-A2-Profile-Access-3: Dropdown menu */}
+                    {isDropdownOpen && (
+                      <div className="profile-dropdown-menu" role="menu">
+                        <div className="profile-dropdown-header" role="presentation">
+                          <div className="dropdown-avatar">
+                            <UserCircleIcon />
+                          </div>
+                          <div className="profile-dropdown-info">
+                            <span className="profile-name-text">{nickname}</span>
+                            <span className="profile-subtext">S.LSI Learning Member</span>
+                          </div>
+                        </div>
+                        <div className="profile-dropdown-divider" role="separator" />
+                        <div className="profile-dropdown-body">
+                          <button
+                            type="button"
+                            className="profile-dropdown-item"
+                            onClick={handleEditProfileClick}
+                            role="menuitem"
+                          >
+                            <span className="profile-menu-icon-pill">
+                              <PencilSquareIcon className="profile-menu-icon" />
+                            </span>
+                            <span className="profile-dropdown-item-text">
+                              <span className="profile-dropdown-item-title">프로필 수정</span>
+                              <span className="profile-dropdown-item-desc">학습 정보와 관심 분야를 업데이트</span>
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                 </div>
               )}
             </>

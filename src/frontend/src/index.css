@@ -74,7 +74,7 @@
 }
 
 body {
-  font-family: "Pretendard Variable", "Noto Sans KR", "Inter", sans-serif;
+  font-family: "Segoe UI", "Noto Sans KR", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
