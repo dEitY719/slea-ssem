@@ -8,6 +8,7 @@ import {
   ChevronDownIcon,
 } from '@heroicons/react/24/outline'
 import './Header.css'
+import './ProfileMenu.css'
 
 interface HeaderProps {
   /**
