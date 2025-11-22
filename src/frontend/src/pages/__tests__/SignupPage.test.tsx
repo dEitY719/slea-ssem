@@ -140,52 +140,52 @@ describe('SignupPage - REQ-F-A2-Signup-3 (Nickname Section)', () => {
     })
   })
 
-  // Test 6: Nickname taken - shows suggestions
-  test('shows error message and suggestions when nickname is taken', async () => {
+    // Test 6: Nickname taken - shows suggestions
+    test('shows error message and suggestions when nickname is taken', async () => {
     // REQ: REQ-F-A2-Signup-3 - 중복 시 대안 3개 제안
-    // mockTransport: 'admin' is in takenNicknames
+      // mockTransport: 'existing_user' is in takenNicknames
     const user = userEvent.setup()
     renderWithRouter(<SignupPage />)
 
     const input = screen.getByLabelText(/닉네임/i)
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
 
-    await user.type(input, 'admin')
+      await user.type(input, 'existing_user')
     await user.click(checkButton)
 
     await waitFor(() => {
       expect(screen.getByText(/이미 사용 중인 닉네임입니다/i)).toBeInTheDocument()
     })
 
-    // Check that suggestions are displayed (mockTransport generates admin_1, admin_2, admin_3)
-    expect(screen.getByText('admin_1')).toBeInTheDocument()
-    expect(screen.getByText('admin_2')).toBeInTheDocument()
-    expect(screen.getByText('admin_3')).toBeInTheDocument()
+      // Check that suggestions are displayed (mockTransport generates *_1~3)
+      expect(screen.getByText('existing_user_1')).toBeInTheDocument()
+      expect(screen.getByText('existing_user_2')).toBeInTheDocument()
+      expect(screen.getByText('existing_user_3')).toBeInTheDocument()
   })
 
   // Test 7: Clicking suggestion auto-fills input
   test('clicking a suggestion auto-fills the nickname input', async () => {
     // REQ: REQ-F-A2-Signup-3 - 대안 클릭 시 자동 입력
-    // mockTransport: 'test' is in takenNicknames
+      // mockTransport: 'existing_user' is in takenNicknames
     const user = userEvent.setup()
     renderWithRouter(<SignupPage />)
 
     const input = screen.getByLabelText(/닉네임/i) as HTMLInputElement
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
 
-    await user.type(input, 'test')
+      await user.type(input, 'existing_user')
     await user.click(checkButton)
 
     await waitFor(() => {
-      expect(screen.getByText('test_1')).toBeInTheDocument()
+        expect(screen.getByText('existing_user_1')).toBeInTheDocument()
     })
 
     // Click first suggestion
-    const suggestionButton = screen.getByText('test_1')
+      const suggestionButton = screen.getByText('existing_user_1')
     await user.click(suggestionButton)
 
     // Verify input value changed
-    expect(input.value).toBe('test_1')
+      expect(input.value).toBe('existing_user_1')
 
     // Verify suggestions and error message cleared
     expect(screen.queryByText(/이미 사용 중인 닉네임입니다/i)).not.toBeInTheDocument()
@@ -566,8 +566,8 @@ describe('SignupPage - REQ-F-A2-Signup-6 (Signup Submission)', () => {
   })
   const [registerRequest] = getMockRequests({ url: '/api/profile/register', method: 'POST' })
   const [surveyRequest] = getMockRequests({ url: '/api/profile/survey', method: 'PUT' })
-  expect(registerRequest.body).toEqual({ nickname: 'signup_user1' })
-  expect(surveyRequest.body).toMatchObject({ level: 'intermediate', career: 0, interests: [] })
+    expect(registerRequest.body).toEqual({ nickname: 'signup_user1' })
+    expect(surveyRequest.body).toMatchObject({ level: 'inter-advanced', career: 0, interests: [] })
   expect(localStorage.getItem('slea_ssem_cached_nickname')).toBe('signup_user1')
 })
 
@@ -600,7 +600,7 @@ describe('SignupPage - REQ-F-A2-Signup-6 (Signup Submission)', () => {
   await waitFor(() => {
     const surveyRequests = getMockRequests({ url: '/api/profile/survey', method: 'PUT' })
     expect(surveyRequests).toHaveLength(1)
-    expect(surveyRequests[0].body.level).toBe('advanced')
+      expect(surveyRequests[0].body.level).toBe('elite')
   })
 })
 
@@ -649,7 +649,7 @@ describe('SignupPage - REQ-F-A2-Signup-6 (Signup Submission)', () => {
 
     // First check a unique nickname
     const nicknameInput = screen.getByLabelText(/닉네임/i)
-    await user.type(nicknameInput, 'admin')
+      await user.type(nicknameInput, 'existing_user')
 
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
     await user.click(checkButton)

@@ -1,4 +1,4 @@
-// REQ: REQ-F-A2-1, REQ-F-A2-Signup-1
+// REQ: REQ-F-A2-1, REQ-F-A1-Home
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -9,12 +9,10 @@ import {
   setMockData,
   setMockError,
   clearMockErrors,
-  clearMockRequests,
-  getMockRequests,
 } from '../../lib/transport'
 
-// Mock useNavigate
 const mockNavigate = vi.fn()
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
   return {
@@ -23,305 +21,132 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-// Mock auth utils
 vi.mock('../../utils/auth', () => ({
   getToken: vi.fn(() => 'mock_jwt_token'),
 }))
 
-    describe('HomePage', () => {
-      beforeEach(() => {
-        vi.clearAllMocks()
-        mockNavigate.mockReset()
-        vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
-        localStorage.setItem('slea_ssem_api_mock', 'true')
-        localStorage.removeItem('slea_ssem_cached_nickname')
-        localStorage.removeItem('lastSurveyId')
-        localStorage.removeItem('lastSurveyLevel')
-        mockConfig.delay = 0
-        mockConfig.simulateError = false
-        clearMockErrors()
-        clearMockRequests()
-        setMockData('/api/profile/nickname', {
-          user_id: 'test@samsung.com',
-          nickname: null,
-          registered_at: null,
-          updated_at: null,
-        })
-      })
+const renderHomePage = () =>
+  render(
+    <MemoryRouter>
+      <HomePage />
+    </MemoryRouter>
+  )
 
-      afterEach(() => {
-        localStorage.removeItem('slea_ssem_api_mock')
-        localStorage.removeItem('slea_ssem_cached_nickname')
-        localStorage.removeItem('lastSurveyId')
-        localStorage.removeItem('lastSurveyLevel')
-      })
-
-  it('should redirect to login if no token is present', () => {
-    vi.spyOn(authUtils, 'getToken').mockReturnValue(null)
-
-    render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
-    )
-
-    expect(mockNavigate).toHaveBeenCalledWith('/')
-  })
-
-    it('should display welcome message when authenticated', async () => {
-    render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
-    )
-
-      await waitFor(() => {
-        expect(getMockRequests({ url: '/api/profile/nickname' }).length).toBeGreaterThan(0)
-      })
-
-      expect(screen.getAllByText(/S\.LSI Learning Platform/).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/AI 기반 학습 플랫폼/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /시작하기/i })).toBeInTheDocument()
-  })
-
-  it('should call API to check nickname when "시작하기" is clicked', async () => {
-    render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
-    )
-
-      await waitFor(() => {
-        expect(getMockRequests({ url: '/api/profile/nickname' }).length).toBe(1)
-      })
-
-      clearMockRequests()
-
-    const startButton = screen.getByRole('button', { name: /시작하기/i })
-    fireEvent.click(startButton)
-
-    await waitFor(() => {
-        expect(getMockRequests({ url: '/api/profile/nickname' }).length).toBe(1)
+describe('HomePage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockNavigate.mockReset()
+    vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
+    localStorage.setItem('slea_ssem_api_mock', 'true')
+    localStorage.removeItem('slea_ssem_cached_nickname')
+    localStorage.removeItem('lastSurveyId')
+    localStorage.removeItem('lastSurveyLevel')
+    mockConfig.delay = 0
+    mockConfig.simulateError = false
+    clearMockErrors()
+    setMockData('/api/profile/nickname', {
+      user_id: 'test@samsung.com',
+      nickname: null,
+      registered_at: null,
+      updated_at: null,
+    })
+    setMockData('/api/profile/consent', {
+      consented: false,
+      consent_at: null,
     })
   })
 
-  it('should redirect to /nickname-setup when nickname is null', async () => {
-    // REQ: REQ-F-A2-1
-    render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
-    )
+  afterEach(() => {
+    localStorage.removeItem('slea_ssem_api_mock')
+    localStorage.removeItem('slea_ssem_cached_nickname')
+    localStorage.removeItem('lastSurveyId')
+    localStorage.removeItem('lastSurveyLevel')
+  })
 
-    const startButton = screen.getByRole('button', { name: /시작하기/i })
-    fireEvent.click(startButton)
+  it('redirects to login when no token is available', () => {
+    vi.spyOn(authUtils, 'getToken').mockReturnValue(null)
+    renderHomePage()
+    expect(mockNavigate).toHaveBeenCalledWith('/')
+  })
+
+  it('renders hero copy and CTA button', () => {
+    renderHomePage()
+    expect(screen.getByText(/오늘 당신의 AI 역량은/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /레벨테스트 시작하기/i })).toBeInTheDocument()
+  })
+
+  it('navigates to consent page when user has not consented yet', async () => {
+    renderHomePage()
+
+    fireEvent.click(screen.getByRole('button', { name: /레벨테스트 시작하기/i }))
 
     await waitFor(() => {
-      // REQ-F-A2-1: Navigate to nickname-setup when nickname is null
+      expect(mockNavigate).toHaveBeenCalledWith('/consent')
+    })
+  })
+
+  it('navigates to nickname setup after consent when nickname is missing', async () => {
+    setMockData('/api/profile/consent', { consented: true, consent_at: '2025-11-20T00:00:00Z' })
+    renderHomePage()
+
+    fireEvent.click(screen.getByRole('button', { name: /레벨테스트 시작하기/i }))
+
+    await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/nickname-setup')
     })
   })
 
-  it('should navigate to self-assessment when nickname exists', async () => {
-    // REQ: REQ-F-A2-2-1
-      setMockData('/api/profile/nickname', {
-        user_id: 'test@samsung.com',
-        nickname: 'testuser',
-        registered_at: '2025-11-10T12:00:00Z',
-        updated_at: '2025-11-10T12:00:00Z',
-      })
+  it('navigates to career info when nickname exists and no survey progress', async () => {
+    setMockData('/api/profile/consent', { consented: true, consent_at: '2025-11-20T00:00:00Z' })
+    setMockData('/api/profile/nickname', {
+      user_id: 'test@samsung.com',
+      nickname: 'testuser',
+      registered_at: '2025-11-10T12:00:00Z',
+      updated_at: '2025-11-10T12:00:00Z',
+    })
 
-    render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
-    )
-
-    const startButton = screen.getByRole('button', { name: /시작하기/i })
-    fireEvent.click(startButton)
+    renderHomePage()
+    fireEvent.click(screen.getByRole('button', { name: /레벨테스트 시작하기/i }))
 
     await waitFor(() => {
-      // REQ-F-A2-2-1: Navigate to self-assessment when nickname exists
-      expect(mockNavigate).toHaveBeenCalledWith('/self-assessment')
+      expect(mockNavigate).toHaveBeenCalledWith('/career-info')
     })
   })
 
-    it('should navigate to profile-review when survey progress exists', async () => {
-      setMockData('/api/profile/nickname', {
-        user_id: 'test@samsung.com',
-        nickname: 'testuser',
-        registered_at: '2025-11-10T12:00:00Z',
-        updated_at: '2025-11-10T12:00:00Z',
-      })
-      localStorage.setItem('lastSurveyId', 'saved_survey_789')
-      localStorage.setItem('lastSurveyLevel', '4')
+  it('navigates to profile review when survey progress exists', async () => {
+    setMockData('/api/profile/consent', { consented: true, consent_at: '2025-11-20T00:00:00Z' })
+    setMockData('/api/profile/nickname', {
+      user_id: 'test@samsung.com',
+      nickname: 'testuser',
+      registered_at: '2025-11-10T12:00:00Z',
+      updated_at: '2025-11-10T12:00:00Z',
+    })
+    localStorage.setItem('lastSurveyId', 'saved_survey_789')
+    localStorage.setItem('lastSurveyLevel', '4')
 
-      render(
-        <MemoryRouter>
-          <HomePage />
-        </MemoryRouter>
+    renderHomePage()
+    fireEvent.click(screen.getByRole('button', { name: /레벨테스트 시작하기/i }))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/profile-review',
+        expect.objectContaining({
+          state: { surveyId: 'saved_survey_789', level: 4 },
+        })
       )
-
-      const startButton = screen.getByRole('button', { name: /시작하기/i })
-      fireEvent.click(startButton)
-
-      await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith(
-          '/profile-review',
-          expect.objectContaining({
-            state: expect.objectContaining({
-              surveyId: 'saved_survey_789',
-              level: 4,
-            }),
-          })
-        )
-      })
     })
+  })
 
-  it('should display error message when API call fails', async () => {
-      setMockError('/api/profile/nickname', 'Unauthorized')
+  it('shows error message when consent check fails', async () => {
+    setMockError('/api/profile/consent', 'Network error')
+    renderHomePage()
 
-    render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
-    )
-
-    const startButton = screen.getByRole('button', { name: /시작하기/i })
-    fireEvent.click(startButton)
+    fireEvent.click(screen.getByRole('button', { name: /레벨테스트 시작하기/i }))
 
     await waitFor(() => {
-      // Error handling - show error message to user
-      const errorElement = screen.queryByText(/오류가 발생했습니다/i)
-      expect(errorElement || mockNavigate).toBeTruthy()
+      expect(
+        screen.getByText(/프로필 정보를 불러오는데 실패했습니다/i)
+      ).toBeInTheDocument()
     })
   })
-
-  it('should handle network errors gracefully', async () => {
-      setMockError('/api/profile/nickname', 'Network error')
-
-    render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
-    )
-
-    const startButton = screen.getByRole('button', { name: /시작하기/i })
-    fireEvent.click(startButton)
-
-    await waitFor(() => {
-      // Should show error message or handle gracefully
-      const errorElement = screen.queryByText(/오류가 발생했습니다/i)
-      expect(errorElement || mockNavigate).toBeTruthy()
-    })
-  })
-})
-
-  describe('HomePage - REQ-F-A2-Signup-1 (Header Integration)', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-      mockNavigate.mockReset()
-      vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
-      localStorage.setItem('slea_ssem_api_mock', 'true')
-      localStorage.removeItem('slea_ssem_cached_nickname')
-      localStorage.removeItem('lastSurveyId')
-      localStorage.removeItem('lastSurveyLevel')
-      mockConfig.delay = 0
-      mockConfig.simulateError = false
-      clearMockErrors()
-      clearMockRequests()
-    })
-
-    afterEach(() => {
-      localStorage.removeItem('slea_ssem_api_mock')
-      localStorage.removeItem('slea_ssem_cached_nickname')
-      localStorage.removeItem('lastSurveyId')
-      localStorage.removeItem('lastSurveyLevel')
-    })
-
-  it('nickname이 null일 때 헤더에 "회원가입" 버튼 표시', async () => {
-    // REQ: REQ-F-A2-Signup-1
-    // Given: User has no nickname (initial load returns null)
-      setMockData('/api/profile/nickname', {
-        user_id: 'test@samsung.com',
-        nickname: null,
-        registered_at: null,
-        updated_at: null,
-      })
-
-    render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
-    )
-
-    // Then: "회원가입" button should appear in header after nickname is loaded
-    await waitFor(() => {
-      const signupButton = screen.getByRole('button', { name: /회원가입/i })
-      expect(signupButton).toBeInTheDocument()
-    })
-  })
-
-  it('nickname이 존재할 때 헤더에 "회원가입" 버튼 숨김', async () => {
-    // REQ: REQ-F-A2-Signup-1
-    // Given: User already has nickname
-      setMockData('/api/profile/nickname', {
-        user_id: 'test@samsung.com',
-        nickname: 'existing_user',
-        registered_at: '2025-11-10T12:00:00Z',
-        updated_at: '2025-11-10T12:00:00Z',
-      })
-
-    render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
-    )
-
-    // Wait for nickname to load
-    // Then: "회원가입" button should NOT be visible
-    const signupButton = screen.queryByRole('button', { name: /회원가입/i })
-    expect(signupButton).not.toBeInTheDocument()
-  })
-
-  it('헤더에 플랫폼 이름이 표시됨', () => {
-      // REQ: General header functionality
-      setMockData('/api/profile/nickname', {
-        user_id: 'test@samsung.com',
-        nickname: null,
-        registered_at: null,
-        updated_at: null,
-      })
-
-    render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>
-    )
-
-    // Then: Platform name should appear twice (header + main content)
-      const platformNames = screen.getAllByText(/S\.LSI Learning Platform/i)
-      expect(platformNames.length).toBeGreaterThanOrEqual(1)
-  })
-
-    it('캐시된 닉네임이 있을 때 즉시 회원가입 버튼을 숨김', async () => {
-      localStorage.setItem('slea_ssem_cached_nickname', 'cached_user')
-      setMockData('/api/profile/nickname', {
-        user_id: 'test@samsung.com',
-        nickname: 'cached_user',
-        registered_at: '2025-11-10T12:00:00Z',
-        updated_at: '2025-11-10T12:00:00Z',
-      })
-
-      render(
-        <MemoryRouter>
-          <HomePage />
-        </MemoryRouter>
-      )
-
-      expect(screen.queryByRole('button', { name: /회원가입/i })).not.toBeInTheDocument()
-      await waitFor(() => {
-        expect(screen.getByText('cached_user')).toBeInTheDocument()
-      })
-    })
 })

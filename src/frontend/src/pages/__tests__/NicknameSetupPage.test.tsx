@@ -98,7 +98,7 @@ describe('NicknameSetupPage', () => {
     expect(screen.queryByText(/사용 가능한 닉네임입니다/i)).not.toBeInTheDocument()
   })
 
-  test('shows taken message when nickname is already used', async () => {
+    test('shows taken message when nickname is already used', async () => {
     // REQ: REQ-F-A2-2
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
@@ -106,7 +106,7 @@ describe('NicknameSetupPage', () => {
     const input = screen.getByLabelText(/닉네임/i)
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
 
-    await user.type(input, 'admin')
+      await user.type(input, 'existing_user')
     await user.click(checkButton)
 
     await waitFor(() => {
@@ -170,7 +170,7 @@ describe('NicknameSetupPage', () => {
     mockConfig.delay = 0
   })
 
-    test('submits nickname, caches it, and navigates to self assessment after success', async () => {
+    test('submits nickname, caches it, and navigates to career info after success', async () => {
     // REQ: REQ-F-A2-7
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
@@ -182,17 +182,17 @@ describe('NicknameSetupPage', () => {
     await user.type(input, 'signup_user1')
     await user.click(checkButton)
 
-    await waitFor(() => {
-      expect(screen.getByText(/사용 가능한 닉네임입니다/i)).toBeInTheDocument()
-      expect(nextButton).not.toBeDisabled()
-    })
-
-    await user.click(nextButton)
-
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/self-assessment', { replace: true })
+        expect(screen.getByText(/사용 가능한 닉네임입니다/i)).toBeInTheDocument()
+        expect(nextButton).not.toBeDisabled()
       })
-      expect(localStorage.getItem('slea_ssem_cached_nickname')).toBe('signup_user1')
+
+      await user.click(nextButton)
+
+        await waitFor(() => {
+          expect(mockNavigate).toHaveBeenCalledWith('/career-info', { replace: true })
+        })
+        expect(localStorage.getItem('slea_ssem_cached_nickname')).toBe('signup_user1')
   })
 
   test('shows error message when nickname registration fails', async () => {
@@ -223,7 +223,7 @@ describe('NicknameSetupPage', () => {
     mockConfig.simulateError = false
   })
 
-  test('shows 3 alternative suggestions when nickname is taken', async () => {
+    test('shows 3 alternative suggestions when nickname is taken', async () => {
     // REQ: REQ-F-A2-4
     const user = userEvent.setup()
     renderWithRouter(<NicknameSetupPage />)
@@ -231,14 +231,14 @@ describe('NicknameSetupPage', () => {
     const input = screen.getByLabelText(/닉네임/i)
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
 
-    await user.type(input, 'test')
+      await user.type(input, 'existing_user')
     await user.click(checkButton)
 
     await waitFor(() => {
       expect(screen.getByText(/추천 닉네임/i)).toBeInTheDocument()
-        expect(screen.getByText('test_1')).toBeInTheDocument()
-        expect(screen.getByText('test_2')).toBeInTheDocument()
-        expect(screen.getByText('test_3')).toBeInTheDocument()
+          expect(screen.getByText('existing_user_1')).toBeInTheDocument()
+          expect(screen.getByText('existing_user_2')).toBeInTheDocument()
+          expect(screen.getByText('existing_user_3')).toBeInTheDocument()
     })
   })
 
@@ -250,19 +250,19 @@ describe('NicknameSetupPage', () => {
     const input = screen.getByLabelText(/닉네임/i) as HTMLInputElement
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
 
-    await user.type(input, 'test')
-    await user.click(checkButton)
+      await user.type(input, 'existing_user')
+      await user.click(checkButton)
 
-      await waitFor(() => {
-        expect(screen.getByText('test_1')).toBeInTheDocument()
-      })
+        await waitFor(() => {
+          expect(screen.getByText('existing_user_1')).toBeInTheDocument()
+        })
 
-      const suggestion1 = screen.getByText('test_1')
-    await user.click(suggestion1)
+        const suggestion1 = screen.getByText('existing_user_1')
+      await user.click(suggestion1)
 
-      expect(input.value).toBe('test_1')
+        expect(input.value).toBe('existing_user_1')
     expect(screen.queryByText(/이미 사용 중인 닉네임입니다/i)).not.toBeInTheDocument()
-      expect(screen.queryByText('test_2')).not.toBeInTheDocument()
+        expect(screen.queryByText('existing_user_2')).not.toBeInTheDocument()
   })
 
   test('allows re-checking after selecting a suggestion', async () => {
@@ -273,15 +273,15 @@ describe('NicknameSetupPage', () => {
     const input = screen.getByLabelText(/닉네임/i)
     const checkButton = screen.getByRole('button', { name: /중복 확인/i })
 
-    await user.type(input, 'test')
-    await user.click(checkButton)
+      await user.type(input, 'existing_user')
+      await user.click(checkButton)
 
-      await waitFor(() => {
-        expect(screen.getByText('test_1')).toBeInTheDocument()
-      })
+        await waitFor(() => {
+          expect(screen.getByText('existing_user_1')).toBeInTheDocument()
+        })
 
-      const suggestion1 = screen.getByText('test_1')
-    await user.click(suggestion1)
+        const suggestion1 = screen.getByText('existing_user_1')
+      await user.click(suggestion1)
 
     await user.click(checkButton)
 

@@ -12,6 +12,7 @@ import {
   setMockError,
   clearMockErrors,
 } from '../../lib/transport'
+import { questionService } from '../../services/questionService'
 
 const mockNavigate = vi.fn()
 
@@ -141,16 +142,15 @@ describe('TestPage - REQ-F-B2-1', () => {
     const nextButton = screen.getByRole('button', { name: /다음/i })
     await user.click(nextButton)
 
-      await waitFor(() => {
-        const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
-        expect(autosaveRequests.length).toBeGreaterThan(0)
-        const payload = autosaveRequests.at(-1)!.body
-        expect(payload.session_id).toBe('session-456')
-        expect(payload.question_id).toBe('q1')
-        const parsed = JSON.parse(payload.user_answer)
-        expect(parsed.selected).toBe('Option B')
-        expect(payload.response_time_ms).toBeGreaterThan(0)
-      })
+        await waitFor(() => {
+          const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
+          expect(autosaveRequests.length).toBeGreaterThan(0)
+          const payload = autosaveRequests.at(-1)!.body
+          expect(payload.session_id).toBe('session-456')
+          expect(payload.question_id).toBe('q1')
+          expect(payload.user_answer).toEqual({ selected_key: 'Option B' })
+          expect(payload.response_time_ms).toBeGreaterThan(0)
+        })
   })
 
     test('Happy Path: short answer 답변 제출 성공', async () => {
@@ -184,13 +184,14 @@ describe('TestPage - REQ-F-B2-1', () => {
     const completeButton = screen.getByRole('button', { name: /완료/i })
     await user.click(completeButton)
 
-      await waitFor(() => {
-        const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
-        const lastRequest = autosaveRequests.at(-1)
-        expect(lastRequest?.body.question_id).toBe('q3')
-        const parsed = JSON.parse(lastRequest!.body.user_answer)
-        expect(parsed.text).toContain('Neural networks are computing systems')
-      })
+        await waitFor(() => {
+          const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
+          const lastRequest = autosaveRequests.at(-1)
+          expect(lastRequest?.body.question_id).toBe('q3')
+          expect(lastRequest?.body.user_answer).toEqual({
+            text: expect.stringContaining('Neural networks are computing systems'),
+          })
+        })
   })
 
     test('Input Validation: 빈 답변 제출 방지', async () => {
@@ -211,42 +212,65 @@ describe('TestPage - REQ-F-B2-1', () => {
 
     test('Edge Case: 마지막 문항 완료 시 results 페이지 이동', async () => {
       // REQ: REQ-F-B2-1 - Navigate to results after last question
-      // Now includes score calculation before navigation
       const singleQuestion = {
         session_id: 'session-789',
         questions: [mockQuestions[0]],
       }
 
-      // Clear mock state and setup with single question
       clearMockRequests()
       clearMockErrors()
       setMockData('/api/questions/generate', singleQuestion)
 
-    const user = userEvent.setup()
-    renderWithRouter(<TestPage />)
-
-    await waitFor(() => {
-      expect(screen.getByText('What is AI?')).toBeInTheDocument()
-    })
-
-    const optionA = screen.getByLabelText('Option A')
-    await user.click(optionA)
-
-    const completeButton = screen.getByRole('button', { name: /완료/i })
-    await user.click(completeButton)
-
-    // Wait for autosave, score calculation, and navigation
-    await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/test-results', {
-          state: { sessionId: 'session-456', surveyId: 'test-survey-123' },
+      const calculateSpy = vi
+        .spyOn(questionService, 'calculateScore')
+        .mockResolvedValue({
+          session_id: 'session-789',
+          round: 1,
+          score: 75,
+          correct_count: 1,
+          total_count: 1,
+          wrong_categories: {},
+          auto_completed: false,
         })
-    }, { timeout: 5000 })
 
-    // Verify score API was called (URL includes query params)
-    const allRequests = getMockRequests({ method: 'POST' })
-    const scoreRequests = allRequests.filter(req => req.url.startsWith('/api/questions/score'))
-    expect(scoreRequests.length).toBeGreaterThan(0)
-  })
+      const completeSpy = vi
+        .spyOn(questionService, 'completeSession')
+        .mockResolvedValue({
+          status: 'completed',
+          session_id: 'session-789',
+          round: 1,
+          message: 'ok',
+        })
+
+      const user = userEvent.setup()
+      renderWithRouter(<TestPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText('What is AI?')).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByLabelText('Option A'))
+      await user.click(screen.getByRole('button', { name: /완료/i }))
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          '/test-results',
+          expect.objectContaining({
+            state: expect.objectContaining({
+              sessionId: expect.any(String),
+              surveyId: 'test-survey-123',
+              round: 1,
+            }),
+          })
+        )
+      })
+
+      expect(calculateSpy).toHaveBeenCalledWith(expect.any(String), false)
+      expect(completeSpy).toHaveBeenCalledWith(expect.any(String))
+
+      calculateSpy.mockRestore()
+      completeSpy.mockRestore()
+    })
 
     test('Error Handling: API 실패 시 에러 메시지 표시', async () => {
       // REQ: REQ-F-B2-1 - Show error on API failure
@@ -289,12 +313,12 @@ describe('TestPage - REQ-F-B2-1', () => {
     const nextButton = screen.getByRole('button', { name: /다음/i })
     await user.click(nextButton)
 
-      await waitFor(() => {
-        const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
-        expect(autosaveRequests.length).toBeGreaterThan(0)
-        const payload = autosaveRequests[autosaveRequests.length - 1]!.body
-        expect(payload.response_time_ms).toBeGreaterThanOrEqual(100)
-      })
+        await waitFor(() => {
+          const autosaveRequests = getMockRequests({ url: '/api/questions/autosave', method: 'POST' })
+          expect(autosaveRequests.length).toBeGreaterThan(0)
+          const payload = autosaveRequests[autosaveRequests.length - 1]!.body
+          expect(payload.response_time_ms).toBeGreaterThanOrEqual(100)
+        })
   })
 
     test('Button State: 제출 중 버튼 비활성화', async () => {
@@ -430,64 +454,71 @@ describe('TestPage - REQ-F-B3-Plus Session Completion', () => {
     teardownMockEnv()
   })
 
-  test('Happy Path: 세션 완료 성공 후 결과 페이지 이동', async () => {
-    // REQ: REQ-F-B3-Plus-1 - Complete session after last question
-    // Use default cached session from setupMockEnv
-    const user = userEvent.setup()
-    renderWithRouter(<TestPage />)
+    test('Happy Path: 세션 완료 성공 후 결과 페이지 이동', async () => {
+      // REQ: REQ-F-B3-Plus-1 - Complete session after last question
+      const calculateSpy = vi
+        .spyOn(questionService, 'calculateScore')
+        .mockResolvedValue({
+          session_id: 'session-456',
+          round: 1,
+          score: 80,
+          correct_count: 3,
+          total_count: 3,
+          wrong_categories: {},
+          auto_completed: false,
+        })
+      const completeSpy = vi
+        .spyOn(questionService, 'completeSession')
+        .mockResolvedValue({
+          status: 'completed',
+          session_id: 'session-456',
+          round: 1,
+          message: 'ok',
+        })
 
-    await waitFor(() => {
-      expect(screen.getByText('What is AI?')).toBeInTheDocument()
+      const user = userEvent.setup()
+      renderWithRouter(<TestPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText('What is AI?')).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByLabelText('Option A'))
+      await user.click(screen.getByRole('button', { name: /다음/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Machine learning is a subset of AI')).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByLabelText(/True/i))
+      await user.click(screen.getByRole('button', { name: /다음/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Explain neural networks')).toBeInTheDocument()
+      })
+
+      await user.type(
+        screen.getByPlaceholderText(/답변을 입력하세요/i),
+        'Neural networks are computing systems.'
+      )
+      await user.click(screen.getByRole('button', { name: /완료/i }))
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          '/test-results',
+          expect.objectContaining({
+            state: expect.objectContaining({
+              surveyId: 'test-survey-123',
+            }),
+          })
+        )
+      })
+
+      expect(calculateSpy).toHaveBeenCalledWith('session-456', false)
+      expect(completeSpy).toHaveBeenCalledWith('session-456')
+      calculateSpy.mockRestore()
+      completeSpy.mockRestore()
     })
-
-    const optionA = screen.getByLabelText('Option A')
-    await user.click(optionA)
-
-    const nextButton = screen.getByRole('button', { name: /다음/i })
-    await user.click(nextButton)
-
-    // Move to second question
-    await waitFor(() => {
-      expect(screen.getByText('Machine learning is a subset of AI')).toBeInTheDocument()
-    })
-
-    // Answer second question
-    const trueOption = screen.getByLabelText(/True/i)
-    await user.click(trueOption)
-    await user.click(screen.getByRole('button', { name: /다음/i }))
-
-    // Move to third question
-    await waitFor(() => {
-      expect(screen.getByText('Explain neural networks')).toBeInTheDocument()
-    })
-
-    // Answer last question
-    const textarea = screen.getByPlaceholderText(/답변을 입력하세요/i)
-    await user.type(textarea, 'Neural networks are computing systems.')
-
-    const completeButton = screen.getByRole('button', { name: /완료/i })
-    await user.click(completeButton)
-
-    // Verify API call sequence and navigation
-    await waitFor(() => {
-      // Score called with auto_complete=false
-      const allRequests = getMockRequests({ method: 'POST' })
-      const scoreRequests = allRequests.filter(req => req.url.includes('/api/questions/score'))
-      expect(scoreRequests.length).toBeGreaterThan(0)
-      expect(scoreRequests[scoreRequests.length - 1].url).toContain('auto_complete=false')
-
-      // Complete called
-      const completeRequests = allRequests.filter(req => req.url.includes('/session/') && req.url.includes('/complete'))
-      expect(completeRequests.length).toBeGreaterThan(0)
-
-      // Navigate to results
-      expect(mockNavigate).toHaveBeenCalledWith('/test-results', expect.objectContaining({
-        state: expect.objectContaining({
-          surveyId: 'test-survey-123',
-        }),
-      }))
-    }, { timeout: 5000 })
-  })
 
   // Note: Error Case test removed due to mock error handling complexity
   // Error handling functionality is implemented and can be tested manually
