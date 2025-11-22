@@ -15,7 +15,7 @@ describe('GradeDistributionChart', () => {
 
   // Test 1: Happy path - 정상 렌더링
   describe('Happy Path', () => {
-    it('should render all 5 grade bars', () => {
+      it('should render all 5 grade bars', () => {
       render(
         <GradeDistributionChart
           distribution={mockDistribution}
@@ -27,11 +27,11 @@ describe('GradeDistributionChart', () => {
       )
 
       // 5개 등급이 모두 표시되는지 확인
-      expect(screen.getByText(/시작자/i)).toBeInTheDocument()
-      expect(screen.getByText(/중급자/i)).toBeInTheDocument()
-      expect(screen.getByText(/중상급자/i)).toBeInTheDocument()
-      expect(screen.getByText(/고급자/i)).toBeInTheDocument()
-      expect(screen.getByText(/엘리트/i)).toBeInTheDocument()
+        expect(screen.getByText('입문')).toBeInTheDocument()
+        expect(screen.getByText('초급')).toBeInTheDocument()
+        expect(screen.getByText('중급')).toBeInTheDocument()
+        expect(screen.getByText('고급')).toBeInTheDocument()
+        expect(screen.getByText('전문가')).toBeInTheDocument()
     })
 
     it('should display count and percentage for each grade', () => {
@@ -66,9 +66,9 @@ describe('GradeDistributionChart', () => {
 
       // Advanced 등급이 하이라이트되었는지 확인 (CSS 클래스)
       const bars = container.querySelectorAll('.distribution-bar')
-      const advancedBar = Array.from(bars).find(bar =>
-        bar.textContent?.includes('고급자')
-      )
+        const advancedBar = Array.from(bars).find(bar =>
+          bar.textContent?.includes('고급')
+        )
       expect(advancedBar).toHaveClass('user-current-grade')
     })
 
@@ -168,7 +168,7 @@ describe('GradeDistributionChart', () => {
         expect(summaryParagraph).toHaveTextContent('순위 50/1000')
       })
 
-      it('should handle single grade distribution', () => {
+        it('should handle single grade distribution', () => {
         const singleGrade: GradeDistribution[] = [
           { grade: 'Beginner', count: 10, percentage: 100.0 },
         ]
@@ -183,7 +183,7 @@ describe('GradeDistributionChart', () => {
           />
         )
 
-        expect(screen.getByText(/시작자/i)).toBeInTheDocument()
+          expect(screen.getByText('입문')).toBeInTheDocument()
         expect(screen.getByText(/100%/)).toBeInTheDocument()
       })
 

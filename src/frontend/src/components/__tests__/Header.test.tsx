@@ -289,8 +289,11 @@ describe('Header - REQ-F-A2-Profile-Access-3-6 (Dropdown)', () => {
     const editProfileItem = screen.getByRole('menuitem', { name: /프로필 수정/i })
     await user.click(editProfileItem)
 
-    // Then: Should navigate to /profile/edit
-    expect(mockNavigate).toHaveBeenCalledWith('/profile/edit')
+    // Then: Should navigate to /profile/edit with return target
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/profile/edit',
+      expect.objectContaining({ state: { returnTo: '/home' } })
+    )
   })
 
   test('드롭다운 외부 클릭 시 메뉴가 닫힌다', async () => {
