@@ -11,7 +11,62 @@
  */
 
 import { GRADE_CONFIG, GRADE_STRING_TO_LEVEL, ELITE_GRADE_LEVEL } from '../constants/gradeConfig'
-import type { FrontendLevel, GradeString } from '../types/grade'
+import type { FrontendLevel, GradeString, GradeInfo } from '../types/grade'
+
+/**
+ * ============================================================================
+ * Type Guards
+ * ============================================================================
+ */
+
+/**
+ * Type guard to check if a string is a valid GradeString
+ * @param value - String to check
+ * @returns true if value is a valid GradeString
+ */
+export const isGradeString = (value: string): value is GradeString => {
+  return value in GRADE_STRING_TO_LEVEL
+}
+
+/**
+ * ============================================================================
+ * Internal Helper Functions (Single Source of Truth)
+ * ============================================================================
+ */
+
+/**
+ * Validate and normalize a level to FrontendLevel
+ * @internal
+ * @param level - Level to validate
+ * @returns Valid FrontendLevel or null
+ */
+const getValidLevel = (level: FrontendLevel | number | null | undefined): FrontendLevel | null => {
+  if (!level || level < 1 || level > 5) return null
+  return level as FrontendLevel
+}
+
+/**
+ * Get grade config for a level with validation
+ * @internal
+ * @param level - Level to get config for
+ * @returns GradeInfo or null if invalid
+ */
+const getGradeConfig = (level: FrontendLevel | number | null | undefined): GradeInfo | null => {
+  const validLevel = getValidLevel(level)
+  if (!validLevel) return null
+  return GRADE_CONFIG[validLevel]
+}
+
+/**
+ * Convert grade string to frontend level with validation
+ * @internal
+ * @param grade - Grade string to convert
+ * @returns Frontend level or null if invalid
+ */
+const getLevelFromGrade = (grade: string): FrontendLevel | null => {
+  if (!isGradeString(grade)) return null
+  return GRADE_STRING_TO_LEVEL[grade]
+}
 
 /**
  * ============================================================================
@@ -25,8 +80,8 @@ import type { FrontendLevel, GradeString } from '../types/grade'
  * @returns Korean text representation or fallback
  */
 export const getLevelKorean = (level: FrontendLevel | number | null | undefined): string => {
-  if (!level || level < 1 || level > 5) return '정보 없음'
-  return GRADE_CONFIG[level as FrontendLevel].korean
+  const config = getGradeConfig(level)
+  return config?.korean ?? '정보 없음'
 }
 
 /**
@@ -35,8 +90,8 @@ export const getLevelKorean = (level: FrontendLevel | number | null | undefined)
  * @returns Grade string (e.g., "Elite", "Beginner") or fallback
  */
 export const getLevelGradeString = (level: FrontendLevel | number | null | undefined): string => {
-  if (!level || level < 1 || level > 5) return 'Unknown'
-  return GRADE_CONFIG[level as FrontendLevel].gradeString
+  const config = getGradeConfig(level)
+  return config?.gradeString ?? 'Unknown'
 }
 
 /**
@@ -45,8 +100,8 @@ export const getLevelGradeString = (level: FrontendLevel | number | null | undef
  * @returns CSS class name
  */
 export const getLevelClass = (level: FrontendLevel | number | null | undefined): string => {
-  if (!level || level < 1 || level > 5) return 'grade-default'
-  return GRADE_CONFIG[level as FrontendLevel].cssClass
+  const config = getGradeConfig(level)
+  return config?.cssClass ?? 'grade-default'
 }
 
 /**
@@ -55,8 +110,8 @@ export const getLevelClass = (level: FrontendLevel | number | null | undefined):
  * @returns Description text
  */
 export const getLevelDescription = (level: FrontendLevel | number | null | undefined): string => {
-  if (!level || level < 1 || level > 5) return '정보 없음'
-  return GRADE_CONFIG[level as FrontendLevel].description
+  const config = getGradeConfig(level)
+  return config?.description ?? '정보 없음'
 }
 
 /**
@@ -68,11 +123,11 @@ export const getLevelDescription = (level: FrontendLevel | number | null | undef
 /**
  * Convert English grade to Korean
  * @param grade - Grade string (e.g., "Elite", "Beginner")
- * @returns Korean text
+ * @returns Korean text (returns input if invalid grade)
  */
 export const getGradeKorean = (grade: string): string => {
-  const level = GRADE_STRING_TO_LEVEL[grade as GradeString]
-  if (!level) return grade
+  const level = getLevelFromGrade(grade)
+  if (!level) return grade // Fallback for invalid grades
   return GRADE_CONFIG[level].korean
 }
 
@@ -82,18 +137,18 @@ export const getGradeKorean = (grade: string): string => {
  * @returns CSS class name
  */
 export const getGradeClass = (grade: string): string => {
-  const level = GRADE_STRING_TO_LEVEL[grade as GradeString]
-  if (!level) return 'grade-default'
+  const level = getLevelFromGrade(grade)
+  if (!level) return 'grade-default' // Fallback for invalid grades
   return GRADE_CONFIG[level].cssClass
 }
 
 /**
  * Convert grade string to frontend level
  * @param grade - Grade string (e.g., "Elite", "Beginner")
- * @returns Frontend level (1-5) or null
+ * @returns Frontend level (1-5) or null if invalid
  */
 export const getGradeLevel = (grade: string): number | null => {
-  return GRADE_STRING_TO_LEVEL[grade as GradeString] || null
+  return getLevelFromGrade(grade)
 }
 
 /**
@@ -113,7 +168,8 @@ export const isEliteGrade = (grade: string | number): boolean => {
   if (typeof grade === 'number') {
     return grade === ELITE_GRADE_LEVEL
   }
-  return grade === 'Elite'
+  // Use type guard for string grades
+  return isGradeString(grade) && grade === 'Elite'
 }
 
 /**
