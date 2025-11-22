@@ -49,6 +49,19 @@ const TestPage: React.FC = () => {
   const location = useLocation()
   const state = location.state as LocationState
 
+  // REQ-F-B5-Retake-4: Persist surveyId to sessionStorage
+  useEffect(() => {
+    if (state?.surveyId) {
+      sessionStorage.setItem('current_test_survey_id', state.surveyId)
+    }
+  }, [state?.surveyId])
+
+  // Get surveyId from state or sessionStorage
+  const getSurveyId = (): string | undefined => {
+    if (state?.surveyId) return state.surveyId
+    return sessionStorage.getItem('current_test_survey_id') || undefined
+  }
+
   // Get current question
   const currentQuestion = questions[currentIndex] || null
 
@@ -162,7 +175,7 @@ const TestPage: React.FC = () => {
       navigate('/test-results', {
         state: {
           sessionId,
-          surveyId: state.surveyId,
+          surveyId: getSurveyId(),
           round: state.round || 1,
           previousSessionId: state.previousSessionId  // Pass for Round 2 results
         }
@@ -238,7 +251,7 @@ const TestPage: React.FC = () => {
           navigate('/test-results', {
             state: {
               sessionId,
-              surveyId: state.surveyId,
+              surveyId: getSurveyId(),
               round: state.round || 1,
               previousSessionId: state.previousSessionId
             }
