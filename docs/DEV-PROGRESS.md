@@ -60,6 +60,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-B5-1 | 이전 응시 정보 비교 섹션 | 4 | ✅ Done | 9 tests (100%), Progress: docs/progress/REQ-F-B5-1.md |
 | REQ-F-B5-2 | 레벨 테스트 재응시 버튼 | 4 | ✅ Done | 5 tests (100%), Progress: docs/progress/REQ-F-B5-2.md |
 | REQ-F-B5-3 | 재응시 시 이전 정보 자동 입력 | 4 | ✅ Done | 9 tests (100%), Commit: 4f404ac, Progress: docs/progress/REQ-F-B5-3.md |
+| REQ-F-B5-Retake-4 | Round 2 적응형 문제 생성 (adaptive) | 4 | ✅ Done | Commits: 64f9c27, 3468c45, Progress: docs/progress/REQ-F-B5-Retake-4.md |
 | REQ-F-B6 | 재미 모드 (카테고리 선택형 퀴즈) | 0 | 📦 MVP 2.0 | Deferred to MVP 2.0 |
 
 ### Backend (bwyoon)
