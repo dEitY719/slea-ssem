@@ -127,9 +127,8 @@ describe('LoginPage', () => {
         <LoginPage />
       </BrowserRouter>
     )
-    const container = screen.getByTestId('login-container')
-
-    expect(container).toHaveClass('login-container')
+    const container = document.querySelector('.login-container') as HTMLElement | null
+    expect(container).not.toBeNull()
     expect(container).toBeInTheDocument()
   })
 })

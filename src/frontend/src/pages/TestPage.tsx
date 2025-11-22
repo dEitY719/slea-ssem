@@ -5,6 +5,7 @@ import { ArrowRightIcon, ArrowLeftIcon, CheckIcon } from '@heroicons/react/24/ou
 import { questionService } from '../services'
 import { PageLayout } from '../components'
 import { Timer, SaveStatus, Question, type QuestionData, type SaveStatusType } from '../components/test'
+import { debugLog, debugWarn } from '../utils/logger'
 import './TestPage.css'
 
 /**
@@ -53,17 +54,20 @@ const TestPage: React.FC = () => {
   useEffect(() => {
     if (state?.surveyId) {
       sessionStorage.setItem('current_test_survey_id', state.surveyId)
-      console.log('[TestPage] Saved surveyId to sessionStorage:', state.surveyId)
+      debugLog('[TestPage] Saved surveyId to sessionStorage:', state.surveyId)
     } else {
-      console.warn('[TestPage] No surveyId in state to save')
+      debugWarn('[TestPage] No surveyId in state to save')
     }
   }, [state?.surveyId])
 
-  // Get surveyId from state or sessionStorage
-  const getSurveyId = (): string | undefined => {
+  const resolvedSurveyId = React.useMemo(() => {
     if (state?.surveyId) return state.surveyId
-    return sessionStorage.getItem('current_test_survey_id') || undefined
-  }
+    const storedSurveyId = sessionStorage.getItem('current_test_survey_id') || undefined
+    if (!storedSurveyId) {
+      debugWarn('[TestPage] No surveyId found in sessionStorage')
+    }
+    return storedSurveyId
+  }, [state?.surveyId])
 
   // Get current question
   const currentQuestion = questions[currentIndex] || null
@@ -159,145 +163,158 @@ const TestPage: React.FC = () => {
     return () => clearInterval(interval)
   }, [sessionId, questions])
 
-  // Handle session completion
-  // REQ: REQ-F-B3-Plus-1, REQ-F-B3-Plus-3, REQ-F-B5-Retake-4
-  const handleCompleteSession = useCallback(async () => {
-    if (!sessionId) return
+    // Handle session completion
+    // REQ: REQ-F-B3-Plus-1, REQ-F-B3-Plus-3, REQ-F-B5-Retake-4
+    const handleCompleteSession = useCallback(async () => {
+      if (!sessionId) return
 
-    setIsCompleting(true)
-    setCompleteError(null)
+      setIsCompleting(true)
+      setCompleteError(null)
 
-    try {
-      // Complete session
-      await questionService.completeSession(sessionId)
+      try {
+        // Complete session
+        await questionService.completeSession(sessionId)
 
-      // Reset state before navigation
-      setIsCompleting(false)
-
-      // Navigate to results with round info for Round 2 flow
-      const surveyId = getSurveyId()
-      console.log('[TestPage] Navigating to results with:', {
-        sessionId,
-        surveyId,
-        round: state.round || 1,
-        previousSessionId: state.previousSessionId,
-        fromState: state.surveyId,
-        fromStorage: sessionStorage.getItem('current_test_survey_id')
-      })
-
-      // Validate surveyId is defined before navigating
-      if (!surveyId) {
-        console.error('[TestPage] surveyId is undefined, cannot navigate to results')
-        setCompleteError('자기평가 정보가 없습니다. 홈으로 돌아가주세요.')
+        // Reset state before navigation
         setIsCompleting(false)
-        return
-      }
 
-      navigate('/test-results', {
-        state: {
+        // Navigate to results with round info for Round 2 flow
+        const surveyId = resolvedSurveyId
+        debugLog('[TestPage] Navigating to results with:', {
           sessionId,
           surveyId,
           round: state.round || 1,
-          previousSessionId: state.previousSessionId  // Pass for Round 2 results
+          previousSessionId: state.previousSessionId,
+          fromState: state.surveyId,
+          fromStorage: sessionStorage.getItem('current_test_survey_id')
+        })
+
+        // Validate surveyId is defined before navigating
+        if (!surveyId) {
+          console.error('[TestPage] surveyId is undefined, cannot navigate to results')
+          setCompleteError('자기평가 정보가 없습니다. 홈으로 돌아가주세요.')
+          setIsCompleting(false)
+          return
         }
-      })
-    } catch (completeErr) {
-      const message =
-        completeErr instanceof Error
-          ? completeErr.message
-          : '세션 완료에 실패했습니다.'
 
-      // REQ-F-B3-Plus-3: Show error and enable retry
-      setCompleteError(message)
-      setIsCompleting(false)
-    }
-  }, [sessionId, navigate, state.surveyId, state.round, state.previousSessionId])
+        navigate('/test-results', {
+          state: {
+            sessionId,
+            surveyId,
+            round: state.round || 1,
+            previousSessionId: state.previousSessionId, // Pass for Round 2 results
+          },
+        })
+      } catch (completeErr) {
+        const message =
+          completeErr instanceof Error
+            ? completeErr.message
+            : '세션 완료에 실패했습니다.'
 
-  // Handle next button click
-  const handleNextClick = useCallback(async () => {
-    if (!sessionId || !answer.trim() || isSubmitting) {
-      return
-    }
+        // REQ-F-B3-Plus-3: Show error and enable retry
+        setCompleteError(message)
+        setIsCompleting(false)
+      }
+    }, [sessionId, navigate, state.surveyId, state.round, state.previousSessionId, resolvedSurveyId])
 
-    // REQ-F-B2-6: Show "저장 중..." when saving
-    setSaveStatus('saving')
-    setIsSubmitting(true)
-    setSubmitError(null)
-
-    try {
-      const currentQuestion = questions[currentIndex]
-
-      // Build user_answer based on question type (strongly typed)
-      let userAnswer: import('../services').UserAnswer
-      if (currentQuestion.item_type === 'multiple_choice') {
-        userAnswer = { selected_key: answer } satisfies import('../services').MultipleChoiceAnswer
-      } else if (currentQuestion.item_type === 'true_false') {
-        userAnswer = { answer: answer } satisfies import('../services').TrueFalseAnswer
-      } else {
-        userAnswer = { text: answer } satisfies import('../services').ShortAnswer
+    // Handle next button click
+    const handleNextClick = useCallback(async () => {
+      if (!sessionId || !answer.trim() || isSubmitting) {
+        return
       }
 
-      // Submit answer to backend
+      // REQ-F-B2-6: Show "저장 중..." when saving
+      setSaveStatus('saving')
+      setIsSubmitting(true)
+      setSubmitError(null)
+
+      try {
+        const currentQuestion = questions[currentIndex]
+
+        // Build user_answer based on question type (strongly typed)
+        let userAnswer: import('../services').UserAnswer
+        if (currentQuestion.item_type === 'multiple_choice') {
+          userAnswer = { selected_key: answer } satisfies import('../services').MultipleChoiceAnswer
+        } else if (currentQuestion.item_type === 'true_false') {
+          userAnswer = { answer: answer } satisfies import('../services').TrueFalseAnswer
+        } else {
+          userAnswer = { text: answer } satisfies import('../services').ShortAnswer
+        }
+
+        // Submit answer to backend
         const responseTime = Date.now() - questionStartTime
         await questionService.autosave({
-        session_id: sessionId,
-        question_id: currentQuestion.id,
-        user_answer: userAnswer,  // Send as JSON object, not string
-        response_time_ms: responseTime,
-      })
+          session_id: sessionId,
+          question_id: currentQuestion.id,
+          user_answer: userAnswer, // Send as JSON object, not string
+          response_time_ms: responseTime,
+        })
 
-      // REQ-F-B2-6: Show "저장됨" after successful save
-      setSaveStatus('saved')
+        // REQ-F-B2-6: Show "저장됨" after successful save
+        setSaveStatus('saved')
 
-      // Hide "저장됨" message after 2 seconds
-      setTimeout(() => setSaveStatus('idle'), 2000)
+        // Hide "저장됨" message after 2 seconds
+        setTimeout(() => setSaveStatus('idle'), 2000)
 
-      // Move to next question or finish
-      if (currentIndex < questions.length - 1) {
-        setCurrentIndex(currentIndex + 1)
-        setAnswer('')
-        setIsSubmitting(false)
-      } else {
-        // All questions answered
-        try {
-          // REQ-F-B3-Plus-1: Calculate score WITHOUT auto-complete
-          await questionService.calculateScore(sessionId, false)
+        // Move to next question or finish
+        if (currentIndex < questions.length - 1) {
+          setCurrentIndex(currentIndex + 1)
+          setAnswer('')
+          setIsSubmitting(false)
+        } else {
+          // All questions answered
+          try {
+            // REQ-F-B3-Plus-1: Calculate score WITHOUT auto-complete
+            await questionService.calculateScore(sessionId, false)
 
-          // REQ-F-B3-Plus-1, REQ-F-B5-Retake-4: Complete session and navigate to results
-          await handleCompleteSession()
-        } catch (scoreError) {
-          // Even if score calculation fails, still navigate to results
-          // (results page will handle the error)
-          console.error('Score calculation failed:', scoreError)
+            // REQ-F-B3-Plus-1, REQ-F-B5-Retake-4: Complete session and navigate to results
+            await handleCompleteSession()
+          } catch (scoreError) {
+            // Even if score calculation fails, still navigate to results
+            // (results page will handle the error)
+            console.error('Score calculation failed:', scoreError)
 
-          const fallbackSurveyId = getSurveyId()
-          if (!fallbackSurveyId) {
-            console.error('[TestPage] surveyId is undefined in error fallback')
-            setSubmitError('자기평가 정보가 없습니다. 다시 시도해주세요.')
-            setIsSubmitting(false)
-            return
-          }
-
-          navigate('/test-results', {
-            state: {
-              sessionId,
-              surveyId: fallbackSurveyId,
-              round: state.round || 1,
-              previousSessionId: state.previousSessionId
+            const fallbackSurveyId = resolvedSurveyId
+            if (!fallbackSurveyId) {
+              console.error('[TestPage] surveyId is undefined in error fallback')
+              setSubmitError('자기평가 정보가 없습니다. 다시 시도해주세요.')
+              setIsSubmitting(false)
+              return
             }
-          })
-        }
-      }
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : '답변 제출에 실패했습니다.'
 
-      // REQ-F-B2-6: Show "저장 실패" on error
-      setSaveStatus('error')
-      setSubmitError(message)
-      setIsSubmitting(false)
-    }
-  }, [sessionId, answer, isSubmitting, currentIndex, questions, questionStartTime, navigate, state.surveyId, handleCompleteSession])
+            navigate('/test-results', {
+              state: {
+                sessionId,
+                surveyId: fallbackSurveyId,
+                round: state.round || 1,
+                previousSessionId: state.previousSessionId,
+              },
+            })
+          }
+        }
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : '답변 제출에 실패했습니다.'
+
+        // REQ-F-B2-6: Show "저장 실패" on error
+        setSaveStatus('error')
+        setSubmitError(message)
+        setIsSubmitting(false)
+      }
+    }, [
+      sessionId,
+      answer,
+      isSubmitting,
+      currentIndex,
+      questions,
+      questionStartTime,
+      navigate,
+      state.surveyId,
+      state.round,
+      state.previousSessionId,
+      handleCompleteSession,
+      resolvedSurveyId,
+    ])
 
   // Loading state
   if (isLoading) {

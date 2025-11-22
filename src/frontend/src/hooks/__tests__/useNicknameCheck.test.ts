@@ -85,12 +85,12 @@ describe('useNicknameCheck', () => {
     expect(result.current.errorMessage).toBeNull()
   })
 
-  test('checkNickname updates status to taken when nickname exists', async () => {
+    test('checkNickname updates status to taken when nickname exists', async () => {
     // REQ: REQ-F-A2-2
     const { result } = renderHook(() => useNicknameCheck())
 
     act(() => {
-      result.current.setNickname('admin')
+        result.current.setNickname('existing_user')
     })
 
     await act(async () => {
@@ -98,7 +98,11 @@ describe('useNicknameCheck', () => {
     })
 
     expect(result.current.checkStatus).toBe('taken')
-    expect(result.current.suggestions).toEqual(['admin_1', 'admin_2', 'admin_3'])
+      expect(result.current.suggestions).toEqual([
+        'existing_user_1',
+        'existing_user_2',
+        'existing_user_3',
+      ])
   })
 
   test('check result displays within 1 second', async () => {

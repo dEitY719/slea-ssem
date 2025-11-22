@@ -4,8 +4,10 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowPathIcon, HomeIcon } from '@heroicons/react/24/outline'
 import { PageLayout } from '../components'
 import { useTestResults } from '../hooks/useTestResults'
+import { usePersistedTestResultsState, type TestResultsLocationState } from '../hooks/usePersistedTestResultsState'
 import { GradeBadge, MetricCard, ActionButtons, GradeDistributionChart, ComparisonSection } from '../components/TestResults'
 import { resultService, type PreviousResult } from '../services/resultService'
+import { debugLog, debugWarn } from '../utils/logger'
 import './TestResultsPage.css'
 
 /**
@@ -23,72 +25,11 @@ import './TestResultsPage.css'
  * Route: /test-results
  */
 
-type LocationState = {
-  sessionId: string
-  surveyId?: string
-  round?: number  // REQ-F-B5-Retake-4: Track round for Round 2 flow
-  previousSessionId?: string  // REQ-F-B5-Retake-4: For Round 2 results
-}
-
 const TestResultsPage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const state = location.state as LocationState | null
-
-  // REQ-F-B5-Retake-4: Persist state to sessionStorage to prevent loss on navigation
-  // Save state to sessionStorage when available
-  React.useEffect(() => {
-    if (state?.sessionId) {
-      // Save latest sessionId for key lookup
-      sessionStorage.setItem('latest_test_session_id', state.sessionId)
-      // Save full state with sessionId-based key
-      sessionStorage.setItem(`test_results_state_${state.sessionId}`, JSON.stringify(state))
-      console.log('[TestResults] Saved state for session:', state.sessionId)
-      console.log('[TestResults] Full saved state:', state)
-      console.log('[TestResults] State has surveyId?', !!state.surveyId, 'Value:', state.surveyId)
-    }
-  }, [state])
-
-  // Get state from location.state or sessionStorage
-  const getPersistedState = (): LocationState | null => {
-    if (state) return state
-
-    // Get latest sessionId to construct correct key
-    const latestSessionId = sessionStorage.getItem('latest_test_session_id')
-    if (!latestSessionId) {
-      console.warn('[TestResults] No latest session ID found')
-      return null
-    }
-
-    const stored = sessionStorage.getItem(`test_results_state_${latestSessionId}`)
-    if (stored) {
-      try {
-        const restoredState = JSON.parse(stored) as LocationState
-        console.log('[TestResults] Restored state from sessionStorage:', restoredState)
-        return restoredState
-      } catch {
-        console.error('[TestResults] Failed to parse stored state')
-        return null
-      }
-    }
-    return null
-  }
-
-  // Get round from persisted state
-  const getRound = (): number => {
-    const persistedState = getPersistedState()
-    return persistedState?.round || 1
-  }
-
-  // Get effective sessionId from location.state or sessionStorage
-  const effectiveSessionId = React.useMemo(() => {
-    if (state?.sessionId) return state.sessionId
-
-    // Fallback to sessionStorage when navigating without state (e.g., from ExplanationPage)
-    const latestSessionId = sessionStorage.getItem('latest_test_session_id')
-    console.log('[TestResults] Using sessionId from sessionStorage:', latestSessionId)
-    return latestSessionId || undefined
-  }, [state])
+  const state = location.state as TestResultsLocationState | null
+  const { persistedState, round, effectiveSessionId } = usePersistedTestResultsState(state)
 
   // Custom hook for data fetching with retry logic
   const { resultData, isLoading, error, retry } = useTestResults(effectiveSessionId)
@@ -208,18 +149,17 @@ const TestResultsPage: React.FC = () => {
 
       {/* Action Buttons */}
       <ActionButtons
-        round={getRound()}
+        round={round}
         onGoHome={() => navigate('/home')}
         onRetake={async () => {
           // REQ-F-B5-Retake-4: Round 1 완료 시 Round 2 adaptive 시작
-          const persistedState = getPersistedState()
-          const currentRound = getRound()
+            const currentRound = round
 
           if (currentRound === 1) {
             // Round 1 → Round 2 adaptive
-            console.log('[Retake] Persisted state:', persistedState)
-            console.log('[Retake] surveyId:', persistedState?.surveyId)
-            console.log('[Retake] sessionId:', persistedState?.sessionId)
+              debugLog('[Retake] Persisted state:', persistedState)
+              debugLog('[Retake] surveyId:', persistedState?.surveyId)
+              debugLog('[Retake] sessionId:', persistedState?.sessionId)
 
             if (!persistedState?.surveyId || !persistedState?.sessionId) {
               console.error('[Retake] Missing surveyId or sessionId', {
@@ -231,7 +171,7 @@ const TestResultsPage: React.FC = () => {
               return
             }
 
-            console.log('[Retake] Round 1 completed, starting Round 2')
+              debugLog('[Retake] Round 1 completed, starting Round 2')
             navigate('/test', {
               state: {
                 surveyId: persistedState.surveyId,
@@ -242,13 +182,12 @@ const TestResultsPage: React.FC = () => {
           } else {
             // Round 2 완료 후 재응시는 없음 (버튼도 숨겨져 있어야 함)
             // 혹시 호출되면 fallback으로 home으로 이동
-            console.warn('[Retake] Unexpected retake after Round 2, round:', currentRound)
+              debugWarn('[Retake] Unexpected retake after Round 2, round:', currentRound)
             navigate('/home')
           }
         }}
         onViewExplanations={() => {
           // REQ: REQ-F-B4-7 - Navigate to explanation page
-          const persistedState = getPersistedState()
           if (persistedState?.sessionId) {
             navigate(`/test-explanations/${persistedState.sessionId}`)
           }

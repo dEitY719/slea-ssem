@@ -1,6 +1,7 @@
 // Mock HTTP transport for development without backend
 
 import { HttpTransport, RequestConfig } from './types'
+import { debugLog } from '../../utils/logger'
 
 const API_AUTH_LOGIN = '/api/auth/login'
 const API_PROFILE_NICKNAME = '/api/profile/nickname'
@@ -391,7 +392,7 @@ class MockTransport implements HttpTransport {
   private async mockRequest<T>(url: string, method: string, requestData?: any): Promise<T> {
     const normalizedUrl = ensureApiPath(url)
     requestLog.push({ url: normalizedUrl, method, body: requestData })
-    console.log(`[Mock Transport] ${method} ${normalizedUrl}`, requestData)
+    debugLog(`[Mock Transport] ${method} ${normalizedUrl}`, requestData)
 
     // Simulate network delay
     const delay = mockConfig.slowNetwork ? 3000 : mockConfig.delay
@@ -414,7 +415,7 @@ class MockTransport implements HttpTransport {
         if (!response) {
           throw new Error('Mock login response not configured')
         }
-        console.log('[Mock Transport] Response:', response)
+        debugLog('[Mock Transport] Response:', response)
         return response as T
       }
 
@@ -439,7 +440,7 @@ class MockTransport implements HttpTransport {
         ] : []
       }
 
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
@@ -473,7 +474,7 @@ class MockTransport implements HttpTransport {
         registered_at: mockData[API_PROFILE_NICKNAME].registered_at,
       }
 
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
@@ -497,8 +498,8 @@ class MockTransport implements HttpTransport {
         consent_at: mockData[API_PROFILE_CONSENT].consent_at,
       }
 
-      console.log('[Mock Transport] Consent updated:', mockData[API_PROFILE_CONSENT])
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Consent updated:', mockData[API_PROFILE_CONSENT])
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
@@ -554,14 +555,14 @@ class MockTransport implements HttpTransport {
         updated_at: new Date().toISOString(),
       }
 
-      console.log('[Mock Transport] Survey updated:', mockData[API_PROFILE_SURVEY])
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Survey updated:', mockData[API_PROFILE_SURVEY])
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
     // Handle questions generate endpoint
     if (normalizedUrl === API_QUESTIONS_GENERATE && method === 'POST') {
-      console.log('[Mock Transport] Generating questions for:', requestData)
+      debugLog('[Mock Transport] Generating questions for:', requestData)
         const template = mockData[API_QUESTIONS_GENERATE]
         if (!template) {
           throw new Error('Mock questions response not configured')
@@ -575,13 +576,13 @@ class MockTransport implements HttpTransport {
 
         // If same request within 2 seconds, return cached session
         if (recentRequest && now - recentRequest.timestamp < 2000) {
-          console.log('[Mock Transport] Returning cached session for duplicate request:', recentRequest.sessionId)
+          debugLog('[Mock Transport] Returning cached session for duplicate request:', recentRequest.sessionId)
           const response = {
             ...template,
             session_id: recentRequest.sessionId,
             questions: cloneQuestions(template.questions || []),
           }
-          console.log('[Mock Transport] Response (cached):', response)
+          debugLog('[Mock Transport] Response (cached):', response)
           return response as T
         }
 
@@ -600,13 +601,13 @@ class MockTransport implements HttpTransport {
           session_id: sessionId,
           questions: cloneQuestions(template.questions || []),
         }
-        console.log('[Mock Transport] Response:', response)
+        debugLog('[Mock Transport] Response:', response)
         return response as T
     }
 
     // REQ: REQ-F-B5-Retake-4 - Handle adaptive questions generate endpoint
     if (normalizedUrl === API_QUESTIONS_GENERATE_ADAPTIVE && method === 'POST') {
-      console.log('[Mock Transport] Generating adaptive questions (Round 2) for:', requestData)
+      debugLog('[Mock Transport] Generating adaptive questions (Round 2) for:', requestData)
       const template = mockData[API_QUESTIONS_GENERATE]
       if (!template) {
         throw new Error('Mock questions response not configured')
@@ -623,26 +624,26 @@ class MockTransport implements HttpTransport {
         session_id: sessionId,
         questions: cloneQuestions(template.questions || []),
       }
-      console.log('[Mock Transport] Adaptive Response (Round 2):', response)
+      debugLog('[Mock Transport] Adaptive Response (Round 2):', response)
       return response as T
     }
 
     // Handle questions autosave endpoint
     if (normalizedUrl === API_QUESTIONS_AUTOSAVE && method === 'POST') {
-      console.log('[Mock Transport] Autosaving answer:', requestData)
+      debugLog('[Mock Transport] Autosaving answer:', requestData)
       const response = {
         success: true,
         message: 'Answer autosaved successfully',
         autosave_id: `autosave_${Date.now()}`,
         saved_at: new Date().toISOString(),
       }
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
     // Handle questions score endpoint
     if (normalizedUrl.startsWith(API_QUESTIONS_SCORE) && method === 'POST') {
-      console.log('[Mock Transport] Calculating score for session:', normalizedUrl)
+      debugLog('[Mock Transport] Calculating score for session:', normalizedUrl)
       const response = {
         session_id: requestData?.session_id || 'mock_session_123',
         round: 1,
@@ -652,7 +653,7 @@ class MockTransport implements HttpTransport {
         wrong_categories: { 'ML Fundamentals': 1 },
         auto_completed: true,
       }
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
@@ -662,14 +663,14 @@ class MockTransport implements HttpTransport {
       const sessionIdMatch = normalizedUrl.match(/\/api\/questions\/session\/([^/]+)\/complete/)
       const sessionId = sessionIdMatch ? sessionIdMatch[1] : 'mock_session_123'
 
-      console.log('[Mock Transport] Completing session:', sessionId)
+      debugLog('[Mock Transport] Completing session:', sessionId)
       const response = {
         status: 'completed',
         session_id: sessionId,
         round: 1,
         message: 'Round 1 session completed successfully',
       }
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
@@ -678,7 +679,7 @@ class MockTransport implements HttpTransport {
       const sessionIdMatch = normalizedUrl.match(/\/api\/questions\/explanations\/session\/([^/]+)/)
       const sessionId = sessionIdMatch ? sessionIdMatch[1] : 'mock_session_123'
 
-      console.log('[Mock Transport] Fetching explanations for session:', sessionId)
+      debugLog('[Mock Transport] Fetching explanations for session:', sessionId)
       const response = {
         explanations: [
           {
@@ -903,42 +904,42 @@ class MockTransport implements HttpTransport {
           },
         ],
       }
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
     // Handle GET /profile/nickname endpoint
     if (normalizedUrl === API_PROFILE_NICKNAME && method === 'GET') {
       const response = mockData[API_PROFILE_NICKNAME]
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
     // Handle GET /profile/consent endpoint
     if (normalizedUrl === API_PROFILE_CONSENT && method === 'GET') {
       const response = mockData[API_PROFILE_CONSENT]
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
     // REQ: REQ-F-B5-Retake-1 - Handle GET /profile/history endpoint
     if (normalizedUrl === API_PROFILE_HISTORY && method === 'GET') {
       const response = mockData[API_PROFILE_HISTORY]
-      console.log('[Mock Transport] GET /profile/history - Response:', response)
+      debugLog('[Mock Transport] GET /profile/history - Response:', response)
       return response as T
     }
 
     // REQ: REQ-F-A1-Home - Handle GET /api/profile/last-test-result endpoint
     if (normalizedUrl === API_PROFILE_LAST_TEST_RESULT && method === 'GET') {
       const response = mockData[API_PROFILE_LAST_TEST_RESULT]
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
     // REQ: REQ-F-A1-Home - Handle GET /api/statistics/total-participants endpoint
     if (normalizedUrl === API_STATISTICS_TOTAL_PARTICIPANTS && method === 'GET') {
       const response = mockData[API_STATISTICS_TOTAL_PARTICIPANTS]
-      console.log('[Mock Transport] Response:', response)
+      debugLog('[Mock Transport] Response:', response)
       return response as T
     }
 
@@ -946,7 +947,7 @@ class MockTransport implements HttpTransport {
     if (normalizedUrl === API_PROFILE_RANKING && method === 'GET') {
       if (hasMockOverride(normalizedUrl)) {
         const override = mockData[normalizedUrl]
-        console.log('[Mock Transport] Response (override):', override)
+        debugLog('[Mock Transport] Response (override):', override)
         return override as T
       }
 
@@ -961,7 +962,7 @@ class MockTransport implements HttpTransport {
         recordCompletedResult(mostRecentAttempt, result)
       }
 
-      console.log('[Mock Transport] Response (ranking):', result)
+      debugLog('[Mock Transport] Response (ranking):', result)
       return deepClone(result) as T
     }
 
@@ -970,16 +971,16 @@ class MockTransport implements HttpTransport {
         if (normalizedUrl === API_RESULTS_PREVIOUS) {
           if (hasMockOverride(normalizedUrl)) {
             const override = mockData[normalizedUrl]
-            console.log('[Mock Transport] Response (override):', override)
+            debugLog('[Mock Transport] Response (override):', override)
             return override as T
           }
-          console.log('[Mock Transport] Response (previous):', nextPreviousResult)
+          debugLog('[Mock Transport] Response (previous):', nextPreviousResult)
           return (nextPreviousResult ?? null) as T
         }
 
         if (hasMockOverride(normalizedUrl)) {
           const override = mockData[normalizedUrl]
-          console.log('[Mock Transport] Response (override):', override)
+          debugLog('[Mock Transport] Response (override):', override)
           return override as T
         }
 
@@ -994,7 +995,7 @@ class MockTransport implements HttpTransport {
             recordCompletedResult(attemptIndex, result)
           }
 
-          console.log('[Mock Transport] Response:', result)
+          debugLog('[Mock Transport] Response:', result)
           return deepClone(result) as T
         }
       }
@@ -1006,7 +1007,7 @@ class MockTransport implements HttpTransport {
       throw new Error(`Mock data not found for: ${normalizedUrl}`)
     }
 
-    console.log('[Mock Transport] Response:', data)
+    debugLog('[Mock Transport] Response:', data)
     return data as T
   }
 
@@ -1148,5 +1149,5 @@ export function setMockScenario(
       mockConfig.simulateError = false
       break
   }
-  console.log(`[Mock Transport] Scenario set to: ${scenario}`)
+  debugLog(`[Mock Transport] Scenario set to: ${scenario}`)
 }
