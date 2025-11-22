@@ -153,7 +153,7 @@ const HomePage: React.FC = () => {
         {/* Section 1: 메인 CTA */}
         <section className="home-section">
           <div className="home-content">
-            <p className="home-label">TODAY'S LEARNING TEST</p>
+            <p className="home-label">TODAY'S LEVEL</p>
             <h1 className="home-title">
               오늘 당신의 AI 역량은?<br/>
             </h1>
