@@ -6,6 +6,7 @@ import NumberInput from '../components/NumberInput'
 import RadioButtonGrid, { type RadioButtonOption } from '../components/RadioButtonGrid'
 import TextAreaInput from '../components/TextAreaInput'
 import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
+import { type RetakeLocationState } from '../types/profile'
 import './CareerInfoPage.css'
 
 /**
@@ -47,25 +48,10 @@ export interface CareerTempData {
   duty: string
 }
 
-/**
- * Location state for retake mode - REQ: REQ-F-B5-Retake-1
- */
-type LocationState = {
-  retakeMode?: boolean
-  profileData?: {
-    surveyId: string
-    level: string
-    career: number
-    jobRole: string
-    duty: string
-    interests: string[]
-  }
-}
-
 const CareerInfoPage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const state = location.state as LocationState | null
+  const state = location.state as RetakeLocationState | null
 
   const [career, setCareer] = useState<number>(0)
   const [jobRole, setJobRole] = useState<string>('')

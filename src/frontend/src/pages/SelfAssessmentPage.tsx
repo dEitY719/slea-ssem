@@ -7,6 +7,7 @@ import LevelSelector from '../components/LevelSelector'
 import RadioButtonGrid, { type RadioButtonOption } from '../components/RadioButtonGrid'
 import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
 import { CAREER_TEMP_STORAGE_KEY, type CareerTempData } from './CareerInfoPage'
+import { type RetakeLocationState } from '../types/profile'
 import './SelfAssessmentPage.css'
 
 /**
@@ -39,25 +40,10 @@ const INTERESTS_OPTIONS: RadioButtonOption[] = [
   { value: 'Frontend', label: 'Frontend' },
 ]
 
-/**
- * Location state for retake mode - REQ: REQ-F-B5-Retake-1
- */
-type LocationState = {
-  retakeMode?: boolean
-  profileData?: {
-    surveyId: string
-    level: string
-    career: number
-    jobRole: string
-    duty: string
-    interests: string[]
-  }
-}
-
 const SelfAssessmentPage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const state = location.state as LocationState | null
+  const state = location.state as RetakeLocationState | null
 
   const [level, setLevel] = useState<number | null>(null)
   const [interests, setInterests] = useState<string>('')
