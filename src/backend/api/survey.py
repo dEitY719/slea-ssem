@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from src.backend.database import get_db
 from src.backend.services.survey_service import SurveyService
+from src.backend.utils.auth import get_current_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,7 @@ def get_survey_schema(
 )
 def submit_survey(
     request: SurveySubmitRequest,
+    user_id: int = Depends(get_current_user_id),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     """
@@ -122,6 +124,7 @@ def submit_survey(
 
     Args:
         request: Survey submission request
+        user_id: Current user ID from JWT token
         db: Database session
 
     Returns:
@@ -131,9 +134,6 @@ def submit_survey(
         HTTPException: If validation or submission fails
 
     """
-    # TODO: Extract user_id from JWT token in production
-    user_id = 1  # Placeholder - should come from JWT
-
     try:
         survey_service = SurveyService(db)
         survey_data = request.model_dump(exclude_none=True)
