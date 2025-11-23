@@ -108,9 +108,9 @@ class ExplainService:
                 attempt_answer_id=attempt_answer_id,
             )
 
-        # Generate new explanation
+        # Generate new explanation (with fallback tracking)
         try:
-            llm_response = self._generate_with_llm(
+            llm_response, is_fallback, error_message = self._generate_with_llm(
                 question=question,
                 user_answer=user_answer,
                 is_correct=is_correct,
@@ -133,6 +133,8 @@ class ExplainService:
             explanation_text=llm_response["explanation"],
             reference_links=llm_response["reference_links"],
             is_correct=is_correct,
+            is_fallback=is_fallback,
+            error_message=error_message,
         )
         self.session.add(explanation)
         self.session.commit()
@@ -197,7 +199,7 @@ class ExplainService:
         question: Question,
         user_answer: str | dict,
         is_correct: bool,
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any], bool, str | None]:
         """
         Generate explanation using LLM (Gemini with fallback to Mock).
 
@@ -209,7 +211,10 @@ class ExplainService:
             is_correct: Whether answer is correct
 
         Returns:
-            Dictionary with 'explanation' and 'reference_links'
+            Tuple of (explanation_dict, is_fallback, error_message)
+            - explanation_dict: Dictionary with 'explanation' and 'reference_links'
+            - is_fallback: Whether fallback was used
+            - error_message: Error details if fallback was used, None otherwise
 
         Raises:
             TimeoutError: If LLM request times out
@@ -219,11 +224,16 @@ class ExplainService:
             logger.info("Attempting to generate explanation using Gemini LLM")
             result = self._generate_with_gemini(question, user_answer, is_correct)
             logger.info("✓ Gemini LLM successfully generated explanation")
-            return result
+            return result, False, None
         except Exception as e:
-            logger.error(f"✗ Gemini API failed with error: {type(e).__name__}: {e}")
-            logger.info("Falling back to Mock LLM for explanation")
-            return self._generate_mock_explanation(question, user_answer, is_correct)
+            error_type = type(e).__name__
+            error_msg = str(e)
+            logger.error(
+                f"✗ Gemini API failed - Type: {error_type}, Message: {error_msg}",
+            )
+            logger.info("Using Mock LLM as fallback for explanation generation")
+            fallback_result = self._generate_mock_explanation(question, user_answer, is_correct)
+            return fallback_result, True, error_msg
 
     def _generate_with_gemini(
         self,
@@ -255,9 +265,23 @@ class ExplainService:
         response = llm.invoke(prompt)
         response_text = response.content
 
-        logger.debug(f"Gemini response: {response_text[:200]}...")
+        # Log raw response for debugging
+        logger.debug(f"Gemini raw response length: {len(response_text)} chars")
+        logger.debug(f"Gemini response preview: {response_text[:200]}...")
 
-        return self._parse_llm_response(response_text)
+        # Parse and validate response with quality monitoring
+        result = self._parse_llm_response(response_text)
+
+        # Log quality metrics
+        explanation_length = len(result.get("explanation", ""))
+        num_links = len(result.get("reference_links", []))
+        logger.info(
+            f"✓ Gemini response quality: "
+            f"explanation={explanation_length}chars (target≥200), "
+            f"references={num_links}links (target≥3)"
+        )
+
+        return result
 
     def _build_explanation_prompt(self, question: Question, user_answer: str | dict, is_correct: bool) -> str:
         """
@@ -292,7 +316,7 @@ class ExplainService:
         answer_schema = question.answer_schema or {}
         correct_key = self._extract_correct_answer_key(answer_schema, question.item_type or "unknown")
 
-        # Build detailed prompt
+        # Build detailed prompt with enhanced requirements
         prompt = f"""다음 문제에 대해 사용자 답변을 평가하고 맞춤형 해설을 작성해주세요.
 
 문제 유형: {question.item_type}
@@ -316,21 +340,23 @@ class ExplainService:
 정답: {correct_key}
 정오답: {"정답" if is_correct else "오답"}
 
-다음 JSON 포맷으로 해설을 작성해주세요. 괄호는 포함하지 마세요:
+다음 JSON 포맷으로 상세한 해설을 작성해주세요. 괄호는 포함하지 마세요:
 {{
-  "explanation": "[틀린 이유]\\n사용자가 왜 틀렸을 가능성이 있는지 구체적으로 분석해주세요. (50-100자)\\n\\n[정답의 원리]\\n정답이 왜 맞는지, 개념 설명 + 구체적 예시를 포함해주세요. (100-150자)\\n\\n[개념 구분]\\n유사한 개념들을 비교하여 구분해주세요. (50-100자)\\n\\n[복습 팁]\\n사용자가 이 유형의 문제를 잘하기 위한 팁을 제시해주세요. (50-100자)",
+  "explanation": "[틀린 이유]\\n사용자가 선택한 이유와 오류를 구체적으로 분석해주세요. (200-300자)\\n예: \"이 보기는...왜냐하면...따라서 틀렸습니다\"\\n\\n[정답의 원리]\\n'{correct_key}'가 정답인 이유를 개념 설명 + 구체적 예시와 함께 상세히 설명해주세요. (250-350자)\\n예: \"이것이 정답인 이유는...구체적으로는...이런 경우에 적용됩니다\"\\n\\n[개념 구분]\\n혼동하기 쉬운 유사 개념들을 비교표나 구체적인 차이점으로 명확히 구분해주세요. (150-250자)\\n예: \"A는 ...하고, B는 ...하는 점이 다릅니다\"\\n\\n[복습 팁]\\n사용자가 이 유형의 문제를 다음에 올바르게 풀기 위한 구체적인 학습 전략을 제시해주세요. (100-200자)\\n예: \"다음 번에는...확인하세요\"",
   "reference_links": [
-    {{"title": "참고자료 제목 1", "url": "https://example.com/resource1"}},
-    {{"title": "참고자료 제목 2", "url": "https://example.com/resource2"}},
-    {{"title": "참고자료 제목 3", "url": "https://example.com/resource3"}}
+    {{"title": "개념 설명 자료", "url": "https://example.com/concept-{question.category.lower()}"}},
+    {{"title": "심화 학습 가이드", "url": "https://example.com/guide-{question.category.lower()}"}},
+    {{"title": "관련 문제 풀이집", "url": "https://example.com/problems-{question.category.lower()}"}}
   ]
 }}
 
-요구사항:
-- 각 섹션은 200자 이상의 구체적이고 유용한 설명이어야 합니다.
-- 문제의 구체적인 내용(stem, 선택지 등)을 활용하여 맞춤형 해설을 작성해주세요.
-- 참고 링크는 3개 이상, 한글 제목 포함해야 합니다.
-- JSON은 유효한 형식이어야 합니다.
+매우 중요한 요구사항:
+✓ 각 섹션([틀린 이유], [정답의 원리], [개념 구분], [복습 팁])의 설명은 총합 700자 이상, 전체 explanation 필드는 최소 200자 이상이어야 합니다.
+✓ 문제의 구체적인 내용(stem, 선택지, 정답)을 활용하여 이 문제에만 적용되는 맞춤형 해설을 작성해주세요.
+✓ 추상적인 설명보다는 구체적인 예시, 사례, 비유를 포함해주세요.
+✓ 참고 링크는 정확히 3개, 모두 한글 제목을 포함해야 합니다.
+✓ JSON은 유효한 형식(따옴표 이스케이프 포함)이어야 합니다.
+✓ "\\n" 사용 금지 - 대신 실제 줄바꿈을 포함하세요.
 """
 
         return prompt
@@ -372,13 +398,11 @@ class ExplainService:
 
             # Validate explanation length
             if len(explanation) < 200:
-                logger.warning(f"Explanation too short ({len(explanation)} chars), using fallback")
-                raise ValueError(f"Explanation must be at least 200 chars, got {len(explanation)}")
+                raise ValueError(f"Explanation too short: {len(explanation)} chars (required ≥200)")
 
             # Validate reference links
             if len(reference_links) < 3:
-                logger.warning(f"Not enough reference links ({len(reference_links)}), using fallback")
-                raise ValueError(f"Must have at least 3 reference links, got {len(reference_links)}")
+                raise ValueError(f"Insufficient reference links: {len(reference_links)} (required ≥3)")
 
             # Validate link structure
             for link in reference_links:
@@ -391,7 +415,7 @@ class ExplainService:
             }
 
         except (json.JSONDecodeError, ValueError, KeyError) as e:
-            logger.error(f"Failed to parse LLM response: {e}")
+            logger.error(f"Failed to parse LLM response: {type(e).__name__}: {e}")
             raise ValueError(f"Invalid LLM response format: {e}") from e
 
     def _generate_mock_explanation(
@@ -778,8 +802,8 @@ class ExplainService:
             "problem_statement": problem_statement,
             "is_correct": explanation.is_correct,
             "created_at": explanation.created_at.isoformat(),
-            "is_fallback": False,
-            "error_message": None,
+            "is_fallback": explanation.is_fallback,
+            "error_message": explanation.error_message,
         }
 
     def _parse_explanation_sections(self, explanation_text: str) -> list[dict[str, str]]:

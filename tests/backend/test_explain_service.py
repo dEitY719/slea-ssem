@@ -75,7 +75,9 @@ class TestExplanationGeneration:
             ],
         }
 
-        with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response):
+        with patch.object(
+            ExplainService, "_generate_with_llm", return_value=(mock_llm_response, False, None)
+        ):
             service = ExplainService(db_session)
             start_time = time.time()
             result = service.generate_explanation(
@@ -117,7 +119,9 @@ class TestExplanationGeneration:
             ],
         }
 
-        with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response):
+        with patch.object(
+            ExplainService, "_generate_with_llm", return_value=(mock_llm_response, False, None)
+        ):
             service = ExplainService(db_session)
             result = service.generate_explanation(
                 question_id=question.id,
@@ -155,7 +159,9 @@ class TestExplanationGeneration:
             ],
         }
 
-        with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response):
+        with patch.object(
+            ExplainService, "_generate_with_llm", return_value=(mock_llm_response, False, None)
+        ):
             service = ExplainService(db_session)
             with pytest.raises(ValueError, match="Explanation must be at least 200 characters"):
                 service.generate_explanation(
@@ -189,9 +195,11 @@ class TestExplanationGeneration:
             ],  # Only 2 links
         }
 
-        with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response):
+        with patch.object(
+            ExplainService, "_generate_with_llm", return_value=(mock_llm_response, False, None)
+        ):
             service = ExplainService(db_session)
-            with pytest.raises(ValueError, match="must have at least 3 reference links"):
+            with pytest.raises(ValueError, match="at least 3 reference links"):
                 service.generate_explanation(
                     question_id=question.id,
                     user_answer="A",
@@ -223,7 +231,9 @@ class TestExplanationGeneration:
             ],
         }
 
-        with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response):
+        with patch.object(
+            ExplainService, "_generate_with_llm", return_value=(mock_llm_response, False, None)
+        ):
             service = ExplainService(db_session)
             start_time = time.time()
             service.generate_explanation(
@@ -265,7 +275,9 @@ class TestExplanationRetrieval:
             ],
         }
 
-        with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response):
+        with patch.object(
+            ExplainService, "_generate_with_llm", return_value=(mock_llm_response, False, None)
+        ):
             service = ExplainService(db_session)
             service.generate_explanation(
                 question_id=question.id,
@@ -410,7 +422,9 @@ class TestExplanationPersistence:
             ],
         }
 
-        with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response):
+        with patch.object(
+            ExplainService, "_generate_with_llm", return_value=(mock_llm_response, False, None)
+        ):
             service = ExplainService(db_session)
             result = service.generate_explanation(
                 question_id=question.id,
@@ -451,7 +465,9 @@ class TestExplanationPersistence:
         }
 
         # First call
-        with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response) as mock_llm:
+        with patch.object(
+            ExplainService, "_generate_with_llm", return_value=(mock_llm_response, False, None)
+        ) as mock_llm:
             service = ExplainService(db_session)
             result1 = service.generate_explanation(
                 question_id=question.id,
@@ -497,7 +513,9 @@ class TestExplanationPersistence:
             ],
         }
 
-        with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response):
+        with patch.object(
+            ExplainService, "_generate_with_llm", return_value=(mock_llm_response, False, None)
+        ):
             service = ExplainService(db_session)
             result = service.generate_explanation(
                 question_id=attempt_answer.question_id,
@@ -538,7 +556,9 @@ class TestLLMIntegration:
             ],
         }
 
-        with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response):
+        with patch.object(
+            ExplainService, "_generate_with_llm", return_value=(mock_llm_response, False, None)
+        ):
             service = ExplainService(db_session)
             result = service.generate_explanation(
                 question_id=question.id,
@@ -578,7 +598,9 @@ class TestLLMIntegration:
             ],
         }
 
-        with patch.object(ExplainService, "_generate_with_llm", return_value=mock_llm_response):
+        with patch.object(
+            ExplainService, "_generate_with_llm", return_value=(mock_llm_response, False, None)
+        ):
             service = ExplainService(db_session)
             result = service.generate_explanation(
                 question_id=question.id,

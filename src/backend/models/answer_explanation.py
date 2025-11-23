@@ -24,6 +24,7 @@ class AnswerExplanation(Base):
     - Optional: Can be linked to specific attempt_answer_id for tracking user attempts
     - Stores explanation text and reference links
     - Used for providing learning feedback after scoring
+    - Tracks when fallback is used due to LLM generation failures
 
     Attributes:
         id: Primary key (UUID)
@@ -32,6 +33,8 @@ class AnswerExplanation(Base):
         explanation_text: Explanation content (≥500 chars)
         reference_links: List of reference links [{title, url}, ...] (≥3)
         is_correct: Whether explanation is for correct or incorrect answer
+        is_fallback: Whether this explanation used fallback (mock) due to LLM failure
+        error_message: Error details if fallback was used (for debugging)
         created_at: When explanation was generated
         updated_at: Last update timestamp (for cache invalidation)
 
@@ -55,6 +58,8 @@ class AnswerExplanation(Base):
     explanation_text: Mapped[str] = mapped_column(String(5000), nullable=False)
     reference_links: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
     is_correct: Mapped[bool] = mapped_column(default=True, nullable=False)
+    is_fallback: Mapped[bool] = mapped_column(default=False, nullable=False)
+    error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
