@@ -30,7 +30,7 @@ class TestGoogleGenerativeAIProvider:
         Acceptance Criteria:
         - Provider creates ChatGoogleGenerativeAI with GEMINI_API_KEY
         - Instance has correct model name ("gemini-2.0-flash")
-        - Instance has correct temperature (0.7)
+        - Instance has correct temperature (0.3)
         - Instance has correct max_output_tokens (8192)
         """
         provider = GoogleGenerativeAIProvider()
@@ -40,7 +40,7 @@ class TestGoogleGenerativeAIProvider:
             assert isinstance(llm, ChatGoogleGenerativeAI)
             # ChatGoogleGenerativeAI automatically prepends "models/" to model name
             assert llm.model == "models/gemini-2.0-flash"
-            assert llm.temperature == 0.7
+            assert llm.temperature == 0.3
             assert llm.max_output_tokens == 8192
 
     def test_create_raises_error_when_gemini_api_key_missing(self) -> None:
@@ -83,8 +83,8 @@ class TestLiteLLMProvider:
         - Provider creates ChatOpenAI instance
         - Instance uses custom base_url (LiteLLM proxy endpoint)
         - Instance has correct model from environment
-        - Instance has correct temperature (0.7)
-        - Instance has correct max_tokens (2048)
+        - Instance has correct temperature (0.3)
+        - Instance has correct max_tokens (8192)
         """
         provider = LiteLLMProvider()
         env_vars = {
@@ -97,8 +97,8 @@ class TestLiteLLMProvider:
 
             assert isinstance(llm, ChatOpenAI)
             assert llm.model_name == "gemini-2.5-pro"
-            assert llm.temperature == 0.7
-            assert llm.max_tokens == 2048
+            assert llm.temperature == 0.3
+            assert llm.max_tokens == 8192
 
     def test_create_raises_error_when_litellm_base_url_missing(self) -> None:
         """

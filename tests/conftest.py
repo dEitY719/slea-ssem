@@ -33,6 +33,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
+from unittest.mock import patch
 
 from src.backend.database import get_db
 from src.backend.models.attempt import Attempt
@@ -46,6 +47,29 @@ from src.backend.models.user_profile import UserProfileSurvey
 
 # Load .env to get TEST_DATABASE_URL
 load_dotenv()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def patch_database_for_tools(db_engine: Engine) -> Generator[None, None, None]:
+    """
+    Patch src.backend.database.SessionLocal to use test database.
+
+    This ensures that tools (like save_generated_question) that call get_db()
+    directly will use the test database instead of the production database.
+
+    Args:
+        db_engine: Test database engine fixture
+
+    Yields:
+        None
+
+    """
+    # Create a test SessionLocal bound to test database
+    test_session_local = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
+
+    # Patch src.backend.database.SessionLocal with the test version
+    with patch("src.backend.database.SessionLocal", test_session_local):
+        yield
 
 
 @pytest.fixture(scope="function")

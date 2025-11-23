@@ -442,14 +442,13 @@ def _validate_single_question(
 
 @tool
 def validate_question_quality(
-    stem: str | list[str],
-    question_type: str | list[str],
-    choices: list[str] | list[list[str]] | None = None,
-    correct_answer: str | list[str] = None,
-    batch: bool = False,
-) -> dict[str, Any] | list[dict[str, Any]]:
+    stem: str,
+    question_type: str,
+    choices: list[str] | None = None,
+    correct_answer: str | None = None,
+) -> dict[str, Any]:
     """
-    Validate the quality of AI-generated questions.
+    Validate the quality of an AI-generated question.
 
     REQ: REQ-A-Mode1-Tool4
 
@@ -461,14 +460,13 @@ def validate_question_quality(
     should_discard = (final_score < 0.70) OR (recommendation == "reject")
 
     Args:
-        stem: Question stem text (max 250 chars) or list for batch
-        question_type: "multiple_choice" | "true_false" | "short_answer" or list for batch
+        stem: Question stem text (max 250 chars)
+        question_type: "multiple_choice" | "true_false" | "short_answer"
         choices: Answer choices for multiple_choice (4-5 items) or None for other types
-        correct_answer: Correct answer text or list for batch
-        batch: If True, process multiple questions (lists of stems, types, etc.)
+        correct_answer: Correct answer text
 
     Returns:
-        dict (single) or list[dict] (batch) with:
+        dict with:
             - is_valid: bool (True if final_score >= 0.70)
             - score: float (LLM semantic score, 0.0-1.0)
             - rule_score: float (rule-based score, 0.0-1.0)
@@ -482,7 +480,7 @@ def validate_question_quality(
         ValueError: If inputs are invalid
         TypeError: If inputs have wrong types
 
-    Example (single):
+    Example:
         >>> result = validate_question_quality(
         ...     stem="What is RAG?",
         ...     question_type="multiple_choice",
@@ -494,16 +492,5 @@ def validate_question_quality(
         >>> result["should_discard"]
         False
 
-    Example (batch):
-        >>> results = validate_question_quality(
-        ...     stem=["Question 1", "Question 2"],
-        ...     question_type=["short_answer", "true_false"],
-        ...     choices=[None, ["True", "False"]],
-        ...     correct_answer=["Answer 1", "True"],
-        ...     batch=True
-        ... )
-        >>> len(results)
-        2
-
     """
-    return _validate_question_quality_impl(stem, question_type, choices, correct_answer, batch)
+    return _validate_question_quality_impl(stem, question_type, choices, correct_answer, False)
