@@ -251,11 +251,12 @@ class QuestionGenerationService:
         """
         Normalize answer_schema from various formats to standard format.
 
-        Converts Mock format {"correct_key": "B", "explanation": "..."} to
-        standard format {"type": "exact_match", "keywords": null, "correct_answer": "B"}
+        Converts various formats:
+        - Mock: {"correct_key": "B", "explanation": "..."} → {"type": "exact_match", "keywords": None, "correct_answer": "B"}
+        - Agent: {"type": "keyword_match", "correct_keywords": [...]} → {"type": "keyword_match", "keywords": [...], "correct_answer": None}
 
         Args:
-            raw_schema: Raw answer_schema from mock data or LLM
+            raw_schema: Raw answer_schema from mock data or LLM agent
             item_type: Question type (multiple_choice, true_false, short_answer)
 
         Returns:
@@ -273,11 +274,19 @@ class QuestionGenerationService:
             return {"type": raw_schema, "keywords": None, "correct_answer": None}
 
         if isinstance(raw_schema, dict):
-            # Case 1: Standard Tool 5 format
+            # Case 1: Standard Tool 5 format with "keywords" field
             if "type" in raw_schema and ("keywords" in raw_schema or "correct_answer" in raw_schema):
                 return {
                     "type": raw_schema.get("type", "exact_match"),
                     "keywords": raw_schema.get("keywords"),
+                    "correct_answer": raw_schema.get("correct_answer"),
+                }
+
+            # Case 1b: Agent format with "correct_keywords" field (maps to "keywords")
+            if "type" in raw_schema and "correct_keywords" in raw_schema:
+                return {
+                    "type": raw_schema.get("type", "keyword_match"),
+                    "keywords": raw_schema.get("correct_keywords"),
                     "correct_answer": raw_schema.get("correct_answer"),
                 }
 
@@ -292,12 +301,61 @@ class QuestionGenerationService:
             # Case 4: Unknown format - best effort
             return {
                 "type": raw_schema.get("type", raw_schema.get("answer_type", "exact_match")),
-                "keywords": raw_schema.get("keywords"),
+                "keywords": raw_schema.get("keywords", raw_schema.get("correct_keywords")),
                 "correct_answer": raw_schema.get("correct_answer", raw_schema.get("correct_key")),
             }
 
         # Fallback
         return {"type": "exact_match", "keywords": None, "correct_answer": None}
+
+    def _validate_answer_schema_before_save(self, normalized_schema: dict, item_type: str) -> None:
+        r"""
+        Validate answer_schema before saving to database (fail-fast pattern).
+
+        Ensures:
+        - Required fields are present (type, keywords, correct_answer)
+        - No null keywords for keyword_match type (indicates failed transformation)
+        - Proper structure for the question type
+
+        Args:
+            normalized_schema: Normalized answer_schema dict
+            item_type: Question type (multiple_choice, true_false, short_answer)
+
+        Raises:
+            ValueError: If validation fails
+
+        """
+        if not isinstance(normalized_schema, dict):
+            raise ValueError(f"answer_schema must be dict, got {type(normalized_schema)}")
+
+        if "type" not in normalized_schema:
+            raise ValueError("answer_schema missing required field: type")
+
+        schema_type = normalized_schema.get("type")
+
+        # Validate keyword_match type has keywords
+        if schema_type == "keyword_match":
+            keywords = normalized_schema.get("keywords")
+            if keywords is None or (isinstance(keywords, list) and len(keywords) == 0):
+                raise ValueError(
+                    f"answer_schema type={schema_type} requires non-empty keywords list. "
+                    f"Got: {keywords}. This indicates Agent response transformation failed. "
+                    f"Check if Agent sends 'correct_keywords' field."
+                )
+
+        # Validate exact_match type has correct_answer
+        if schema_type == "exact_match":
+            correct_answer = normalized_schema.get("correct_answer")
+            if correct_answer is None or (isinstance(correct_answer, str) and len(correct_answer.strip()) == 0):
+                raise ValueError(
+                    f"answer_schema type={schema_type} requires non-empty correct_answer. "
+                    f"Got: {correct_answer}"
+                )
+
+        logger.debug(
+            f"✓ answer_schema validated: type={schema_type}, "
+            f"item_type={item_type}, keywords_count={len(normalized_schema.get('keywords') or [])}"
+        )
 
     async def generate_questions(
         self,
@@ -450,13 +508,19 @@ class QuestionGenerationService:
                         if hasattr(item.answer_schema, "model_dump")
                         else item.answer_schema
                     )
+                    # Normalize answer_schema to standard format (fixes agent response format)
+                    normalized_schema = self._normalize_answer_schema(answer_schema_value, item.type)
+
+                    # Validate answer_schema before saving (fail-fast pattern)
+                    self._validate_answer_schema_before_save(normalized_schema, item.type)
+
                     question = Question(
                         id=item.id,
                         session_id=session_id,
                         item_type=item.type,
                         stem=item.stem,
                         choices=item.choices,
-                        answer_schema=answer_schema_value,
+                        answer_schema=normalized_schema,
                         difficulty=item.difficulty,
                         category=item.category,
                         round=round_num,
