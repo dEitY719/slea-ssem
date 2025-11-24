@@ -18,6 +18,7 @@ def profile_help(context: CLIContext, *args: str) -> None:
     context.console.print(
         "  profile update_survey         - Survey 업데이트 (인증 필요, 옵션: job_role, duty, interests)"
     )
+    context.console.print("  profile get-survey            - 최근 자기평가 정보 조회 (인증 필요)")
     context.console.print("  profile reset_surveys         - 모든 Survey 기록 강제 삭제 (FK 무시, DEV용)")
     context.console.print("  profile get-consent           - 개인정보 동의 여부 확인 (인증 필요)")
     context.console.print("  profile set-consent           - 개인정보 동의 상태 변경 (인증 필요)")
@@ -294,6 +295,89 @@ def update_survey(context: CLIContext, *args: str) -> None:
     context.console.print("[dim]  New profile record created[/dim]")
     context.logger.info(
         f"Survey updated: level={level}, career={career}, job_role={job_role}, duty={duty}, interests={interests_str}."
+    )
+
+
+def get_survey(context: CLIContext, *args: str) -> None:
+    """현재 사용자의 최근 자기평가 정보를 조회합니다."""
+    if not context.session.token:
+        context.console.print("[bold red]✗ Not authenticated[/bold red]")
+        context.console.print("[yellow]Please login first: auth login [username][/yellow]")
+        return
+
+    context.console.print("[dim]Fetching profile survey...[/dim]")
+
+    # JWT 토큰을 client에 설정
+    context.client.set_token(context.session.token)
+
+    # API 호출
+    status_code, response, error = context.client.make_request(
+        "GET",
+        "/profile/survey",
+    )
+
+    if error:
+        context.console.print("[bold red]✗ Failed to fetch survey[/bold red]")
+        context.console.print(f"[red]  Error: {error}[/red]")
+        context.logger.error(f"Survey fetch failed: {error}")
+        return
+
+    if status_code != 200:
+        context.console.print(f"[bold red]✗ Failed (HTTP {status_code})[/bold red]")
+        return
+
+    # Extract survey data
+    level = response.get("level")
+    career = response.get("career")
+    job_role = response.get("job_role")
+    duty = response.get("duty")
+    interests = response.get("interests")
+
+    # Display survey information
+    context.console.print()
+    context.console.print("[bold cyan]═════════════════════════════════════════════[/bold cyan]")
+    context.console.print("[bold cyan]📋 Your Profile Survey[/bold cyan]")
+    context.console.print("[bold cyan]═════════════════════════════════════════════[/bold cyan]")
+    context.console.print()
+
+    # Check if any data exists
+    if level is None and career is None and job_role is None and duty is None and interests is None:
+        context.console.print("[bold yellow]ℹ️  No profile survey found[/bold yellow]")
+        context.console.print("[dim]  You have not submitted a profile survey yet[/dim]")
+    else:
+        # Display each field
+        if level is not None:
+            context.console.print(f"[bold]Level:[/bold] {level}")
+        else:
+            context.console.print("[bold]Level:[/bold] [dim]Not set[/dim]")
+
+        if career is not None:
+            context.console.print(f"[bold]Career:[/bold] {career} years")
+        else:
+            context.console.print("[bold]Career:[/bold] [dim]Not set[/dim]")
+
+        if job_role is not None:
+            context.console.print(f"[bold]Job Role:[/bold] {job_role}")
+        else:
+            context.console.print("[bold]Job Role:[/bold] [dim]Not set[/dim]")
+
+        if duty is not None:
+            context.console.print(f"[bold]Duty:[/bold] {duty}")
+        else:
+            context.console.print("[bold]Duty:[/bold] [dim]Not set[/dim]")
+
+        if interests is not None:
+            interests_str = ", ".join(interests) if isinstance(interests, list) else interests
+            context.console.print(f"[bold]Interests:[/bold] {interests_str}")
+        else:
+            context.console.print("[bold]Interests:[/bold] [dim]Not set[/dim]")
+
+    context.console.print()
+    context.console.print("[bold cyan]═════════════════════════════════════════════[/bold cyan]")
+    context.console.print()
+
+    context.logger.info(
+        f"Fetched survey: level={level}, career={career}, job_role={job_role}, duty={duty}, interests={interests}."
     )
 
 

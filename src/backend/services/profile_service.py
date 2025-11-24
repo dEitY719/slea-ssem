@@ -26,6 +26,7 @@ class ProfileService:
         check_nickname_available_for_edit: Check if nickname is available (excluding self)
         edit_nickname: Edit user's nickname
         update_survey: Create/update user profile survey
+        get_latest_survey: Get user's most recent self-assessment survey
         get_user_consent: Get user's privacy consent status
         update_user_consent: Update user's privacy consent status
 
@@ -40,6 +41,7 @@ class ProfileService:
 
         """
         self.session = session
+        self.logger = None  # Will be set when needed
 
     def check_nickname_availability(self, nickname: str) -> dict[str, Any]:
         """
@@ -295,6 +297,54 @@ class ProfileService:
             "user_id": survey.user_id,
             "self_level": survey.self_level,
             "submitted_at": survey.submitted_at.isoformat(),
+        }
+
+    def get_latest_survey(self, user_id: int) -> dict[str, Any]:
+        """
+        Get user's most recent self-assessment survey.
+
+        REQ: REQ-B-A2-Prof-4, REQ-B-A2-Prof-5, REQ-B-A2-Prof-6
+
+        Queries the most recent survey record by submitted_at DESC.
+        Returns all null values if no survey exists.
+
+        Args:
+            user_id: User ID to query
+
+        Returns:
+            Dictionary with:
+                - level (str | None): Self-assessed level
+                - career (int | None): Years of experience
+                - job_role (str | None): Job role
+                - duty (str | None): Job duties
+                - interests (list[str] | None): Interest categories
+
+        """
+        # Query most recent survey for user, ordered by submitted_at DESC
+        survey = (
+            self.session.query(UserProfileSurvey)
+            .filter_by(user_id=user_id)
+            .order_by(UserProfileSurvey.submitted_at.desc())
+            .first()
+        )
+
+        # If no survey exists, return all null values
+        if not survey:
+            return {
+                "level": None,
+                "career": None,
+                "job_role": None,
+                "duty": None,
+                "interests": None,
+            }
+
+        # Return survey data with field mappings
+        return {
+            "level": survey.self_level,
+            "career": survey.years_experience,
+            "job_role": survey.job_role,
+            "duty": survey.duty,
+            "interests": survey.interests,
         }
 
     def _validate_survey_data(self, survey_data: dict[str, Any]) -> None:

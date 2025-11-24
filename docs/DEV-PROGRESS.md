@@ -72,6 +72,9 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-B-A2 | 닉네임 등록 | 4 | ✅ Done | 23 tests (100%), Commit: 5e6c373 |
 | REQ-B-A2-Signup | 통합 회원가입 API (닉네임 + 프로필 한 번에 저장) | 0 | ⏳ Backlog | 5개 sub-tasks (트랜잭션 처리) |
 | REQ-B-A2-Edit | 프로필 수정 | 4 | ✅ Done | 28 tests (100%), Commit: fdb3896 |
+| REQ-B-A2-Prof-4 | 최근 자기평가 정보 조회 | 4 | ✅ Done | 3 tests (100%), Commit: (pending), Progress: docs/progress/REQ-B-A2-Prof-4.md |
+| REQ-B-A2-Prof-5 | 자기평가 정보가 없는 경우 null 값으로 응답 | 4 | ✅ Done | 8 tests (100%), Enhanced test coverage (TC-2,4,7,8,9 added), Progress: docs/progress/REQ-B-A2-Prof-5.md |
+| REQ-B-A2-Prof-6 | 자기평가 조회 API는 1초 내에 응답 | 4 | ✅ Done | 13 tests (100%, 5 new performance tests), Performance baseline established, Commit: (pending), Progress: docs/progress/REQ-B-A2-Prof-6.md |
 | REQ-B-B1 | 자기평가 데이터 수집 & 저장 | 4 | ✅ Done | 14 tests (100%), Commit: (pending) |
 | REQ-B-B2-Gen | 1차 문항 생성 | 4 | ✅ Done | 12 tests (100%), Mock data, Commit: (pending) |
 | REQ-B-B2-Adapt | 2차 적응형 난이도 조정 | 4 | ✅ Done | 41 tests (100%), Commit: 9608f57 |

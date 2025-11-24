@@ -5,7 +5,7 @@ REQ: REQ-B-A2-Avail-1, REQ-B-A2-Avail-2, REQ-B-A2-Avail-3, REQ-B-A2-Avail-4,
      REQ-B-A2-Reg-1, REQ-B-A2-Reg-2, REQ-B-A2-Reg-3,
      REQ-B-A2-View-1, REQ-B-A2-View-2,
      REQ-B-A2-Edit-1, REQ-B-A2-Edit-2, REQ-B-A2-Edit-3, REQ-B-A2-Edit-4,
-     REQ-B-A2-Prof-1, REQ-B-A2-Prof-2, REQ-B-A2-Prof-3,
+     REQ-B-A2-Prof-1, REQ-B-A2-Prof-2, REQ-B-A2-Prof-3, REQ-B-A2-Prof-4, REQ-B-A2-Prof-5, REQ-B-A2-Prof-6,
      REQ-B-A3-1, REQ-B-A3-2
 """
 
@@ -95,6 +95,16 @@ class SurveyUpdateRequest(BaseModel):
     job_role: str | None = Field(None, description="Job role/title")
     duty: str | None = Field(None, description="Main responsibilities")
     interests: list[str] | None = Field(None, description="Interest categories")
+
+
+class SurveyRetrievalResponse(BaseModel):
+    """Response model for survey retrieval."""
+
+    level: str | None = Field(..., description="Self-assessed level")
+    career: int | None = Field(..., description="Years of experience (0-60)")
+    job_role: str | None = Field(..., description="Job role/title")
+    duty: str | None = Field(..., description="Main responsibilities")
+    interests: list[str] | None = Field(..., description="Interest categories")
 
 
 class SurveyUpdateResponse(BaseModel):
@@ -373,6 +383,45 @@ def update_survey(
     except Exception as e:
         logger.exception("Error updating survey")
         raise HTTPException(status_code=500, detail="Failed to update survey") from e
+
+
+@router.get(
+    "/survey",
+    response_model=SurveyRetrievalResponse,
+    status_code=200,
+    summary="Get Latest Survey",
+    description="Retrieve current user's most recent self-assessment info (requires JWT)",
+)
+def get_latest_survey(
+    user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """
+    Get current user's most recent self-assessment survey.
+
+    REQ: REQ-B-A2-Prof-4, REQ-B-A2-Prof-5, REQ-B-A2-Prof-6
+
+    Returns the most recent survey record (by submitted_at DESC).
+    If no survey exists, returns all null values.
+
+    Args:
+        user: Current authenticated user (from JWT)
+        db: Database session
+
+    Returns:
+        Response with user's latest survey data (or all null if none exists)
+
+    Raises:
+        HTTPException: 401 if not authenticated
+
+    """
+    try:
+        profile_service = ProfileService(db)
+        result = profile_service.get_latest_survey(user.id)
+        return result
+    except Exception as e:
+        logger.exception("Error retrieving survey")
+        raise HTTPException(status_code=500, detail="Failed to retrieve survey") from e
 
 
 @router.get(

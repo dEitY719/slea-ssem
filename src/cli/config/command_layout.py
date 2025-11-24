@@ -78,6 +78,11 @@ COMMAND_LAYOUT = {
                 "usage": "profile update_survey",
                 "target": "src.cli.actions.profile.update_survey",
             },
+            "get-survey": {
+                "description": "최근 자기평가 정보 조회",
+                "usage": "profile get-survey",
+                "target": "src.cli.actions.profile.get_survey",
+            },
             "reset_surveys": {
                 "description": "모든 Survey 기록 강제 삭제 (FK 무시, DEV용)",
                 "usage": "profile reset_surveys",
