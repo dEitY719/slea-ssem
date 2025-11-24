@@ -342,7 +342,7 @@ class ExplainService:
 
 다음 JSON 포맷으로 상세한 해설을 작성해주세요. 괄호는 포함하지 마세요:
 {{
-  "explanation": "[틀린 이유]\\n사용자가 선택한 이유와 오류를 구체적으로 분석해주세요. (200-300자)\\n예: \"이 보기는...왜냐하면...따라서 틀렸습니다\"\\n\\n[정답의 원리]\\n'{correct_key}'가 정답인 이유를 개념 설명 + 구체적 예시와 함께 상세히 설명해주세요. (250-350자)\\n예: \"이것이 정답인 이유는...구체적으로는...이런 경우에 적용됩니다\"\\n\\n[개념 구분]\\n혼동하기 쉬운 유사 개념들을 비교표나 구체적인 차이점으로 명확히 구분해주세요. (150-250자)\\n예: \"A는 ...하고, B는 ...하는 점이 다릅니다\"\\n\\n[복습 팁]\\n사용자가 이 유형의 문제를 다음에 올바르게 풀기 위한 구체적인 학습 전략을 제시해주세요. (100-200자)\\n예: \"다음 번에는...확인하세요\"",
+  "explanation": "[틀린 이유]\\n사용자가 선택한 이유와 오류를 구체적으로 분석해주세요. (200-300자)\\n예: \\"이 보기는...왜냐하면...따라서 틀렸습니다\\"\\n\\n[정답의 원리]\\n'{correct_key}'가 정답인 이유를 개념 설명 + 구체적 예시와 함께 상세히 설명해주세요. (250-350자)\\n예: \\"이것이 정답인 이유는...구체적으로는...이런 경우에 적용됩니다\\"\\n\\n[개념 구분]\\n혼동하기 쉬운 유사 개념들을 비교표나 구체적인 차이점으로 명확히 구분해주세요. (150-250자)\\n예: \\"A는 ...하고, B는 ...하는 점이 다릅니다\\"\\n\\n[복습 팁]\\n사용자가 이 유형의 문제를 다음에 올바르게 풀기 위한 구체적인 학습 전략을 제시해주세요. (100-200자)\\n예: \\"다음 번에는...확인하세요\\"",
   "reference_links": [
     {{"title": "개념 설명 자료", "url": "https://example.com/concept-{question.category.lower()}"}},
     {{"title": "심화 학습 가이드", "url": "https://example.com/guide-{question.category.lower()}"}},
@@ -351,12 +351,12 @@ class ExplainService:
 }}
 
 매우 중요한 요구사항:
-✓ 각 섹션([틀린 이유], [정답의 원리], [개념 구분], [복습 팁])의 설명은 총합 700자 이상, 전체 explanation 필드는 최소 200자 이상이어야 합니다.
+✓ 각 섹션([틀린 이유], [정답의 원리], [개념 구분], [복습 팁])을 명확하게 구분하고, 전체 explanation은 최소 700자 이상이어야 합니다.
 ✓ 문제의 구체적인 내용(stem, 선택지, 정답)을 활용하여 이 문제에만 적용되는 맞춤형 해설을 작성해주세요.
 ✓ 추상적인 설명보다는 구체적인 예시, 사례, 비유를 포함해주세요.
 ✓ 참고 링크는 정확히 3개, 모두 한글 제목을 포함해야 합니다.
-✓ JSON은 유효한 형식(따옴표 이스케이프 포함)이어야 합니다.
-✓ "\\n" 사용 금지 - 대신 실제 줄바꿈을 포함하세요.
+✓ JSON 유효성: explanation 필드의 문자열 내에 실제 줄바꿈을 사용할 경우, 반드시 JSON 문자열 규칙에 따라 이스케이프하거나 한 줄로 작성하세요.
+✓ 권장: 섹션 내용을 한 줄로 유지하거나, 꼭 필요한 경우에만 논리적 구분점에서 실제 줄바꿈을 사용하세요.
 """
 
         return prompt
@@ -386,8 +386,30 @@ class ExplainService:
             else:
                 json_text = response_text.strip()
 
-            # Parse JSON
-            data = json.loads(json_text)
+            # Log raw JSON for debugging (truncated for security)
+            json_preview = json_text[:500] + "..." if len(json_text) > 500 else json_text
+            logger.debug(f"Raw JSON before parsing: {json_preview}")
+
+            # Parse JSON with control character handling
+            try:
+                data = json.loads(json_text)
+            except json.JSONDecodeError as e:
+                # Attempt to escape unescaped control characters in the JSON string
+                # This handles cases where LLM returns actual newlines instead of \n
+                logger.debug(f"Initial JSON parse failed: {e}. Attempting recovery with escaped control characters...")
+
+                # Replace actual control characters with their escaped versions
+                # while preserving already-escaped sequences
+                escaped_json = self._escape_control_characters(json_text)
+                try:
+                    data = json.loads(escaped_json)
+                    logger.info("✓ JSON parsing succeeded after escaping control characters")
+                except json.JSONDecodeError as recovery_error:
+                    logger.error(
+                        f"Failed to parse LLM response after recovery: {type(recovery_error).__name__}: {recovery_error}"
+                    )
+                    logger.error(f"JSON text preview: {json_preview}")
+                    raise recovery_error
 
             # Validate structure
             if "explanation" not in data or "reference_links" not in data:
@@ -417,6 +439,55 @@ class ExplainService:
         except (json.JSONDecodeError, ValueError, KeyError) as e:
             logger.error(f"Failed to parse LLM response: {type(e).__name__}: {e}")
             raise ValueError(f"Invalid LLM response format: {e}") from e
+
+    def _escape_control_characters(self, json_text: str) -> str:
+        r"""
+        Escape unescaped control characters in JSON text.
+
+        Handles cases where LLM returns actual newlines/tabs in string values
+        instead of escaped sequences. Converts:
+        - Actual newlines → \n
+        - Actual tabs → \t
+        - Actual carriage returns → \r
+
+        Args:
+            json_text: JSON string potentially with unescaped control characters
+
+        Returns:
+            JSON string with control characters properly escaped
+
+        """
+        import re
+
+        # Pattern to find string values in JSON (simple approach)
+        # This won't handle all edge cases but works for most LLM output
+        def escape_string_contents(match: re.Match) -> str:
+            quote_char = match.group(1)  # The quote character (" or ')
+            content = match.group(2)  # The string content
+
+            # Only process if not already escaped
+            # Replace actual control characters with their escape sequences
+            content = content.replace("\r\n", "\\n")  # Windows line endings
+            content = content.replace("\r", "\\r")  # Mac line endings
+            content = content.replace("\n", "\\n")  # Unix line endings
+            content = content.replace("\t", "\\t")  # Tabs
+
+            return f"{quote_char}{content}{quote_char}"
+
+        try:
+            # Match JSON strings (simplified - handles most cases)
+            # Matches "..." or '...' patterns
+            escaped_text = re.sub(
+                r'"((?:[^"\\]|\\.)*)"',  # Double-quoted strings
+                lambda m: '"'
+                + m.group(1).replace("\r\n", "\\n").replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
+                + '"',
+                json_text,
+            )
+            return escaped_text
+        except Exception as e:
+            logger.warning(f"Control character escaping failed: {e}. Returning original text.")
+            return json_text
 
     def _generate_mock_explanation(
         self,
@@ -592,47 +663,45 @@ class ExplainService:
         """
         explanations = {
             "LLM": (
-                f"'{stem}'에 대한 오답 해설입니다.\n\n"
-                f"당신의 선택이 정확하지 않습니다. 정답은 '{correct_key}'입니다.\n\n"
-                f"[틀린 이유] 이 선택지는 LLM의 기본 특성을 간과합니다. LLM은 학습 과정에서 "
-                f"수많은 토큰 시퀀스를 처리하며, 이를 통해 통계적 패턴을 학습합니다.\n\n"
-                f"[정답의 원리] '{correct_key}'가 맞는 이유는 {category} 분야의 기본 원리에 "
-                f"부합하기 때문입니다. 이는 여러 연구 논문에서 검증되었습니다.\n\n"
-                f"[개념 구분] 유사해 보이는 개념들을 정확히 구분하는 것이 중요합니다. "
-                f"예를 들어, LLM과 전통적인 규칙 기반 시스템의 차이를 이해해야 합니다.\n\n"
-                f"[복습 팁] 이 유형의 문제를 다시 한번 검토하고, 관련 개념들의 특징을 비교해보세요."
+                f"[틀린 이유] 선택한 보기는 대규모 언어 모델의 기본 메커니즘을 정확히 반영하지 못했습니다. LLM은 단순히 단어를 나열하는 것이 아니라, 트랜스포머 아키텍처의 자기주의(Self-Attention) 메커니즘을 통해 입력 토큰들 간의 관계를 학습하고, 확률 분포를 기반으로 다음 토큰을 예측합니다. 따라서 통계적 패턴 학습만으로는 LLM의 핵심 동작 원리를 설명하기 부족합니다.\n\n"
+                f"[정답의 원리] '{correct_key}'가 정답인 이유는 LLM의 구조적 특성을 정확히 반영하기 때문입니다. 트랜스포머는 병렬 처리가 가능하며, 각 레이어의 자기주의 메커니즘이 토큰들 간의 의존성을 동적으로 학습합니다. 이를 통해 문맥 이해, 장거리 의존성 파악, 복잡한 논리적 추론이 가능해집니다. OpenAI의 GPT, Google의 Gemini 등 모든 최신 LLM이 이러한 기본 원리를 따릅니다.\n\n"
+                f"[개념 구분] LLM과 혼동하기 쉬운 기술들:\n"
+                f"- RNN: 순차 처리로 시간이 오래 걸리며 장거리 의존성 학습이 어려움 vs LLM 트랜스포머: 병렬 처리로 빠르고 장거리 의존성 효과적\n"
+                f"- 규칙 기반 NLP: 사전에 정의된 규칙만 적용 vs LLM: 데이터로부터 패턴 자동 학습\n"
+                f"- 통계 모델: 제한된 맥락 vs LLM: 매우 긴 맥락 창(Context Window) 활용 가능\n\n"
+                f"[복습 팁] 트랜스포머 논문('Attention is All You Need')의 핵심 개념을 다시 살펴보세요. 특히 자기주의가 어떻게 토큰 간 가중치를 계산하고, 다중 헤드 어텐션이 다양한 의존성을 포착하는지 이해하는 것이 중요합니다. 시각적 다이어그램을 그려보면서 정보 흐름을 추적해보세요."
             ),
             "RAG": (
-                f"'{stem}'에 대한 오답 해설입니다.\n\n"
-                f"당신의 선택이 정확하지 않습니다. 정답은 '{correct_key}'입니다.\n\n"
-                f"[틀린 이유] 이 선택지는 RAG의 목적을 잘못 이해하고 있습니다. RAG는 단순히 "
-                f"정보를 검색하는 것이 아니라, 검색된 정보를 LLM의 입력으로 활용합니다.\n\n"
-                f"[정답의 원리] '{correct_key}'가 맞는 이유는 RAG의 아키텍처와 동작 방식을 "
-                f"정확히 이해했기 때문입니다.\n\n"
-                f"[개념 구분] 검색(Retrieval), 생성(Generation), 그리고 두 단계의 통합 과정을 "
-                f"명확히 구분해야 합니다.\n\n"
-                f"[복습 팁] RAG의 전체 파이프라인을 다시 그려보면서 각 단계를 정리해보세요."
+                f"[틀린 이유] 이 선택지는 RAG 시스템의 핵심 목적을 간과했습니다. RAG가 단순 검색 엔진이 아니라는 점을 이해해야 합니다. 기존 LLM의 가장 큰 문제점 중 하나는 학습 데이터의 시점 이후의 정보에 대한 할루시네이션(사실이 아닌 답변)입니다. RAG는 이 문제를 해결하기 위해 '검색 → 증강 → 생성'의 3단계 파이프라인을 도입했습니다.\n\n"
+                f"[정답의 원리] '{correct_key}'가 정답인 이유는 RAG의 구조적 혁신을 정확히 포착했기 때문입니다. (1) 검색 단계에서 벡터 데이터베이스를 이용해 사용자 질의와 의미적으로 유사한 문서를 검색합니다. (2) 증강 단계에서 검색된 문서를 프롬프트에 포함시킵니다. (3) 생성 단계에서 LLM이 검색된 맥락을 기반으로 더 정확한 답변을 생성합니다. 이는 최신 정보 반영과 사실성 증대를 동시에 달성합니다.\n\n"
+                f"[개념 구분] 혼동하기 쉬운 기술들:\n"
+                f"- 일반 LLM + 정보 검색: 독립적으로 작동 vs RAG: 검색과 생성이 긴밀하게 통합\n"
+                f"- 파인튜닝: 모델 가중치 자체를 수정 vs RAG: 모델은 고정, 외부 지식 동적 활용\n"
+                f"- 캐싱: 자주 묻는 답을 저장 vs RAG: 매번 새로운 질의에 대해 관련 문서 검색\n\n"
+                f"[복습 팁] 벡터 임베딩이 어떻게 생성되고, 코사인 유사도로 관련 문서를 찾는 과정을 이해하세요. 특히 BM25 같은 전통 검색 방식과 의미론적 검색의 차이를 학습하면, RAG의 강점을 더욱 명확히 알 수 있습니다. 실제 RAG 시스템(LlamaIndex, LangChain 등)의 동작을 따라해보세요."
             ),
             "Robotics": (
-                f"'{stem}'에 대한 오답 해설입니다.\n\n"
-                f"당신의 선택이 정확하지 않습니다. 정답은 '{correct_key}'입니다.\n\n"
-                f"[틀린 이유] 로봇의 운동학과 동역학을 혼동하기 쉽습니다. 운동학은 위치와 속도만 "
-                f"다루고, 동역학은 힘과 토크를 포함합니다.\n\n"
-                f"[정답의 원리] '{correct_key}'가 맞는 이유는 로봇공학의 기본 원리에 정확히 "
-                f"부합하기 때문입니다.\n\n"
-                f"[개념 구분] 센서, 제어기, 액추에이터의 역할을 정확히 이해해야 합니다. "
-                f"각각이 어떤 신호를 처리하는지 생각해보세요.\n\n"
-                f"[복습 팁] 로봇의 제어 루프를 단계별로 따라가며 각 컴포넌트의 역할을 정리하세요."
+                f"[틀린 이유] 선택한 보기는 로봇 제어의 동적 특성을 간과했습니다. 로봇공학에서 '운동학'과 '동역학'을 구분하는 것은 매우 중요합니다. 운동학은 로봇이 어디에 있는지, 어떤 속도로 움직이는지만 다루지만, 동역학은 '왜 그렇게 움직이는가'를 다룹니다. 즉, 모터의 힘(토크)과 외부 부하, 중력 등이 로봇의 움직임에 어떤 영향을 미치는지를 분석합니다.\n\n"
+                f"[정답의 원리] '{correct_key}'가 정답인 이유는 로봇 제어의 현실적 요구사항을 정확히 반영했기 때문입니다. 로봇이 정확히 동작하려면: (1) 목표 위치/속도를 계산(운동학), (2) 그 목표를 달성하기 위해 필요한 힘을 계산(동역학), (3) 모터에 적절한 전류/전압을 인가(제어). 이 세 단계가 모두 필요하며, 특히 고속 또는 고하중 작업에서 동역학 고려는 필수입니다.\n\n"
+                f"[개념 구분] 핵심 개념 비교:\n"
+                f"- 운동학: '어디에(Where)' - 관절각도, 끝점위치, 속도\n"
+                f"- 동역학: '어떻게(How much)' - 필요한 토크, 에너지 효율, 안정성\n"
+                f"- 제어: '어떻게 만들 것인가(How)' - PID 제어, 궤적 계획, 피드백\n"
+                f"- 센서: 현재 상태 측정(위치센서, IMU, 힘센서)\n"
+                f"- 액추에이터: 동작 실행(모터, 유압실린더)\n\n"
+                f"[복습 팁] Denavit-Hartenberg(DH) 파라미터와 자코비안을 이용한 운동학 계산, 그리고 라그랑주 방정식을 이용한 동역학 계산을 단계별로 손으로 풀어보세요. 특히 2-DOF 평면 로봇이나 SCARA 로봇 같은 간단한 구조부터 시작하면 개념 이해가 쉬워집니다."
             ),
         }
         return explanations.get(
             category,
-            f"'{stem}'에 대한 오답 해설입니다.\n\n"
-            f"당신의 선택이 정확하지 않습니다. 정답은 '{correct_key}'입니다.\n\n"
-            f"[틀린 이유] 이 선택지는 {category} 분야의 핵심 개념을 놓치고 있습니다.\n\n"
-            f"[정답의 원리] '{correct_key}'가 맞는 이유는 기본 원리와 개념을 정확히 따르기 때문입니다.\n\n"
-            f"[개념 구분] 유사한 개념들을 비교하여 정확하게 구분하는 것이 중요합니다.\n\n"
-            f"[복습 팁] 이 유형의 문제를 다시 검토하고, 관련 개념들을 깊이 있게 학습해보세요.",
+            f"[틀린 이유] 이 선택지는 {category} 분야의 핵심 개념을 놓치고 있습니다. 올바른 이해를 위해서는 기본 정의와 실제 응용 사례를 구분해서 생각해야 합니다. 특히 이론적 개념과 실무적 적용 방식의 차이를 인식하는 것이 중요합니다.\n\n"
+            f"[정답의 원리] '{correct_key}'가 맞는 이유는 {category} 분야의 기본 원리와 개념을 정확히 따르기 때문입니다. 이는 해당 분야의 표준 교과서와 업계 실무에서 인정하는 정의를 기반으로 합니다. 단순한 표면적 특징뿐 아니라, 근본적인 메커니즘을 이해하면 다양한 변형된 문제도 해결할 수 있습니다.\n\n"
+            f"[개념 구분] {category}에서 혼동하기 쉬운 개념들을 비교해보세요:\n"
+            f"- A 개념: 정의, 특징, 사용 맥락\n"
+            f"- B 개념: 정의, 특징, 사용 맥락\n"
+            f"- C 개념: 정의, 특징, 사용 맥락\n"
+            f"이들의 공통점과 차이점을 체계적으로 정리하면 더 쉽게 구분할 수 있습니다.\n\n"
+            f"[복습 팁] {category} 분야의 기본 개념을 다시 검토하세요. 교과서의 정의 부분을 정확히 읽고, 각 개념이 제시된 맥락(언제 누가 왜 이 개념을 만들었는가)을 이해하는 것이 중요합니다. 또한 관련 예제 문제를 10개 이상 풀어보면서 개념 적용 방식을 체화하세요.",
         )
 
     def _generate_mock_references(
