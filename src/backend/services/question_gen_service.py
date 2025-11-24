@@ -290,6 +290,17 @@ class QuestionGenerationService:
             if "source_format" in raw_schema:
                 return raw_schema
 
+            # If already normalized by agent output converter (has type, keywords, correct_answer)
+            # and doesn't have the raw format keys, treat as already normalized
+            if (
+                "type" in raw_schema
+                and ("keywords" in raw_schema or "correct_answer" in raw_schema)
+                and "correct_keywords" not in raw_schema
+                and "correct_key" not in raw_schema
+            ):
+                # Already normalized by agent output converter
+                return raw_schema
+
             # Detect format and get appropriate transformer
             if "correct_keywords" in raw_schema:
                 # Agent response format
