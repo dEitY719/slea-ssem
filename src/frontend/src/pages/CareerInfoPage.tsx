@@ -2,9 +2,7 @@
 import React, { useCallback, useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { PageLayout } from '../components'
-import NumberInput from '../components/NumberInput'
-import RadioButtonGrid, { type RadioButtonOption } from '../components/RadioButtonGrid'
-import TextAreaInput from '../components/TextAreaInput'
+import CareerInfoSection from '../components/CareerInfoSection'
 import InfoBox, { InfoBoxIcons } from '../components/InfoBox'
 import { type RetakeLocationState } from '../types/profile'
 import { debugLog } from '../utils/logger'
@@ -33,15 +31,6 @@ import './CareerInfoPage.css'
  */
 
 const CAREER_TEMP_STORAGE_KEY = 'slea_ssem_career_temp'
-
-// Radio button grid options for Job Role field (abbreviations only)
-const JOB_ROLE_OPTIONS: RadioButtonOption[] = [
-  { value: 'S', label: 'S' },
-  { value: 'E', label: 'E' },
-  { value: 'M', label: 'M' },
-  { value: 'G', label: 'G' },
-  { value: 'F', label: 'F' },
-]
 
 export interface CareerTempData {
   career: number
@@ -128,35 +117,14 @@ const CareerInfoPage: React.FC = () => {
       </p>
 
       <div className="form-section">
-        {/* 1. 경력(연차) - 숫자 입력 */}
-        <NumberInput
-          id="career"
-          label="경력(연차)"
-          value={career}
-          onChange={handleCareerChange}
-          min={0}
-          max={50}
-          placeholder="0"
-        />
-
-        {/* 2. 직군 - 라디오버튼 그리드 (3열) */}
-        <RadioButtonGrid
-          name="jobRole"
-          legend="직군"
-          options={JOB_ROLE_OPTIONS}
-          value={jobRole}
-          onChange={handleJobRoleChange}
-        />
-
-        {/* 3. 담당 업무 - 텍스트 입력 */}
-        <TextAreaInput
-          id="duty"
-          label="담당 업무"
-          value={duty}
-          onChange={handleDutyChange}
-          maxLength={500}
-          placeholder="담당하고 있는 주요 업무를 입력해주세요"
-          rows={3}
+        <CareerInfoSection
+          career={career}
+          jobRole={jobRole}
+          duty={duty}
+          onCareerChange={handleCareerChange}
+          onJobRoleChange={handleJobRoleChange}
+          onDutyChange={handleDutyChange}
+          showTitle={false}
         />
       </div>
 
