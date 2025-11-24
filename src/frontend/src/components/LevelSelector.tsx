@@ -40,8 +40,6 @@ const LevelSelector: React.FC<LevelSelectorProps> = ({
 
   return (
     <section className="level-selector">
-      {showTitle && <h2 className="section-title">자기평가 정보</h2>}
-
       <div className="form-group">
         <label className="form-label">기술 수준</label>
         <div className="level-options">
