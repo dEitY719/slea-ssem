@@ -4221,6 +4221,299 @@ logger.setLevel(logging.INFO)
 
 ---
 
+# REFACTOR REQUIREMENTS (기술부채 감소)
+
+## REQ-REFACTOR-SOLID-1: AnswerSchemaTransformer 클래스
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-REFACTOR-SOLID-1** | Agent 응답, Mock 데이터, Custom 포맷을 표준화된 AnswerSchema로 변환하는 확장 가능한 Transformer 패턴을 구현해야 한다. 새로운 포맷 추가 시 기존 코드 수정을 최소화하고 개방-폐쇄 원칙(Open/Closed)을 준수해야 한다. | **H** |
+
+**Description**:
+LLM Agent가 반환하는 `answer_schema` 형식이 다양하고(correct_keywords, correct_key, etc), 시간이 지남에 따라 새로운 형식이 추가될 수 있습니다. 현재는 각 서비스에서 포맷 변환 로직을 수동으로 처리하므로, 새로운 포맷 추가 시 여러 파일을 수정해야 합니다.
+
+**Transformer 패턴** 기반으로 포맷별 변환 로직을 독립적인 클래스로 분리하면:
+- 기존 변환 로직에 영향 없음 (Open/Closed 원칙)
+- 새로운 포맷 추가 시 새 클래스만 구현 (Single Responsibility)
+- 테스트 용이성 증대 (Dependency Inversion)
+
+**구현 위치**:
+```
+src/backend/models/answer_schema.py (신규 또는 기존 확장)
+  ├─ class AnswerSchemaTransformer (추상 기본 클래스)
+  │  └─ transform(raw_data: dict) → AnswerSchema
+  │
+  ├─ class AgentResponseTransformer(AnswerSchemaTransformer)
+  │  └─ 변환 규칙: correct_keywords → keywords
+  │
+  ├─ class MockDataTransformer(AnswerSchemaTransformer)
+  │  └─ 변환 규칙: correct_key → correct_answer
+  │
+  └─ class TransformerFactory
+     └─ get_transformer(format_type: str) → AnswerSchemaTransformer
+```
+
+**사용 예**:
+```python
+# AS-IS (현재 - Ad-hoc)
+answer_schema = question_data.get("answer_schema", {})
+if "correct_keywords" in answer_schema:
+    keywords = answer_schema["correct_keywords"]
+elif "correct_key" in answer_schema:
+    keywords = answer_schema["correct_key"]
+else:
+    keywords = None
+# 버그: keywords가 None으로 저장될 수 있음
+
+# TO-BE (리팩토링 후)
+from src.backend.models.answer_schema import TransformerFactory
+
+factory = TransformerFactory()
+transformer = factory.get_transformer(format_type="agent_response")
+answer_schema = transformer.transform(question_data.get("answer_schema", {}))
+# Result: answer_schema는 항상 유효한 AnswerSchema 객체
+```
+
+**기대 출력**:
+```python
+# AgentResponseTransformer 결과
+AnswerSchema(
+    question_type="short_answer",
+    keywords=["리튬이온", "배터리"],
+    explanation="리튬이온 배터리는...",
+    source_format="agent_response"
+)
+
+# MockDataTransformer 결과
+AnswerSchema(
+    question_type="short_answer",
+    keywords=["정답"],
+    explanation="이것이 정답이다.",
+    source_format="mock_data"
+)
+```
+
+**에러 케이스**:
+- Invalid format type → `TransformerError: Unknown format type 'invalid'`
+- Missing required field in raw_data → `ValidationError: Missing 'correct_keywords' in agent response`
+- Malformed JSON structure → `TransformationError: Cannot parse answer_schema`
+- Empty answer_schema dict → `ValidationError: answer_schema is empty`
+- Type mismatch (expected list, got string) → `TypeValidationError: correct_keywords must be list, got str`
+
+**Acceptance Criteria**:
+- [ ] `AnswerSchemaTransformer` 추상 기본 클래스 구현 (transform 메서드)
+- [ ] `AgentResponseTransformer` 구현 (correct_keywords → keywords)
+- [ ] `MockDataTransformer` 구현 (correct_key → correct_answer)
+- [ ] `TransformerFactory` 구현 (format_type으로 적절한 Transformer 선택)
+- [ ] 모든 Transformer 클래스에 대한 단위 테스트 작성
+- [ ] 새로운 포맷 추가 시 기존 코드 수정 불필요함을 검증
+- [ ] type hints 및 docstring 완벽 (mypy strict 통과)
+- [ ] question_gen_service, explain_service에서 변환 로직 교체
+
+**Priority**: H
+**Dependencies**:
+- question_gen_service, explain_service (기존 코드)
+- DatabaseModels (AnswerSchema 저장 구조)
+**Status**: ⏳ Backlog
+
+---
+
+## REQ-REFACTOR-SOLID-2: AnswerSchema Value Object
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-REFACTOR-SOLID-2** | 다양한 포맷에서 변환된 answer_schema를 타입-안전한 Value Object로 정의하여, null 저장 버그를 방지하고 필드 접근을 일관되게 제공해야 한다. | **H** |
+
+**Description**:
+현재 `answer_schema`는 단순 dict로 다뤄지므로, 필드 존재 여부를 매번 확인해야 하고 타입 검증이 없습니다. 이로 인해 null 값이 DB에 저장되는 버그가 발생합니다.
+
+**Value Object** 패턴으로 정의하면:
+- 필드 검증 (생성 시점에 자동 실행)
+- Immutable 객체 (의도치 않은 수정 방지)
+- 타입 안전성 (mypy strict 모드)
+- 도메인 언어로 표현 (keywords, explanation, source_format)
+
+**구현 위치**:
+```
+src/backend/models/answer_schema.py
+  └─ class AnswerSchema:
+     ├─ fields:
+     │  ├─ question_type: str (mc, short_answer, ox, etc)
+     │  ├─ keywords: list[str] | None
+     │  ├─ explanation: str
+     │  ├─ source_format: str ("agent_response", "mock_data", ...)
+     │  └─ created_at: datetime
+     │
+     ├─ @classmethod from_agent_response(data: dict) → AnswerSchema
+     ├─ @classmethod from_mock_data(data: dict) → AnswerSchema
+     │
+     ├─ def to_db_dict() → dict (데이터베이스 저장용)
+     ├─ def to_response_dict() → dict (API 응답용)
+     ├─ def __eq__, __hash__ (Value Object 패턴)
+     │
+     └─ @staticmethod validate(...) (검증 로직)
+```
+
+**사용 예**:
+```python
+# AS-IS (현재)
+answer_schema = {
+    "correct_keywords": ["키워드1", "키워드2"],
+    "explanation": "설명",
+}
+# 문제: dict이므로 필드 검증 없음, null 체크 필요
+
+# TO-BE (리팩토링 후)
+answer_schema = AnswerSchema.from_agent_response({
+    "correct_keywords": ["키워드1", "키워드2"],
+    "explanation": "설명",
+})
+
+# 타입 안전성
+print(answer_schema.keywords)  # ["키워드1", "키워드2"] (자동 변환됨)
+print(answer_schema.explanation)  # "설명"
+
+# 데이터베이스 저장
+db_dict = answer_schema.to_db_dict()
+# {"keywords": [...], "explanation": "...", "source_format": "agent_response"}
+```
+
+**기대 출력**:
+```python
+# from_agent_response 결과
+answer_schema = AnswerSchema.from_agent_response({
+    "correct_keywords": ["배터리", "리튬이온"],
+    "explanation": "리튬이온 배터리는..."
+})
+
+# 결과 (immutable)
+answer_schema.keywords == ["배터리", "리튬이온"]
+answer_schema.explanation == "리튬이온 배터리는..."
+answer_schema.source_format == "agent_response"
+
+# DB 저장용
+db_dict = answer_schema.to_db_dict()
+# {
+#   "keywords": ["배터리", "리튬이온"],
+#   "explanation": "리튬이온 배터리는...",
+#   "source_format": "agent_response",
+#   "created_at": "2025-11-24T10:30:00Z"
+# }
+```
+
+**에러 케이스**:
+- Missing explanation → `ValidationError: 'explanation' is required`
+- Empty keywords list (for short_answer) → `ValidationError: keywords cannot be empty for short_answer`
+- Invalid question_type → `ValidationError: question_type must be one of [mc, short_answer, ox]`
+- Non-string explanation → `TypeValidationError: explanation must be str, got int`
+- Non-list keywords → `TypeValidationError: keywords must be list[str], got dict`
+
+**Acceptance Criteria**:
+- [ ] `AnswerSchema` dataclass (또는 BaseModel) 정의
+- [ ] `from_agent_response()`, `from_mock_data()` 팩토리 메서드
+- [ ] `to_db_dict()`, `to_response_dict()` 변환 메서드
+- [ ] 필드 검증 로직 (Pydantic validator 또는 dataclass post_init)
+- [ ] immutable 특성 (frozen=True 또는 @property)
+- [ ] __eq__, __hash__ 구현 (Value Object)
+- [ ] mypy strict 통과 (type hints 완벽)
+- [ ] 모든 변환 메서드 단위 테스트
+- [ ] test_question_gen_service에서 Value Object 사용 확인
+
+**Priority**: H
+**Dependencies**:
+- REQ-REFACTOR-SOLID-1 (AnswerSchemaTransformer)
+- Pydantic 또는 dataclasses (Python stdlib)
+**Status**: ⏳ Backlog
+
+---
+
+## REQ-REFACTOR-SOLID-3: 포맷 문서화 (ANSWER_SCHEMA_FORMATS.md)
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-REFACTOR-SOLID-3** | Agent 응답 포맷, Mock 데이터 포맷, Database 저장 포맷을 명확히 문서화하고, 포맷 변환 플로우를 다이어그램으로 제시하여 향후 유지보수를 용이하게 해야 한다. | **M** |
+
+**Description**:
+현재 answer_schema 포맷이 명확히 문서화되어 있지 않아, 새로운 LLM 응답 형식이 나올 때마다 코드를 뒤져야 합니다. 이는 온보딩 시간을 증가시키고 버그의 원인이 됩니다.
+
+**포맷 문서화**를 통해:
+- 각 포맷의 예시 및 필드 설명
+- 변환 규칙 명시 (correct_keywords → keywords)
+- 플로우 다이어그램 (LLM → Transformer → Value Object → DB)
+- 새로운 포맷 추가 체크리스트
+
+**생성할 문서**: `docs/ANSWER_SCHEMA_FORMATS.md`
+
+**Acceptance Criteria**:
+- [ ] `docs/ANSWER_SCHEMA_FORMATS.md` 작성 (2000+ 단어)
+- [ ] Agent 응답 포맷 예시 (3+ 사례)
+- [ ] Mock 데이터 포맷 예시 (3+ 사례)
+- [ ] Database 저장 포맷 스키마
+- [ ] 변환 플로우 다이어그램 (Mermaid 또는 ASCII)
+- [ ] 새로운 포맷 추가 체크리스트 (5+ 항목)
+- [ ] 기존 코드 마이그레이션 예시 (AS-IS → TO-BE)
+- [ ] 프로젝트 README.md에서 링크 추가
+
+**Priority**: M
+**Dependencies**:
+- REQ-REFACTOR-SOLID-1, REQ-REFACTOR-SOLID-2 (완성 후 문서화)
+**Status**: ⏳ Backlog
+
+---
+
+## REQ-REFACTOR-SOLID-4: 테스트 강화 (test_answer_schema_transformers.py)
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-REFACTOR-SOLID-4** | Transformer 및 Value Object의 모든 포맷 조합, 검증 로직, Edge case에 대한 포괄적 단위 테스트를 작성하여, 변환 신뢰성을 보장해야 한다. | **H** |
+
+**Description**:
+SOLID 리팩토링의 효과를 검증하려면 다양한 포맷, 엣지 케이스, 에러 조건에 대한 체계적인 테스트가 필요합니다. 이를 통해:
+- Transformer 신뢰성 검증
+- 새로운 포맷 추가 시 회귀 방지
+- 문서 또는 예시 코드의 정확성 확인
+
+**테스트 파일**: `tests/backend/test_answer_schema_transformers.py`
+
+**기대 출력**:
+```bash
+$ pytest tests/backend/test_answer_schema_transformers.py -v
+
+test_answer_schema_transformers.py::TestAnswerSchemaTransformer::test_agent_response_transformer_basic PASSED
+test_answer_schema_transformers.py::TestAnswerSchemaTransformer::test_mock_data_transformer_basic PASSED
+test_answer_schema_transformers.py::TestAnswerSchemaTransformer::test_agent_response_missing_required_field PASSED
+test_answer_schema_transformers.py::TestAnswerSchemaValueObject::test_create_from_agent_response PASSED
+test_answer_schema_transformers.py::TestAnswerSchemaValueObject::test_to_db_dict PASSED
+test_answer_schema_transformers.py::TestAnswerSchemaValueObject::test_frozen_object PASSED
+test_answer_schema_transformers.py::TestTransformerFactory::test_get_agent_response_transformer PASSED
+
+========================== 9 passed in 0.32s ==========================
+
+Total Coverage: ≥95%
+```
+
+**Acceptance Criteria**:
+- [ ] `tests/backend/test_answer_schema_transformers.py` 작성
+- [ ] Happy path 테스트 (각 포맷 3+ 사례)
+- [ ] Input validation 테스트 (6+ 사례)
+- [ ] Edge case 테스트 (10+ 사례)
+- [ ] Type validation 테스트 (5+ 사례)
+- [ ] Immutability 테스트 (3+ 사례)
+- [ ] Factory pattern 테스트 (3+ 사례)
+- [ ] 통합 테스트 (question_gen_service + Transformer)
+- [ ] 전체 테스트 커버리지 ≥ 95%
+- [ ] 모든 테스트 3초 내 완료
+- [ ] mypy strict 통과
+
+**Priority**: H
+**Dependencies**:
+- REQ-REFACTOR-SOLID-1, REQ-REFACTOR-SOLID-2 (완성 후 테스트)
+- pytest, pytest-cov
+**Status**: ⏳ Backlog
+
+---
+
 **Version History**:
 
 - v1.0 (2025-11-06): Initial Feature Requirement with Frontend/Backend split
+- v1.1 (2025-11-24): Added SOLID Refactor Requirements (REQ-REFACTOR-SOLID-1~4)

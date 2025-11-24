@@ -546,7 +546,7 @@ class QuestionGenerationService:
                     # Type: answer_schema_value is dict[str, Any] after model_dump() call
                     normalized_schema = self._normalize_answer_schema(
                         answer_schema_value,  # type: ignore[arg-type]
-                        item.type
+                        item.type,
                     )
 
                     # Validate answer_schema before saving (fail-fast pattern)
