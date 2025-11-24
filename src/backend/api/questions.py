@@ -920,10 +920,14 @@ def get_session_explanations(
         for answer in answers_list:
             answers_map[answer.question_id] = answer
 
-        # Build explanations list
+        # Build explanations list with parallel processing for performance
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
         explain_service = ExplainService(db)
         explanations_list: list[dict[str, Any]] = []
+        explanation_items_to_process = []
 
+        # First pass: prepare items
         for question in questions:
             answer = answers_map.get(question.id)
 
@@ -939,22 +943,33 @@ def get_session_explanations(
                 "score": answer.score or 0,
                 "explanation": None,
             }
+            explanation_items_to_process.append((explanation_item, question.id, answer))
 
-            # Try to get explanation (generate if missing)
+        # Second pass: generate explanations in parallel
+        def generate_explanation_safe(params: tuple) -> dict[str, Any]:
+            """Generate explanation for a single item (thread-safe)."""
+            item, question_id, answer = params
             try:
                 explanation = explain_service.generate_explanation(
-                    question_id=question.id,
+                    question_id=question_id,
                     user_answer=answer.user_answer,
                     is_correct=answer.is_correct,
                     attempt_answer_id=answer.id,
                 )
-                explanation_item["explanation"] = explanation
+                item["explanation"] = explanation
             except Exception as e:
-                # If explanation generation fails, just skip it
-                logger.warning(f"Failed to generate explanation for question {question.id}: {e}")
-                explanation_item["explanation"] = None
+                logger.warning(f"Failed to generate explanation for question {question_id}: {e}")
+                item["explanation"] = None
+            return item
 
-            explanations_list.append(explanation_item)
+        # Use thread pool for parallel processing (up to 5 concurrent requests)
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [
+                executor.submit(generate_explanation_safe, item_params)
+                for item_params in explanation_items_to_process
+            ]
+            for future in as_completed(futures):
+                explanations_list.append(future.result())
 
         # Count answered questions
         answered_count = len(answers_list)
