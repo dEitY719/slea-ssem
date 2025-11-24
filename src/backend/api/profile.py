@@ -139,6 +139,14 @@ class ConsentUpdateResponse(BaseModel):
     consent_at: str | None = Field(..., description="Consent timestamp (ISO format) or null")
 
 
+class GradeDistributionItem(BaseModel):
+    """Grade distribution item."""
+
+    grade: str = Field(..., description="Grade tier (Beginner/Intermediate/Inter-Advanced/Advanced/Elite)")
+    count: int = Field(..., description="Number of users in this grade")
+    percentage: float = Field(..., description="Percentage of users in this grade")
+
+
 class RankingResponse(BaseModel):
     """Response model for user ranking and grade."""
 
@@ -150,6 +158,7 @@ class RankingResponse(BaseModel):
     percentile: float = Field(..., description="Percentile within cohort (0-100)")
     percentile_description: str = Field(..., description="Human-readable percentile (e.g., '상위 30%')")
     percentile_confidence: str = Field(..., description="Confidence level (low/medium/high)")
+    grade_distribution: list[GradeDistributionItem] = Field(..., description="Grade distribution across all users")
 
 
 # ============================================================================
@@ -514,7 +523,7 @@ def get_ranking(
     """
     Get current user's grade and ranking.
 
-    REQ: REQ-B-B4-1, REQ-B-B4-2, REQ-B-B4-3, REQ-B-B4-4, REQ-B-B4-5
+    REQ: REQ-B-B4-1, REQ-B-B4-2, REQ-B-B4-3, REQ-B-B4-4, REQ-B-B4-5, REQ-B-B4-6
     REQ: REQ-B-B4-Plus-1, REQ-B-B4-Plus-2, REQ-B-B4-Plus-3
 
     Single Responsibility: Calculate and return ranking data only.
@@ -547,6 +556,14 @@ def get_ranking(
             "percentile": result.percentile,
             "percentile_description": result.percentile_description,
             "percentile_confidence": result.percentile_confidence,
+            "grade_distribution": [
+                {
+                    "grade": dist.grade,
+                    "count": dist.count,
+                    "percentage": dist.percentage,
+                }
+                for dist in result.grade_distribution
+            ],
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

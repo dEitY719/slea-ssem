@@ -656,11 +656,129 @@ class TestAcceptanceCriteria:
         assert "Agent Specialist 배지" in badge_names
 
 
+class TestGradeDistribution:
+    """Test REQ-B-B4-6: Grade distribution data in ranking response."""
+
+    def test_grade_distribution_includes_all_grades(
+        self,
+        db_session: Session,
+        create_multiple_users,  # noqa: ANN001
+        create_survey_for_user,  # noqa: ANN001
+        create_test_session_with_result,  # noqa: ANN001
+    ):
+        """
+        REQ-B-B4-6: grade_distribution should include all 5 grades.
+
+        Test that all grades (Beginner, Intermediate, Inter-Advanced, Advanced, Elite)
+        are included in the grade_distribution array.
+        """
+        from src.backend.services.ranking_service import RankingService
+
+        # Create users with scores across all grade tiers
+        users = create_multiple_users(5)
+        scores = [20, 50, 65, 80, 95]  # One for each grade
+        grade_names = ["Beginner", "Intermediate", "Inter-Advanced", "Advanced", "Elite"]
+
+        for user, score in zip(users, scores, strict=False):
+            survey = create_survey_for_user(user.id)
+            create_test_session_with_result(user.id, survey.id, float(score))
+
+        # Calculate grade for first user
+        service = RankingService(db_session)
+        result = service.calculate_final_grade(users[0].id)
+
+        # Assert grade_distribution exists and has all 5 grades
+        assert result is not None
+        assert result.grade_distribution is not None
+        assert len(result.grade_distribution) == 5
+
+        # Check all grades are present
+        dist_grades = [dist.grade for dist in result.grade_distribution]
+        for expected_grade in grade_names:
+            assert expected_grade in dist_grades
+
+    def test_grade_distribution_counts_correct(
+        self,
+        db_session: Session,
+        create_multiple_users,  # noqa: ANN001
+        create_survey_for_user,  # noqa: ANN001
+        create_test_session_with_result,  # noqa: ANN001
+    ):
+        """
+        REQ-B-B4-6: grade_distribution should show correct counts and percentages.
+
+        Test that count and percentage are calculated correctly.
+        Setup: 10 users with varying scores across grade tiers
+        """
+        from src.backend.services.ranking_service import RankingService
+
+        # Create 10 users: 2 Beginner, 3 Intermediate, 2 Inter-Advanced, 2 Advanced, 1 Elite
+        users = create_multiple_users(10)
+        scores = [20, 30, 45, 50, 55, 65, 70, 75, 80, 95]
+
+        for user, score in zip(users, scores, strict=False):
+            survey = create_survey_for_user(user.id)
+            create_test_session_with_result(user.id, survey.id, float(score))
+
+        service = RankingService(db_session)
+        result = service.calculate_final_grade(users[0].id)
+
+        # Check grade distribution
+        assert result is not None
+        dist = {d.grade: (d.count, d.percentage) for d in result.grade_distribution}
+
+        # Verify counts
+        assert dist["Beginner"][0] == 2
+        assert dist["Intermediate"][0] == 3
+        assert dist["Inter-Advanced"][0] == 2
+        assert dist["Advanced"][0] == 2
+        assert dist["Elite"][0] == 1
+
+        # Verify percentages sum to 100
+        total_percentage = sum(d[1] for d in dist.values())
+        assert abs(total_percentage - 100.0) < 0.1  # Allow small rounding error
+
+    def test_grade_distribution_zero_count_for_empty_grades(
+        self,
+        db_session: Session,
+        create_multiple_users,  # noqa: ANN001
+        create_survey_for_user,  # noqa: ANN001
+        create_test_session_with_result,  # noqa: ANN001
+    ):
+        """
+        REQ-B-B4-6: If no users in a grade, count=0 and percentage=0.0.
+
+        Test that empty grades are included with 0 count and 0% percentage.
+        Acceptance Criteria: "grade_distribution의 모든 등급이 포함되며,
+        인원이 없는 등급은 count=0, percentage=0.0으로 표시된다."
+        """
+        from src.backend.services.ranking_service import RankingService
+
+        # Create only 2 users, both Beginner
+        users = create_multiple_users(2)
+        for user in users:
+            survey = create_survey_for_user(user.id)
+            create_test_session_with_result(user.id, survey.id, 25.0)
+
+        service = RankingService(db_session)
+        result = service.calculate_final_grade(users[0].id)
+
+        assert result is not None
+        dist = {d.grade: (d.count, d.percentage) for d in result.grade_distribution}
+
+        # Beginner should have count=2, percentage=100
+        assert dist["Beginner"] == (2, 100.0)
+
+        # Other grades should have count=0, percentage=0.0
+        for grade in ["Intermediate", "Inter-Advanced", "Advanced", "Elite"]:
+            assert dist[grade] == (0, 0.0)
+
+
 # =============================================================================
 # SUMMARY OF TEST CASES
 # =============================================================================
 #
-# Total Test Cases: 19
+# Total Test Cases: 24
 #
 # Test Coverage Matrix:
 #
@@ -687,6 +805,11 @@ class TestAcceptanceCriteria:
 # REQ-B-B4-5 (percentile_confidence):
 #   ✓ test_percentile_confidence_medium_for_small_cohort
 #   ✓ test_percentile_confidence_high_for_large_cohort
+#
+# REQ-B-B4-6 (Grade distribution):
+#   ✓ test_grade_distribution_includes_all_grades
+#   ✓ test_grade_distribution_counts_correct
+#   ✓ test_grade_distribution_zero_count_for_empty_grades
 #
 # REQ-B-B4-Plus-1 (Grade-based badges):
 #   ✓ test_badge_assignment_for_all_grades

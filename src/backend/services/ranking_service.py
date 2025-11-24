@@ -33,6 +33,15 @@ GRADE_BADGES = {
 
 
 @dataclass
+class GradeDistribution:
+    """Distribution data for a single grade tier."""
+
+    grade: str
+    count: int
+    percentage: float
+
+
+@dataclass
 class GradeResult:
     """Result of grade and ranking calculation."""
 
@@ -44,6 +53,7 @@ class GradeResult:
     percentile: float
     percentile_confidence: str
     percentile_description: str
+    grade_distribution: list[GradeDistribution]
 
 
 class RankingService:
@@ -126,6 +136,9 @@ class RankingService:
         # Generate percentile description
         percentile_description: str = f"상위 {100 - percentile:.1f}%"
 
+        # Calculate grade distribution (REQ-B-B4-6)
+        grade_dist: list[GradeDistribution] = self._calculate_grade_distribution()
+
         return GradeResult(
             user_id=user_id,
             grade=grade,
@@ -135,6 +148,7 @@ class RankingService:
             percentile=round(percentile, 2),
             percentile_confidence=percentile_confidence,
             percentile_description=percentile_description,
+            grade_distribution=grade_dist,
         )
 
     def _calculate_composite_score(self, test_results: list[TestResult]) -> float:
@@ -273,6 +287,60 @@ class RankingService:
         percentile: float = ((total_cohort_size - rank + 1) / total_cohort_size) * 100
 
         return percentile
+
+    def _calculate_grade_distribution(self) -> list[GradeDistribution]:
+        """
+        Calculate grade distribution across all users with completed test sessions.
+
+        REQ-B-B4-6: Return all grades with count and percentage
+
+        Returns:
+            List of GradeDistribution objects for each grade (Beginner~Elite)
+
+        """
+        # Get all completed test results and calculate composite scores for all users
+        cohort_query = (
+            self.session.query(
+                TestSession.user_id,
+                func.avg(TestResult.score).label("avg_score"),
+                func.count(TestResult.id).label("result_count"),
+            )
+            .join(TestResult, TestResult.session_id == TestSession.id)
+            .filter(TestSession.status == "completed")
+            .group_by(TestSession.user_id)
+            .all()
+        )
+
+        # Count users in each grade
+        grade_counts: dict[str, int] = {
+            "Beginner": 0,
+            "Intermediate": 0,
+            "Inter-Advanced": 0,
+            "Advanced": 0,
+            "Elite": 0,
+        }
+
+        # Classify each user into a grade
+        for _user_id, avg_score, _result_count in cohort_query:
+            grade: str = self._determine_grade(avg_score)
+            grade_counts[grade] += 1
+
+        # Calculate total and percentages
+        total_users: int = len(cohort_query)
+        distribution: list[GradeDistribution] = []
+
+        for grade in ["Beginner", "Intermediate", "Inter-Advanced", "Advanced", "Elite"]:
+            count: int = grade_counts[grade]
+            percentage: float = (count / total_users * 100) if total_users > 0 else 0.0
+            distribution.append(
+                GradeDistribution(
+                    grade=grade,
+                    count=count,
+                    percentage=round(percentage, 2),
+                )
+            )
+
+        return distribution
 
     def assign_badges(self, user_id: int, grade: str) -> list[UserBadge]:
         """

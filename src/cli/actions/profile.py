@@ -622,6 +622,7 @@ def get_ranking(context: CLIContext, *args: str) -> None:
     total_cohort_size = response.get("total_cohort_size", 0)
     percentile_description = response.get("percentile_description", "")
     percentile_confidence = response.get("percentile_confidence", "unknown")
+    grade_distribution = response.get("grade_distribution", [])
 
     # Display ranking information
     context.console.print()
@@ -645,6 +646,43 @@ def get_ranking(context: CLIContext, *args: str) -> None:
 
     context.console.print()
     context.console.print("[bold cyan]═════════════════════════════════════════════[/bold cyan]")
+
+    # Display grade distribution if available
+    if grade_distribution:
+        context.console.print()
+        context.console.print("[bold cyan]📈 Grade Distribution[/bold cyan]")
+        context.console.print("[bold cyan]═════════════════════════════════════════════[/bold cyan]")
+        context.console.print()
+
+        for dist in grade_distribution:
+            dist_grade = dist.get("grade", "Unknown")
+            dist_count = dist.get("count", 0)
+            dist_percentage = dist.get("percentage", 0)
+
+            # Create a simple bar chart
+            bar_length = int(dist_percentage / 2)  # Scale to 50 chars max
+            bar = "█" * bar_length
+            spaces = " " * (25 - bar_length)
+
+            # Color based on grade
+            if dist_grade == "Elite":
+                color = "bold magenta"
+            elif dist_grade == "Advanced":
+                color = "bold yellow"
+            elif dist_grade == "Inter-Advanced":
+                color = "bold cyan"
+            elif dist_grade == "Intermediate":
+                color = "bold green"
+            else:  # Beginner
+                color = "bold blue"
+
+            context.console.print(
+                f"[{color}]{dist_grade:15}[/{color}] {bar}{spaces} {dist_count:3} ({dist_percentage:5.1f}%)"
+            )
+
+        context.console.print()
+        context.console.print("[bold cyan]═════════════════════════════════════════════[/bold cyan]")
+
     context.console.print()
 
     context.logger.info(f"Fetched ranking: grade={grade}, score={score}, rank={rank}")
