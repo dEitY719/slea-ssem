@@ -311,9 +311,14 @@ class AgentOutputConverter:
 
         # Type별 answer_schema 구성 (dict 반환)
         if question_type == "short_answer":
+            # Extract keywords from either top-level or nested answer_schema
+            keywords = q_dict.get("correct_keywords")
+            if keywords is None and isinstance(raw_answer_schema, dict):
+                keywords = raw_answer_schema.get("keywords") or raw_answer_schema.get("correct_keywords")
+
             answer_schema_dict = {
                 "type": normalized_schema_type,
-                "keywords": q_dict.get("correct_keywords"),
+                "keywords": keywords,
                 "correct_answer": None,
             }
         else:
