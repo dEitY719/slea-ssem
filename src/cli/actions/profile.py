@@ -341,13 +341,7 @@ def get_survey(context: CLIContext, *args: str) -> None:
     context.console.print()
 
     # Check if any data exists
-    if (
-        level is None
-        and career is None
-        and job_role is None
-        and duty is None
-        and interests is None
-    ):
+    if level is None and career is None and job_role is None and duty is None and interests is None:
         context.console.print("[bold yellow]ℹ️  No profile survey found[/bold yellow]")
         context.console.print("[dim]  You have not submitted a profile survey yet[/dim]")
     else:
