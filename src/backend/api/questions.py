@@ -965,8 +965,7 @@ def get_session_explanations(
         # Use thread pool for parallel processing (up to 5 concurrent requests)
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = [
-                executor.submit(generate_explanation_safe, item_params)
-                for item_params in explanation_items_to_process
+                executor.submit(generate_explanation_safe, item_params) for item_params in explanation_items_to_process
             ]
             for future in as_completed(futures):
                 explanations_list.append(future.result())

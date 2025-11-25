@@ -4,8 +4,6 @@ Nickname validation logic.
 REQ: REQ-B-A2-2, REQ-B-A2-4
 """
 
-import re
-
 
 class NicknameValidator:
     """
@@ -15,7 +13,7 @@ class NicknameValidator:
     REQ-B-A2-4: Forbidden word filter with clear rejection reason
     """
 
-    MIN_LENGTH = 3
+    MIN_LENGTH = 1
     MAX_LENGTH = 30
 
     # Forbidden words list (금칙어)
@@ -61,12 +59,8 @@ class NicknameValidator:
         if len(nickname) > cls.MAX_LENGTH:
             return False, f"Nickname must be at most {cls.MAX_LENGTH} characters long."
 
-        # Check format: alphanumeric + underscore only
-        if not re.match(r"^[a-zA-Z0-9_]+$", nickname):
-            return (
-                False,
-                "Nickname can only contain letters, numbers, and underscores.",
-            )
+        # REQ-B-A2-Avail-2: Allow all Unicode characters, Korean, special chars, etc.
+        # No character type restrictions beyond length + forbidden words
 
         # Check forbidden words (case-insensitive)
         nickname_lower = nickname.lower()

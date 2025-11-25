@@ -70,6 +70,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-B-A1 | Samsung AD 인증 & 세션 관리 | 4 | ✅ Done | Commit: f5412e9 |
 | REQ-B-A3 | 개인정보 동의 관리 | 0 | ⏳ Backlog | 2개 sub-tasks |
 | REQ-B-A2 | 닉네임 등록 | 4 | ✅ Done | 23 tests (100%), Commit: 5e6c373 |
+| REQ-B-A2-Avail-2 | 닉네임 유효성 검사 (1-30자, 한글/특수문자 허용) | 4 | ✅ Done | 16 tests (100%), Commit: (pending), Progress: docs/progress/REQ-B-A2-Avail-2.md |
 | REQ-B-A2-Signup | 통합 회원가입 API (닉네임 + 프로필 한 번에 저장) | 0 | ⏳ Backlog | 5개 sub-tasks (트랜잭션 처리) |
 | REQ-B-A2-Edit | 프로필 수정 | 4 | ✅ Done | 28 tests (100%), Commit: fdb3896 |
 | REQ-B-A2-Prof-4 | 최근 자기평가 정보 조회 | 4 | ✅ Done | 3 tests (100%), Commit: (pending), Progress: docs/progress/REQ-B-A2-Prof-4.md |

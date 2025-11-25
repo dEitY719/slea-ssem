@@ -8,4 +8,13 @@ from .profile import router as profile_router
 from .questions import router as questions_router
 from .survey import router as survey_router
 
-__all__ = ["auth", "profile", "questions", "survey", "auth_router", "profile_router", "survey_router", "questions_router"]
+__all__ = [
+    "auth",
+    "profile",
+    "questions",
+    "survey",
+    "auth_router",
+    "profile_router",
+    "survey_router",
+    "questions_router",
+]

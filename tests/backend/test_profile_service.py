@@ -34,8 +34,9 @@ class TestNicknameDuplicateCheck:
         """Input validation: Invalid nickname raises ValueError."""
         service = ProfileService(db_session)
 
-        with pytest.raises(ValueError, match="at least 3 characters"):
-            service.check_nickname_availability("ab")
+        # REQ-B-A2-Avail-2: Minimum length is now 1 char, so empty string is invalid
+        with pytest.raises(ValueError, match="at least 1 character"):
+            service.check_nickname_availability("")
 
         with pytest.raises(ValueError, match="prohibited word"):
             service.check_nickname_availability("admin")
