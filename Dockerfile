@@ -3,7 +3,7 @@
 # 사외(공개) + 사내(폐쇄) 환경 모두 지원
 
 # Base Image: Python 3.13 (pyproject.toml requires-python: >=3.13)
-FROM python:3.13-slim as builder
+FROM python:3.13-slim AS builder
 
 # ==================== BUILD-TIME ARGS ====================
 # 빌드 시점 전용 설정 (이미지에 고정되지 않음)

@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Outside-In 전략 (사외 GitHub → 사내 GitHub 단방향 동기화)
 # 개발 환경용 Docker Compose
 # 사외(공개): 기본값 포함
