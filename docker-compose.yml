@@ -1,0 +1,159 @@
+version: '3.8'
+
+# Outside-In 전략 (사외 GitHub → 사내 GitHub 단방향 동기화)
+# 개발 환경용 Docker Compose
+# 사외(공개): 기본값 포함
+# 사내(폐쇄): .env 또는 docker-compose.override.yml로 오버라이드
+
+services:
+  # ============================================================
+  # PostgreSQL 15 데이터베이스
+  # ============================================================
+  db:
+    image: postgres:15-alpine
+    container_name: slea-db
+
+    environment:
+      # 기본값 (사외)
+      POSTGRES_DB: sleassem_dev
+      POSTGRES_USER: slea_user
+      POSTGRES_PASSWORD: change_me_dev_password
+
+      # 타임존 설정
+      TZ: Asia/Seoul
+      PGTZ: Asia/Seoul
+
+    ports:
+      # 로컬 개발용 포트 노출 (사외)
+      # 사내: docker-compose.override.yml에서 제거
+      - "5432:5432"
+
+    volumes:
+      # 데이터 영속성
+      - postgres_data:/var/lib/postgresql/data
+
+      # 초기화 스크립트 (선택)
+      # - ./infra/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U slea_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    networks:
+      - slea-network
+
+    restart: unless-stopped
+
+  # ============================================================
+  # FastAPI 백엔드
+  # ============================================================
+  backend:
+    # 빌드 설정
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+      # 빌드 시점 args (사내 환경에서 오버라이드)
+      args:
+        # 사외(기본값): 빌드 arg 없음
+        # 사내: docker-compose.override.yml에서 proxy/mirror 추가
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+        PIP_EXTRA_INDEX_URL: ${PIP_EXTRA_INDEX_URL:-}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+
+    container_name: slea-backend
+
+    environment:
+      # 데이터베이스 연결
+      DATABASE_URL: postgresql://${DB_USER:-slea_user}:${DB_PASSWORD:-change_me_dev_password}@db:5432/${DB_NAME:-sleassem_dev}
+
+      # FastAPI 설정
+      HOST: 0.0.0.0
+      PORT: 8000
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+
+      # Python 설정
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONPATH: /app
+
+      # 타임존
+      TZ: Asia/Seoul
+
+      # 선택: 프록시 (사내 환경용)
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      NO_PROXY: ${NO_PROXY:-}
+
+    ports:
+      # 개발용 포트 노출 (사외)
+      # 사내: docker-compose.override.yml에서 제거
+      - "8000:8000"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    volumes:
+      # 실시간 코드 변경 반영 (개발 중)
+      - .:/app
+
+      # 캐시 제외
+      - /app/.pytest_cache
+      - /app/.mypy_cache
+      - /app/__pycache__
+
+    networks:
+      - slea-network
+
+    restart: unless-stopped
+
+    # 개발 모드: 자동 다시로드 활성화
+    command: >
+      sh -c "
+        echo '🔄 Waiting for database...';
+        sleep 5;
+        echo '📦 Running migrations...';
+        alembic upgrade head;
+        echo '🚀 Starting Uvicorn server...';
+        python -m uvicorn src.backend.main:app
+          --host 0.0.0.0
+          --port 8000
+          --reload
+      "
+
+  # ============================================================
+  # Redis 캐시 (선택)
+  # ============================================================
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: slea-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - slea-network
+  #   restart: unless-stopped
+
+# ============================================================
+# 네트워크
+# ============================================================
+networks:
+  slea-network:
+    driver: bridge
+
+# ============================================================
+# 볼륨
+# ============================================================
+volumes:
+  postgres_data:
+    driver: local
+  # redis_data:
+  #   driver: local

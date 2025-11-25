@@ -1,0 +1,97 @@
+# Docker Compose Override 파일 (사내 환경용)
+#
+# 사용법:
+# 1. 이 파일을 docker-compose.override.yml로 복사
+# 2. 회사 환경에 맞게 수정 (proxy, DB 정보 등)
+# 3. git에 추가하지 않음 (.gitignore에 이미 추가됨)
+#
+# Docker Compose는 자동으로 docker-compose.override.yml을 merge합니다
+# 사외 기본값(docker-compose.yml) + 사내 설정(docker-compose.override.yml) = 최종 환경
+
+version: '3.8'
+
+services:
+  # ============================================================
+  # 사내 PostgreSQL (회사 내부 DB 서버 사용 시)
+  # ============================================================
+  # db:
+  #   # 사내 DB 서버 사용 시 컨테이너 비활성화
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0'
+  #         memory: 0B
+  #   # 또는 아래처럼 모두 제거:
+  #   # (docker-compose.override.yml에서 service 제거는 불가능하므로 위 방법 사용)
+
+  backend:
+    build:
+      # 빌드 시점 설정 (사내 환경)
+      args:
+        # 회사 PyPI 미러 (예시)
+        PIP_INDEX_URL: http://pypi.company.internal:8080/simple
+        PIP_EXTRA_INDEX_URL: http://mirror.company.internal:8080/pypi/simple
+
+        # 회사 프록시
+        HTTP_PROXY: http://proxy.company.com:8080
+        HTTPS_PROXY: http://proxy.company.com:8080
+        NO_PROXY: localhost,127.0.0.1,.company.com,db
+
+    environment:
+      # 사내 DB 서버 연결 (외부 서버 사용)
+      DATABASE_URL: postgresql://internal_user:${DB_PASSWORD}@postgres.company.internal:5432/sleassem
+
+      # 사내 환경 표시
+      ENVIRONMENT: production
+      LOG_LEVEL: WARNING
+
+      # 사내 프록시
+      HTTP_PROXY: http://proxy.company.com:8080
+      HTTPS_PROXY: http://proxy.company.com:8080
+      NO_PROXY: localhost,127.0.0.1,.company.com
+
+    ports:
+      # 사내: 포트 노출 제거 (내부 트래픽만)
+      - "8000:8000"  # 필요시 제거
+
+    volumes:
+      # 사내: 실시간 코드 변경 비활성화 (Production 환경)
+      # - .:/app  # 제거 (컨테이너 내부 코드만 사용)
+      # 위 라인을 주석 처리하려면 아래처럼 override:
+      - /app:/app  # read-only로 설정하거나 제거
+
+    # 사내: 프로덕션 모드 (자동 다시로드 비활성화)
+    command: >
+      sh -c "
+        echo '🔄 데이터베이스 대기중...';
+        sleep 5;
+        echo '📦 마이그레이션 실행...';
+        alembic upgrade head;
+        echo '🚀 Uvicorn 서버 시작 (프로덕션 모드)...';
+        python -m uvicorn src.backend.main:app
+          --host 0.0.0.0
+          --port 8000
+          --workers 4
+      "
+
+    depends_on:
+      # 사내: 로컬 DB 컨테이너 비활성화 (외부 DB 사용)
+      # db:
+      #   condition: service_healthy  # 제거
+
+    restart: always  # 사내: 자동 재시작
+
+# ============================================================
+# 사내 설정 (필요시)
+# ============================================================
+# 사내 Redis (있으면 활성화)
+# redis:
+#   image: redis:7-alpine
+#   container_name: slea-redis-company
+#   environment:
+#     - REDIS_PASSWORD=${REDIS_PASSWORD}
+#   ports:
+#     - "6379:6379"  # 필요시
+#   networks:
+#     - slea-network
+#   restart: always
