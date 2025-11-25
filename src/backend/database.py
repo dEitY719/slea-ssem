@@ -8,7 +8,8 @@ from dotenv import load_dotenv
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-# Load .env file if it exists
+# Load .env file for development (not present in Docker)
+# In Docker, environment variables are injected by docker-compose.yml
 env_file = Path(__file__).parent.parent.parent / ".env"
 if env_file.exists():
     load_dotenv(dotenv_path=env_file)

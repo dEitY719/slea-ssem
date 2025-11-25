@@ -1,15 +1,56 @@
+# Python
 .python-version
 .venv
 .tox
-.idea
-.env
-
+.venv/
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
 *.egg-info
-.mypy_cache
-
+dist/
 build/
 
-__pycache__
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
 
+# Environment & Configuration
+.env
+.env.*
+.env.local
+.env.company
+docker-compose.override.yml
+infra/pip.conf
+infra/secrets/
+
+# Testing
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Node
 node_modules
+npm-debug.log
+
+# Misc
 tmp/
+.DS_Store
+*.log
+*.pid
+*.seed
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE caches
+.cache/
+.vscode/settings.json

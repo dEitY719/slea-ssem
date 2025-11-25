@@ -1,8 +1,11 @@
-"""Backend API routers."""
+"""Backend API routers and modules."""
 
-from src.backend.api.auth import router as auth_router
-from src.backend.api.profile import router as profile_router
-from src.backend.api.questions import router as questions_router
-from src.backend.api.survey import router as survey_router
+# Import submodules to make them available for:
+# from src.backend.api import auth, profile, questions, survey
+from . import auth, profile, questions, survey
+from .auth import router as auth_router
+from .profile import router as profile_router
+from .questions import router as questions_router
+from .survey import router as survey_router
 
-__all__ = ["auth_router", "profile_router", "survey_router", "questions_router"]
+__all__ = ["auth", "profile", "questions", "survey", "auth_router", "profile_router", "survey_router", "questions_router"]
