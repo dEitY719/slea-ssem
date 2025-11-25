@@ -245,12 +245,22 @@ class ScoringService:
         answer_schema: dict[str, Any],  # noqa: ANN401
     ) -> tuple[bool, float]:
         """
-        Score short answer (keyword matching).
+        Score short answer (keyword matching with partial credit).
 
         REQ: REQ-B-B3-Score-2
 
-        Uses keyword presence checking for MVP (not LLM-based).
-        Calculates partial credit: (matched_keywords / total_keywords) * 100
+        Uses keyword presence checking with word-level partial credit:
+        - Exact match: keyword appears in answer → full credit for this keyword
+        - Partial match: some words from keyword appear → partial credit (word_matches / total_words)
+        - No match: keyword not found → 0 credit
+
+        Examples:
+        - Keywords: ["conversational AI", "dialogue system", "natural language processing"]
+        - User answer: "conversational dialogue natural language"
+          * "conversational AI": "conversational" matches → 1/2 = 0.5 credit
+          * "dialogue system": "dialogue" matches → 1/2 = 0.5 credit
+          * "natural language processing": "natural" + "language" match → 2/3 = 0.67 credit
+          * Total: (0.5 + 0.5 + 0.67) / 3 = 0.56 → 56 points (instead of 0)
 
         Args:
             user_answer: User's answer (string or dict)
@@ -272,18 +282,39 @@ class ScoringService:
             # If no keywords specified, treat empty answer as 0 score, non-empty as 100
             return len(answer_text) > 0, 100.0 if len(answer_text) > 0 else 0.0
 
-        # Count matched keywords (case-insensitive, substring matching)
+        # Prepare answer for matching
         answer_lower = answer_text.lower()
-        matched_count = 0
+        answer_words = set(answer_lower.split())
+
+        # Calculate score with partial credit for each keyword
+        total_credit = 0.0
+        exact_matches = 0
+
         for keyword in keywords:
             keyword_lower = str(keyword).lower().strip()
-            if keyword_lower and keyword_lower in answer_lower:
-                matched_count += 1
+            if not keyword_lower:
+                continue
 
-        # Calculate score
+            # First, check for exact match (full keyword in answer)
+            if keyword_lower in answer_lower:
+                total_credit += 1.0
+                exact_matches += 1
+            else:
+                # Check for partial word-level match
+                keyword_words = keyword_lower.split()
+                matched_words = sum(1 for word in keyword_words if word in answer_words)
+
+                if matched_words > 0:
+                    # Partial credit: (matched_words / total_words_in_keyword)
+                    partial_credit = matched_words / len(keyword_words)
+                    total_credit += partial_credit
+
+        # Calculate final score
         total_keywords = len(keywords)
-        score = (matched_count / total_keywords * 100.0) if total_keywords > 0 else 0.0
-        is_correct = matched_count == total_keywords
+        score = (total_credit / total_keywords * 100.0) if total_keywords > 0 else 0.0
+
+        # is_correct: True only if all keywords matched exactly
+        is_correct = exact_matches == total_keywords
 
         return is_correct, score
 
