@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PlayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { TrophyIcon } from '@heroicons/react/24/solid'
-import { getToken } from '../utils/auth'
+import { isAuthenticated } from '../utils/auth'
 import { useUserProfile } from '../hooks/useUserProfile'
 import { profileService } from '../services/profileService'
 import { homeService, type LastTestResult } from '../services/homeService'
@@ -42,6 +42,18 @@ const HomePage: React.FC = () => {
   // REQ: REQ-F-A1-Home - Total participants state
   const [totalParticipants, setTotalParticipants] = useState<number | null>(null)
   const [isLoadingStats, setIsLoadingStats] = useState(true)
+
+  // REQ-F-A1-3: Check authentication on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const authenticated = await isAuthenticated()
+      if (!authenticated) {
+        navigate('/')
+      }
+    }
+
+    checkAuth()
+  }, [navigate])
 
   // REQ-F-A2-Signup-1: Load nickname on mount to determine if signup button should show
   useEffect(() => {
@@ -133,13 +145,6 @@ const HomePage: React.FC = () => {
         setErrorMessage(`프로필 정보를 불러오는데 실패했습니다: ${errorMsg}`)
       }
     }
-
-  // Verify user is authenticated
-  const token = getToken()
-  if (!token) {
-    navigate('/')
-    return null
-  }
 
   return (
     <PageLayout
