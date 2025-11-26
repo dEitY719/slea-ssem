@@ -1,4 +1,6 @@
 // REQ: REQ-F-A1-1, REQ-F-A1-3, REQ-B-A1-9
+import { transport } from '../lib/transport'
+
 /**
  * Authentication utility functions for HttpOnly cookie-based auth.
  *
@@ -19,12 +21,10 @@
  */
 export const isAuthenticated = async (): Promise<boolean> => {
   try {
-    const response = await fetch('/api/auth/status', {
-      credentials: 'include', // Include HttpOnly cookies
-      method: 'GET',
-    })
-    return response.ok // 200 OK = authenticated, 401 = not authenticated
+    // Use transport layer to respect VITE_MOCK_API setting
+    await transport.get<{ authenticated: boolean }>('/api/auth/status')
+    return true // 200 OK = authenticated
   } catch {
-    return false
+    return false // 401 or any error = not authenticated
   }
 }

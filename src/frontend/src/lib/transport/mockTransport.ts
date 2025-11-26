@@ -4,6 +4,7 @@ import { HttpTransport, RequestConfig } from './types'
 import { debugLog } from '../../utils/logger'
 
 const API_AUTH_LOGIN = '/api/auth/login'
+const API_AUTH_STATUS = '/api/auth/status'
 const API_PROFILE_NICKNAME = '/api/profile/nickname'
 const API_PROFILE_NICKNAME_CHECK = '/api/profile/nickname/check'
 const API_PROFILE_REGISTER = '/api/profile/register'
@@ -46,6 +47,10 @@ const mockData: Record<string, any> = {
     token_type: 'bearer',
     user_id: 'mock_user@samsung.com',
     is_new_user: true,
+  },
+  [API_AUTH_STATUS]: {
+    authenticated: true,
+    user_id: 'mock_user@samsung.com',
   },
   [API_PROFILE_NICKNAME]: {
     user_id: 'mock_user@samsung.com',
