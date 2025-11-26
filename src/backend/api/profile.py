@@ -35,7 +35,7 @@ router = APIRouter(tags=["profile"])
 class NicknameCheckRequest(BaseModel):
     """Request model for nickname availability check."""
 
-    nickname: str = Field(..., description="Nickname to check", min_length=1)
+    nickname: str = Field(..., description="Nickname to check", min_length=3)
 
 
 class NicknameCheckResponse(BaseModel):
@@ -48,8 +48,8 @@ class NicknameCheckResponse(BaseModel):
 class NicknameRegisterRequest(BaseModel):
     """Request model for nickname registration."""
 
-    # REQ-B-A2-Avail-2: Support 1-30 chars with Unicode/Korean/special chars
-    nickname: str = Field(..., description="Nickname to register", min_length=1, max_length=30)
+    # REQ-B-A2-Avail-2: Support 3-30 chars with Unicode/Korean/special chars
+    nickname: str = Field(..., description="Nickname to register", min_length=3, max_length=30)
 
 
 class NicknameRegisterResponse(BaseModel):
@@ -74,8 +74,8 @@ class NicknameViewResponse(BaseModel):
 class NicknameEditRequest(BaseModel):
     """Request model for nickname edit."""
 
-    # REQ-B-A2-Avail-2: Support 1-30 chars with Unicode/Korean/special chars
-    nickname: str = Field(..., description="New nickname", min_length=1, max_length=30)
+    # REQ-B-A2-Avail-2: Support 3-30 chars with Unicode/Korean/special chars
+    nickname: str = Field(..., description="New nickname", min_length=3, max_length=30)
 
 
 class NicknameEditResponse(BaseModel):

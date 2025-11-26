@@ -117,7 +117,7 @@ class TestProfileSurveyRetrieval:
 
     def test_get_profile_survey_response_structure(self, client: TestClient) -> None:
         """
-        TC-7: Response structure must have all 5 expected fields.
+        TC-7: Response structure must have all 6 expected fields (id + 5 data fields).
 
         REQ: REQ-B-A2-Prof-5
         """
@@ -126,13 +126,13 @@ class TestProfileSurveyRetrieval:
         assert response.status_code == 200
         data = response.json()
 
-        # Verify all 5 fields are present
-        expected_fields = ["level", "career", "job_role", "duty", "interests"]
+        # Verify all 6 fields are present
+        expected_fields = ["id", "level", "career", "job_role", "duty", "interests"]
         for field in expected_fields:
             assert field in data, f"Missing field: {field}"
 
         # Verify no extra fields
-        assert len(data) == 5, f"Expected 5 fields, got {len(data)}: {list(data.keys())}"
+        assert len(data) == 6, f"Expected 6 fields, got {len(data)}: {list(data.keys())}"
 
     def test_get_profile_survey_most_recent_by_submitted_at(
         self, client: TestClient, authenticated_user: User, db_session: Session

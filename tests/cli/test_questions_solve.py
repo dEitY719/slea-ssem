@@ -95,7 +95,7 @@ class TestQuestionsSolve:
         assert "Not authenticated" in output
 
     @patch("src.cli.actions.questions._get_latest_session")
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     def test_solve_auto_detect_latest_session(
         self,
         mock_get_questions: MagicMock,
@@ -115,7 +115,7 @@ class TestQuestionsSolve:
         assert mock_get_latest.called
         assert mock_get_questions.called
 
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     def test_solve_with_explicit_session_id(
         self, mock_get_questions: MagicMock, mock_context: CLIContext, sample_questions: list[dict]
     ) -> None:
@@ -125,14 +125,14 @@ class TestQuestionsSolve:
         with patch("builtins.input", return_value="q"):
             questions.solve(mock_context, "--session-id", "session_999")
 
-        # Verify _get_all_questions_in_session was called with explicit session
+        # Verify _get_session_questions was called with explicit session
         assert mock_get_questions.called
         call_args = mock_get_questions.call_args
         # Check that session_999 was passed somehow
         call_str = str(call_args)
         assert "session_999" in call_str
 
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     @patch("src.cli.actions.questions._autosave_answer_internal")
     def test_solve_multiple_choice_answer_with_letter(
         self,
@@ -152,7 +152,7 @@ class TestQuestionsSolve:
         # Verify autosave was called
         assert mock_autosave.called
 
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     @patch("src.cli.actions.questions._autosave_answer_internal")
     def test_solve_true_false_answer_true(
         self,
@@ -171,7 +171,7 @@ class TestQuestionsSolve:
 
         assert mock_autosave.called
 
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     @patch("src.cli.actions.questions._autosave_answer_internal")
     def test_solve_short_answer_text(
         self,
@@ -191,7 +191,7 @@ class TestQuestionsSolve:
 
         assert mock_autosave.called
 
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     def test_solve_display_progress_format(
         self,
         mock_get_questions: MagicMock,
@@ -209,7 +209,7 @@ class TestQuestionsSolve:
         # Should show question progress [1/3]
         assert "[1/" in output or "1/" in output or "Question 1/" in output
 
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     def test_solve_displays_question_details(
         self,
         mock_get_questions: MagicMock,
@@ -231,7 +231,7 @@ class TestQuestionsSolve:
         assert "Math" in output
         assert "Easy" in output or "easy" in output.lower()
 
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     def test_solve_displays_multiple_choice_options(
         self,
         mock_get_questions: MagicMock,
@@ -254,7 +254,7 @@ class TestQuestionsSolve:
         )
         assert has_options
 
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     @patch("src.cli.actions.questions._autosave_answer_internal")
     def test_solve_all_questions_sequence(
         self,
@@ -277,7 +277,7 @@ class TestQuestionsSolve:
         # Should autosave at least once
         assert mock_autosave.call_count >= 1
 
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     def test_solve_empty_session_handles_gracefully(
         self,
         mock_get_questions: MagicMock,
@@ -317,7 +317,7 @@ class TestQuestionsSolve:
             or "session" in output.lower()
         )
 
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     @patch("src.cli.actions.questions._autosave_answer_internal")
     def test_solve_navigate_next_previous(
         self,
@@ -338,7 +338,7 @@ class TestQuestionsSolve:
         output = strip_ansi(mock_context._buffer.getvalue())
         assert len(output) > 0
 
-    @patch("src.cli.actions.questions._get_all_questions_in_session")
+    @patch("src.cli.actions.questions._get_session_questions")
     def test_solve_question_counter_correct(
         self,
         mock_get_questions: MagicMock,
