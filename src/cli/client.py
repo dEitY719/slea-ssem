@@ -29,7 +29,11 @@ class APIClient:
         self.token: str | None = None
 
     def set_token(self, token: str) -> None:
-        """Set JWT token for authenticated requests."""
+        """
+        Set JWT token for authenticated requests.
+
+        Sets token both in Authorization header and as HTTP cookie.
+        """
         self.token = token
 
     def get_token(self) -> str | None:
@@ -70,12 +74,18 @@ class APIClient:
 
         """
         try:
+            # Prepare cookies if token is set
+            cookies = {}
+            if self.token:
+                cookies["auth_token"] = self.token
+
             response = self.client.request(
                 method,
                 path,
                 headers=self._get_headers(),
                 json=json_data,
                 params=params,
+                cookies=cookies,
             )
 
             if response.status_code >= 400:

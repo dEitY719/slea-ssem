@@ -130,7 +130,7 @@ def status(context: CLIContext, *args: str) -> None:
     """현재 인증 상태를 확인합니다 (JWT 쿠키 유효성 검증)."""
     context.console.print("[dim]인증 상태를 확인 중입니다...[/dim]")
 
-    # API 호출
+    # API 호출 (엔드포인트: GET /auth/status)
     status_code, response, error = context.client.make_request(
         "GET",
         "/auth/status",
