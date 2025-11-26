@@ -188,6 +188,10 @@ class OIDCAuthService:
         if not settings.OIDC_TOKEN_ENDPOINT:
             raise ValueError("OIDC_TOKEN_ENDPOINT not configured")
 
+        # Development/Test Mode: Return mock tokens if using test credentials
+        if settings.OIDC_CLIENT_ID == "your-azure-app-id":
+            return self._get_mock_tokens(code, code_verifier)
+
         payload = {
             "client_id": settings.OIDC_CLIENT_ID,
             "client_secret": settings.OIDC_CLIENT_SECRET,
@@ -238,9 +242,11 @@ class OIDCAuthService:
 
         """
         try:
-            # Get JWKS from Azure AD endpoint for signature verification
-            # TODO: Use JWKS for signature verification in production
-            _ = self._get_jwks()
+            # Skip JWKS fetch in test/development mode
+            if settings.OIDC_CLIENT_ID != "your-azure-app-id":
+                # Production: Get JWKS from Azure AD endpoint for signature verification
+                # TODO: Use JWKS for signature verification in production
+                _ = self._get_jwks()
 
             # Decode and validate token
             # Note: In production, we would verify the signature using JWKS
@@ -267,6 +273,60 @@ class OIDCAuthService:
             return payload
         except jwt.InvalidTokenError as e:
             raise jwt.InvalidTokenError(f"Invalid ID token: {str(e)}") from e
+
+    def _get_mock_tokens(self, code: str, code_verifier: str) -> dict[str, Any]:
+        """
+        Generate mock tokens for development/testing.
+
+        Used when OIDC_CLIENT_ID is set to "your-azure-app-id" (test mode).
+
+        Each unique code generates a unique user (sub claim).
+        This allows testing multiple users in development.
+
+        Args:
+            code: Authorization code (used to generate unique sub)
+            code_verifier: PKCE code verifier
+
+        Returns:
+            Dictionary with mock access_token and id_token
+
+        """
+        # Create a mock ID Token (JWT format)
+        now = datetime.now(UTC)
+        expiration = now + timedelta(hours=24)
+
+        # Generate unique sub from code (for different test users)
+        # In real Azure AD, sub is the user's OID (unique identifier)
+        import hashlib
+
+        sub_hash = hashlib.md5(code.encode()).hexdigest()[:12]
+        user_sub = f"user-oid-{sub_hash}"
+
+        mock_id_token_payload = {
+            "aud": settings.OIDC_CLIENT_ID,
+            "iss": f"https://login.microsoftonline.com/{settings.OIDC_TENANT_ID}/v2.0",
+            "sub": user_sub,  # Unique per code
+            "email": f"testuser-{sub_hash}@samsung.com",  # Unique per code
+            "name": f"Test User {sub_hash}",  # Unique per code
+            "dept": "Engineering",
+            "business_unit": "Research",
+            "iat": int(now.timestamp()),
+            "exp": int(expiration.timestamp()),
+        }
+
+        # Create mock ID Token without signature verification (for testing)
+        mock_id_token = jwt.encode(
+            mock_id_token_payload,
+            settings.JWT_SECRET_KEY,
+            algorithm=settings.JWT_ALGORITHM,
+        )
+
+        return {
+            "access_token": f"mock-access-token-{sub_hash}",
+            "id_token": mock_id_token,
+            "token_type": "Bearer",
+            "expires_in": 3600,
+        }
 
     def _get_jwks(self) -> dict[str, Any]:
         """

@@ -21,7 +21,12 @@ COMMAND_LAYOUT = {
                 "description": "Samsung AD 로그인 (JWT 토큰 발급)",
                 "usage": "auth login [username]",
                 "target": "src.cli.actions.auth.login",
-            }
+            },
+            "oidc-callback": {
+                "description": "OIDC 콜백 (Azure AD 인증, JWT 쿠키 발급)",
+                "usage": "auth oidc-callback [code] [code_verifier]",
+                "target": "src.cli.actions.auth.oidc_callback",
+            },
         },
     },
     "survey": {
