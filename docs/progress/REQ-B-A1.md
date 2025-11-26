@@ -1,160 +1,170 @@
-# REQ-B-A1: Samsung AD 인증 및 사용자 세션 관리
+# REQ-B-A1: OIDC 인증 및 JWT 쿠키 발급 (Backend) - Progress Report
 
-**Developer**: bwyoon
-**Status**: ✅ Done (Phase 4)
-**Merge Commit**: f5412e9
-**Merge Date**: 2025-11-07
-
----
-
-## 📋 Specification (Phase 1)
-
-### Requirements
-
-| REQ ID | Description | Priority |
-|--------|---|---|
-| REQ-B-A1-1 | Samsung AD 사용자 정보 수신 및 users 테이블에 저장 | **M** |
-| REQ-B-A1-2 | JWT 토큰 생성 (knox_id, iat, exp만 포함) | **M** |
-| REQ-B-A1-3 | 신규 사용자: 레코드 생성 + JWT + is_new_user=true | **M** |
-| REQ-B-A1-4 | 기존 사용자: JWT 재생성 + last_login 업데이트 + is_new_user=false | **M** |
-
-### Implementation Location
-
-```
-src/backend/
-├── models/user.py           # User SQLAlchemy ORM
-├── services/auth_service.py # AuthService class
-├── api/auth.py              # FastAPI /auth/login endpoint
-├── config.py                # JWT configuration
-└── database.py              # Session management
-```
-
-### Key Design Decisions
-
-1. **JWT Payload**: Only `knox_id`, `iat`, `exp` (no PII in token)
-2. **Status Codes**: 201 for new users, 200 for existing users
-3. **Database**: SQLite for MVP (configurable via env)
-4. **Expiration**: 24 hours default (configurable)
+**Status**: COMPLETED
+**Last Updated**: 2025-11-26
+**Phases**: Phase 1 (Spec) → Phase 2 (Test Design) → Phase 3 (Implementation) → Phase 4 (Documentation)
 
 ---
 
-## 🧪 Test Design (Phase 2)
+## Executive Summary
 
-### Test Suite: `tests/backend/test_auth_*.py`
+REQ-B-A1 OIDC 인증 및 JWT 쿠키 발급 기능이 모두 구현 완료되었습니다. Azure AD와의 OIDC 통합, ID Token 검증, JWT 생성 및 HttpOnly 쿠키 설정이 모두 정상 작동합니다.
 
-**Unit Tests (7 tests)**:
-
-- ✅ New user registration with JWT generation
-- ✅ Existing user re-login with last_login update
-- ✅ JWT payload validation (only knox_id, iat, exp)
-- ✅ Input validation (missing required fields)
-- ✅ Duplicate knox_id handling
-- ✅ JWT expiration validation
-- ✅ Invalid JWT decoding error handling
-
-**Integration Tests (4 tests)**:
-
-- ✅ POST /auth/login with new user (201 Created)
-- ✅ POST /auth/login with existing user (200 OK)
-- ✅ Missing required field validation (422)
-- ✅ Invalid payload handling (422)
-
-**Test Coverage**: 11/11 passing (100%)
+**Key Metrics**:
+- Test Cases: 13개 (모두 통과)
+- Code Quality: ruff/black 통과
+- Implementation Files: 4 (config.py, auth_service.py, auth.py, test_oidc_auth.py)
 
 ---
 
-## 💻 Implementation (Phase 3)
+## Phase 1: Specification (COMPLETED)
 
-### Files Created (9 files)
+### Requirements Overview
 
-**Core Implementation**:
+**REQ-B-A1**: OIDC 인증 및 JWT 쿠키 발급 (Backend)
 
-1. `src/backend/models/user.py` - User model with all required fields
-2. `src/backend/services/auth_service.py` - JWT & auth logic
-3. `src/backend/api/auth.py` - FastAPI endpoint
-4. `src/backend/config.py` - JWT configuration
-5. `src/backend/database.py` - Session management
-
-**Package Inits**:
-6. `src/backend/models/__init__.py`
-7. `src/backend/services/__init__.py`
-8. `src/backend/api/__init__.py`
-
-**Test Infrastructure**:
-9. `tests/conftest.py` - Pytest fixtures & setup
-10. `tests/backend/test_auth_service.py` - Unit tests
-11. `tests/backend/test_auth_endpoint.py` - Integration tests
-
-### Dependencies Added
-
-```
-fastapi==0.121.0
-sqlalchemy==2.0.44
-PyJWT==2.10.1
-python-dotenv==1.2.1
-sqlalchemy-utils==0.42.0
-pytest-httpx==0.35.0  (dev)
-```
-
-### Code Quality
-
-- ✅ **Ruff**: All checks pass
-- ✅ **Type Hints**: mypy strict mode compliant
-- ✅ **Docstrings**: All public APIs documented
-- ✅ **Line Length**: ≤120 chars
+| 요구사항 ID | 설명 | 우선순위 |
+|-----------|------|--------|
+| REQ-B-A1-1 | Frontend로부터 authorization code와 code_verifier를 수신 | M |
+| REQ-B-A1-2 | Azure AD `/token` 엔드포인트로 토큰 교환 (PKCE 검증 포함) | M |
+| REQ-B-A1-3 | ID Token의 JWT signature, issuer, audience, expiration 검증 | M |
+| REQ-B-A1-4 | ID Token에서 사용자 정보 추출하여 users 테이블에 저장/업데이트 | M |
+| REQ-B-A1-5 | 자체 JWT 생성 (Payload: {user_id, knox_id, iat, exp}) | M |
+| REQ-B-A1-6 | 생성한 JWT를 HttpOnly 쿠키로 Set-Cookie 헤더에 설정 | M |
+| REQ-B-A1-7 | 신규 사용자는 is_new_user=true, 기존 사용자는 is_new_user=false | M |
+| REQ-B-A1-8 | 모든 API 요청에서 쿠키의 JWT 검증하여 인증 | M |
 
 ---
 
-## ✅ Summary (Phase 4)
+## Phase 2: Test Design (COMPLETED)
+
+### Test Coverage: 13 Test Cases
+
+#### TestOIDCCallbackEndpoint (3 tests)
+- TC-1: Valid authorization code and code_verifier → 201/200 + HttpOnly cookie
+- TC-2: New user registration → is_new_user=true, status=201
+- TC-3: Existing user re-login → is_new_user=false, status=200
+
+#### TestOIDCAuthService (4 tests)
+- TC-4: Token exchange with Azure AD → Returns access_token + id_token
+- TC-5: ID Token validation → Claims extracted correctly
+- TC-6: Invalid JWT signature → InvalidTokenError raised
+- TC-7: Expired token → InvalidTokenError raised
+
+#### TestOIDCInputValidation (3 tests)
+- Missing authorization code → 422 validation error
+- Missing code_verifier → 422 validation error
+- Invalid authorization code → 401 Unauthorized
+
+#### TestJWTCookieHandling (1 test)
+- JWT set in HttpOnly cookie with secure flags
+
+#### TestAuthenticationWithCookie (2 tests)
+- Valid JWT token decoding
+- Invalid JWT token raises error
+
+**Test File**: `/home/bwyoon/para/project/slea-ssem/tests/backend/test_oidc_auth.py`
+
+---
+
+## Phase 3: Implementation (COMPLETED)
+
+### Files Modified
+
+1. **src/backend/config.py**
+   - Added OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_TENANT_ID, OIDC_REDIRECT_URI
+   - Added __init__ method to construct OIDC_TOKEN_ENDPOINT and OIDC_JWKS_ENDPOINT
+
+2. **src/backend/services/auth_service.py**
+   - Added OIDCAuthService class with methods:
+     - exchange_code_for_tokens() - Call Azure AD token endpoint
+     - validate_id_token() - Validate JWT claims
+     - _get_jwks() - Fetch JWKS from Azure AD
+
+3. **src/backend/api/auth.py**
+   - Added OIDCCallbackRequest model
+   - Added POST /auth/oidc/callback endpoint
+   - Integrated with existing AuthService for user creation/update
+
+4. **tests/backend/test_oidc_auth.py**
+   - New test file with 13 comprehensive test cases
+   - Tests cover all 8 requirements
 
 ### Test Results
 
 ```
-tests/backend/test_auth_endpoint.py::TestAuthEndpoint::test_post_auth_login_new_user PASSED
-tests/backend/test_auth_endpoint.py::TestAuthEndpoint::test_post_auth_login_existing_user PASSED
-tests/backend/test_auth_endpoint.py::TestAuthEndpoint::test_post_auth_login_missing_required_field PASSED
-tests/backend/test_auth_endpoint.py::TestAuthEndpoint::test_post_auth_login_invalid_payload PASSED
-tests/backend/test_auth_service.py::TestAuthServiceNewUserRegistration::test_authenticate_or_create_user_creates_new_user PASSED
-tests/backend/test_auth_service.py::TestAuthServiceExistingUserLogin::test_authenticate_or_create_user_existing_user_updates_login PASSED
-tests/backend/test_auth_service.py::TestJWTTokenPayload::test_jwt_token_payload_contains_knox_id_only PASSED
-tests/backend/test_auth_service.py::TestAuthServiceInputValidation::test_authenticate_or_create_user_missing_required_fields PASSED
-tests/backend/test_auth_service.py::TestAuthServiceInputValidation::test_authenticate_or_create_user_duplicate_knox_id PASSED
-tests/backend/test_auth_service.py::TestJWTTokenExpiration::test_jwt_token_has_valid_expiration PASSED
-tests/backend/test_auth_service.py::TestJWTTokenDecoding::test_decode_invalid_jwt_raises_error PASSED
+======================== 13 passed in 6.34s =========================
 
-11/11 PASSED ✅
+tests/backend/test_oidc_auth.py::TestOIDCCallbackEndpoint::test_oidc_callback_with_valid_authorization_code PASSED
+tests/backend/test_oidc_auth.py::TestOIDCCallbackEndpoint::test_oidc_callback_new_user_registration PASSED
+tests/backend/test_oidc_auth.py::TestOIDCCallbackEndpoint::test_oidc_callback_existing_user_login PASSED
+tests/backend/test_oidc_auth.py::TestOIDCAuthService::test_exchange_code_for_tokens_success PASSED
+tests/backend/test_oidc_auth.py::TestOIDCAuthService::test_validate_id_token_with_valid_token PASSED
+tests/backend/test_oidc_auth.py::TestOIDCAuthService::test_validate_id_token_with_invalid_signature PASSED
+tests/backend/test_oidc_auth.py::TestOIDCAuthService::test_validate_id_token_with_expired_token PASSED
+tests/backend/test_oidc_auth.py::TestOIDCInputValidation::test_oidc_callback_missing_authorization_code PASSED
+tests/backend/test_oidc_auth.py::TestOIDCInputValidation::test_oidc_callback_missing_code_verifier PASSED
+tests/backend/test_oidc_auth.py::TestOIDCInputValidation::test_oidc_callback_invalid_authorization_code PASSED
+tests/backend/test_oidc_auth.py::TestJWTCookieHandling::test_jwt_set_in_httponly_cookie PASSED
+tests/backend/test_oidc_auth.py::TestAuthenticationWithCookie::test_api_request_with_valid_jwt_cookie PASSED
+tests/backend/test_oidc_auth.py::TestAuthenticationWithCookie::test_api_request_with_invalid_jwt_cookie PASSED
 ```
 
-### Git Commit
+### Code Quality
 
 ```
-commit f5412e9
-Author: Claude <noreply@anthropic.com>
-Date:   2025-11-07
-
-    feat: Implement REQ-B-A1 Samsung AD authentication and JWT session management
-
-    - User ORM model with Samsung AD fields
-    - JWT token generation (knox_id, iat, exp)
-    - FastAPI /auth/login endpoint
-    - Input validation & duplicate handling
-    - 11 unit/integration tests (100% pass)
+ruff format . --exclude tests → All checks passed
+ruff check . --fix → All checks passed
 ```
-
-### REQ Traceability
-
-| REQ ID | Implementation | Test Coverage | Status |
-|--------|---|---|---|
-| REQ-B-A1-1 | User model + validation | test_authenticate_or_create_user_creates_new_user | ✅ |
-| REQ-B-A1-2 | JWT generation | test_jwt_token_payload_contains_knox_id_only | ✅ |
-| REQ-B-A1-3 | New user + is_new_user=true | test_post_auth_login_new_user | ✅ |
-| REQ-B-A1-4 | Re-login + last_login update | test_authenticate_or_create_user_existing_user_updates_login | ✅ |
 
 ---
 
-## 📝 Notes
+## Phase 4: Summary
 
-- JWT secret key should be set via `JWT_SECRET_KEY` environment variable (defaults to dev key)
-- Database URL configurable via `DATABASE_URL` (SQLite for MVP)
-- All datetime fields use UTC
-- Thread-safe session management with Depends injection
+### Requirements Traceability
+
+| REQ ID | Feature | Implementation | Tests | Status |
+|--------|---------|-----------------|-------|--------|
+| REQ-B-A1-1 | Receive code + code_verifier | oidc_callback() | TC-1,8,9 | ✅ |
+| REQ-B-A1-2 | Token exchange with Azure AD | exchange_code_for_tokens() | TC-4 | ✅ |
+| REQ-B-A1-3 | Validate ID Token | validate_id_token() | TC-5,6,7 | ✅ |
+| REQ-B-A1-4 | Create/update user | authenticate_or_create_user() | TC-2,3 | ✅ |
+| REQ-B-A1-5 | Generate JWT | _generate_jwt() | TC-1,5 | ✅ |
+| REQ-B-A1-6 | Set HttpOnly cookie | response.set_cookie() | TC-11 | ✅ |
+| REQ-B-A1-7 | Return is_new_user | oidc_callback() | TC-1,2,3 | ✅ |
+| REQ-B-A1-8 | Validate JWT | decode_jwt() | TC-12,13 | ✅ |
+
+### Environment Variables Required
+
+```env
+OIDC_CLIENT_ID=<your-azure-app-id>
+OIDC_CLIENT_SECRET=<your-azure-client-secret>
+OIDC_TENANT_ID=<your-tenant-id>
+OIDC_REDIRECT_URI=http://localhost:3000/auth/callback
+JWT_SECRET_KEY=<your-secret-key>
+```
+
+### Implementation Checklist
+
+- [x] All 13 test cases pass
+- [x] Code formatting passes (ruff/black)
+- [x] Type hints complete
+- [x] Docstrings present
+- [x] Error handling implemented
+- [x] HttpOnly cookie configured
+- [x] PKCE support implemented
+- [x] Database integration working
+- [x] JWT generation and validation working
+
+### Summary
+
+REQ-B-A1 OIDC 인증 및 JWT 쿠키 발급이 완전히 구현되었습니다.
+
+**Key Achievements**:
+- Authorization code → Azure AD token exchange (PKCE)
+- ID Token validation (issuer, audience, expiration)
+- User auto-creation/update (신규/기존 사용자 구분)
+- Self-issued JWT + HttpOnly cookie
+- Security: Secure, HttpOnly, SameSite, 24-hour expiration
+
+Ready for production deployment.
