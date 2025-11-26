@@ -82,18 +82,108 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 # 📋 FRONTEND REQUIREMENTS
 
-## REQ-F-A1: 로그인 화면 (Samsung AD)
+## REQ-F-A1: 자동 SSO 인증 (OIDC + PKCE + JWT Cookie)
+
+> **인증 방식**: OpenID Connect Authorization Code Flow + PKCE
+> **아키텍처**: BFF 패턴 - 백엔드가 자체 JWT를 HttpOnly 쿠키로 발급
+> **보안**: JWT는 쿠키에만 저장, JavaScript 접근 불가 (XSS 방어)
+> **참고**: OAuth 2.0 for Browser-Based Apps (IETF BCP 권장)
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-F-A1-1** | 로그인 페이지에 "Samsung AD로 로그인" 버튼을 명확하게 표시해야 한다. | **M** |
-| **REQ-F-A1-2** | SSO 콜백 페이지를 구현하여 토큰을 안전하게 저장하고 홈화면으로 리다이렉트해야 한다. | **M** |
-| **REQ-F-A1-3** | **로그인 실패 시 명확한 에러 메시지를 표시하고, "계정 정보 확인" 링크 및 "관리자 문의" 헬프 링크를 함께 제공해야 한다.** | **M** |
+| **REQ-F-A1-1** | `/` 경로 접속 시 인증 쿠키 유무를 확인하고, 쿠키가 없으면 PKCE code_verifier와 code_challenge를 생성해야 한다. | **M** |
+| **REQ-F-A1-2** | code_challenge를 포함하여 Azure AD `/authorize` 엔드포인트로 자동 리다이렉트해야 한다. (state, nonce 포함) | **M** |
+| **REQ-F-A1-3** | 인증 쿠키가 이미 있으면 `/home`으로 리다이렉트해야 한다. | **M** |
+| **REQ-F-A1-4** | SSO 콜백 페이지(`/auth/callback`)를 구현하여 authorization code를 수신하고, code와 code_verifier를 백엔드로 전달해야 한다. | **M** |
+| **REQ-F-A1-5** | 백엔드로부터 자체 JWT를 HttpOnly 쿠키로 수신하고 `/home`으로 리다이렉트해야 한다. | **M** |
+| **REQ-F-A1-6** | 이후 모든 API 호출은 쿠키를 자동 첨부하여 요청해야 한다. (fetch credentials: 'include') | **M** |
+| **REQ-F-A1-7** | **로그인 실패 시 명확한 에러 메시지를 표시하고, "계정 정보 확인" 링크 및 "관리자 문의" 헬프 링크를 함께 제공해야 한다.** | **M** |
+
+**인증 플로우**:
+
+```
+[1. SPA - OIDC 로그인 시작 (PKCE)]
+- 사용자가 "/" 접속
+- 인증 쿠키 확인
+  → 있음: /home 리다이렉트
+  → 없음: PKCE 시작
+
+- code_verifier 생성 (43-128자 랜덤, sessionStorage 저장)
+- code_challenge = BASE64URL(SHA256(code_verifier))
+- state, nonce 생성
+
+- Azure AD 리다이렉트:
+  https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?
+    client_id={client_id}&
+    response_type=code&
+    redirect_uri=https://app.com/auth/callback&
+    scope=openid profile email&
+    code_challenge={code_challenge}&
+    code_challenge_method=S256&
+    state={state}&
+    nonce={nonce}
+
+[2. Azure AD - 사용자 인증]
+- Samsung AD 로그인
+- authorization code 발급
+
+[3. SPA - code 수신 및 백엔드 전달]
+- /auth/callback?code=xxx&state=xxx 수신
+- state 검증
+- code를 백엔드로 POST:
+  POST /api/auth/oidc/callback
+  Body: { code: "xxx", codeVerifier: "...", redirectUri: "..." }
+
+[4. 백엔드 - 토큰 교환 및 JWT 발급]
+- Azure AD 토큰 교환:
+  POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
+  Body: {
+    grant_type: 'authorization_code',
+    client_id: {client_id},
+    code: {code},
+    code_verifier: {code_verifier},
+    redirect_uri: {redirect_uri}
+  }
+
+- ID Token + Access Token 수신
+- ID Token 검증 (signature, claims)
+- 사용자 정보 추출 (sub, email, name, dept, business_unit)
+- DB에 사용자 저장/업데이트
+
+- **자체 JWT 발급**:
+  Payload: { user_id: "uuid", knox_id: "bwyoon", iat, exp }
+
+- **JWT를 HttpOnly 쿠키로 응답**:
+  Set-Cookie: __Host-session={JWT}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400
+  Body: { success: true, user_id: "...", is_new_user: true/false }
+
+[5. SPA - 인증 완료]
+- 브라우저가 쿠키 자동 저장 (JavaScript 접근 불가)
+- /home 리다이렉트
+
+[6. 이후 API 호출]
+- fetch("/api/profile/nickname", { credentials: 'include' })
+- 브라우저가 쿠키(JWT) 자동 첨부
+- 백엔드가 쿠키의 JWT 검증 → 사용자 인증
+```
+
+**보안 특징**:
+
+- **XSS 방어**: HttpOnly → JavaScript로 JWT 읽을 수 없음
+- **CSRF 방어**: SameSite=Lax + state 검증
+- **Token 노출 방지**: JWT는 쿠키에만 존재, localStorage 사용 안 함
+- **PKCE**: code_verifier로 authorization code 탈취 방어
+- **Secure**: HTTPS에서만 쿠키 전송
+- **__Host- prefix**: Domain/Path 고정으로 쿠키 하이재킹 방지
 
 **수용 기준**:
 
-- "로그인 버튼 클릭 후 Samsung AD 로그인 페이지로 리다이렉트된다."
-- "로그인 성공 후 3초 내 홈화면으로 이동한다."
+- "/" 접속 시 쿠키가 없으면 PKCE로 Azure AD 리다이렉트된다."
+- "콜백에서 code를 백엔드로 전달한다."
+- "백엔드가 Azure AD 토큰 교환 후 자체 JWT를 HttpOnly 쿠키로 발급한다."
+- "브라우저는 JWT를 localStorage에 저장하지 않는다."
+- "모든 API 호출은 쿠키의 JWT로 인증된다."
+- "인증 성공 후 3초 내 /home으로 이동한다."
 - "**로그인 실패 시, 에러 메시지와 함께 '계정 정보 확인', '관리자 문의' 두 링크가 표시된다.**"
 
 ---
@@ -663,52 +753,110 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 
 # 🔧 BACKEND REQUIREMENTS
 
-## REQ-B-A1: Samsung AD 인증 및 사용자 세션 관리 (Backend)
+## REQ-B-A1: OIDC 인증 및 JWT 쿠키 발급 (Backend)
 
-> **⚠️ 중요**: Samsung AD SSO 인증 자체는 기존 기업 서비스를 이용합니다. Backend의 책임은 **인증 후 사용자 정보 수신 및 세션 관리**입니다.
+> **인증 방식**: OpenID Connect Authorization Code Flow + PKCE
+> **백엔드 책임**: Azure AD 토큰 교환, ID Token 검증, 자체 JWT 발급 및 HttpOnly 쿠키 설정
+> **보안**: JWT를 HttpOnly 쿠키로 발급하여 XSS 방어
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-B-A1-1** | Auth-Service가 Frontend로부터 Samsung AD 인증 후 사용자 정보(name, knox-id, dept, business_unit, email)를 수신하여 users 테이블에 저장해야 한다. | **M** |
-| **REQ-B-A1-2** | **JWT 토큰을 knox_id만으로 단순하게 생성 및 발급**해야 한다. (JWT 페이로드: {knox_id, iat, exp}) | **M** |
-| **REQ-B-A1-3** | 신규 사용자는 users 테이블에 새 레코드를 생성하고, JWT 토큰 + is_new_user=true 플래그와 함께 응답해야 한다. | **M** |
-| **REQ-B-A1-4** | 기존 사용자가 재로그인하는 경우, JWT 토큰을 새로 생성하고 is_new_user=false로 설정하며 last_login을 현재 시간으로 업데이트해야 한다. | **M** |
+| **REQ-B-A1-1** | Frontend로부터 authorization code와 code_verifier를 수신해야 한다. | **M** |
+| **REQ-B-A1-2** | Azure AD `/token` 엔드포인트로 토큰 교환 요청을 보내 ID Token과 Access Token을 수신해야 한다. (PKCE 검증 포함) | **M** |
+| **REQ-B-A1-3** | ID Token의 JWT signature, issuer, audience, expiration, nonce를 검증해야 한다. | **M** |
+| **REQ-B-A1-4** | ID Token에서 사용자 정보(sub, email, name, dept, business_unit)를 추출하여 users 테이블에 저장/업데이트해야 한다. | **M** |
+| **REQ-B-A1-5** | 자체 JWT를 생성해야 한다. (Payload: {user_id, knox_id, iat, exp}) | **M** |
+| **REQ-B-A1-6** | **생성한 JWT를 HttpOnly 쿠키로 Set-Cookie 헤더에 설정하여 응답해야 한다.** | **M** |
+| **REQ-B-A1-7** | 신규 사용자 생성 시 is_new_user=true, 기존 사용자는 is_new_user=false로 응답해야 한다. | **M** |
+| **REQ-B-A1-8** | 이후 모든 API 요청에서 쿠키의 JWT를 검증하여 사용자를 인증해야 한다. | **M** |
+
+**API 엔드포인트**:
+
+```
+POST /api/auth/oidc/callback
+Content-Type: application/json
+
+Request Body:
+{
+  "code": "authorization_code_from_azure_ad",
+  "codeVerifier": "pkce_code_verifier_from_frontend",
+  "redirectUri": "https://app.com/auth/callback"
+}
+
+Response:
+Set-Cookie: __Host-session={JWT}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400
+Content-Type: application/json
+
+{
+  "success": true,
+  "user_id": "uuid-string",
+  "knox_id": "bwyoon",
+  "is_new_user": true
+}
+```
 
 **구현 상세**:
 
-- **Samsung AD 연동**: Frontend에서 Samsung AD SSO 완료 후 사용자 정보(name, knox-id, dept, business_unit, email) 전달
-- **사용자 정보 저장**: users 테이블에 전체 정보 저장 (emp_no=knox_id, email, dept, business_unit, status='active', created_at=현재시간)
-- **JWT 토큰 생성**:
+1. **Azure AD 토큰 교환**:
+   ```
+   POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
+   Content-Type: application/x-www-form-urlencoded
 
-  ```json
-  header: {alg: "HS256", typ: "JWT"}
-  payload: {knox_id: string, iat: timestamp, exp: timestamp+86400}
-  signature: HMAC-SHA256(secret_key)
-  ```
+   grant_type=authorization_code&
+   client_id={client_id}&
+   code={authorization_code}&
+   code_verifier={code_verifier}&
+   redirect_uri={redirect_uri}
+   ```
 
-  **→ 단순함을 위해 knox_id만 포함** (unique하므로 충분)
-- **로그인 히스토리 관리** (SQLModel Relation 구조):
-  - 매 로그인 시 `login_history` 테이블에 레코드 생성
-  - `users` 테이블의 `last_login` 필드는 SQLModel Relation으로 `login_history`의 최신 레코드 참조
-  - 목적: 모든 접속 히스토리 추적 + 성능 최적화 (last_login은 JOIN 없이 빠른 조회)
-- **접속 히스토리 추적**: 모든 로그인 기록을 login_history에 저장하여 사용자 접속 빈도 및 학습 활동 분석 가능
+2. **ID Token 검증** (PyJWT 라이브러리 사용):
+   - Signature 검증 (Azure AD public key)
+   - iss (issuer) 확인
+   - aud (audience) = client_id 확인
+   - exp (expiration) 확인
+   - nonce 확인 (옵션)
+
+3. **사용자 정보 추출 및 저장**:
+   - ID Token claims: sub, email, name, dept (optional), business_unit (optional)
+   - knox_id = email prefix 또는 sub 매핑
+   - users 테이블에 upsert (존재하면 업데이트, 없으면 생성)
+
+4. **자체 JWT 생성**:
+   ```json
+   header: {alg: "HS256", typ: "JWT"}
+   payload: {
+     user_id: "uuid",
+     knox_id: "bwyoon",
+     iat: timestamp,
+     exp: timestamp + 86400
+   }
+   signature: HMAC-SHA256(secret_key)
+   ```
+
+5. **HttpOnly 쿠키 설정**:
+   ```
+   Set-Cookie: __Host-session={JWT}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400
+   ```
+   - `__Host-` prefix: Domain 설정 불가, Secure 필수
+   - `HttpOnly`: JavaScript 접근 불가 (XSS 방어)
+   - `Secure`: HTTPS에서만 전송
+   - `SameSite=Lax`: CSRF 방어
+   - `Max-Age=86400`: 24시간 유효
+
+6. **로그인 히스토리 관리**:
+   - 매 로그인 시 `login_history` 테이블에 레코드 생성
+   - `users` 테이블의 `last_login` 필드는 SQLModel Relation으로 최신 레코드 참조
 
 **수용 기준**:
 
-- "Frontend로부터 AD 정보(knox_id, name, email, dept, business_unit) 수신 후 1초 내 JWT 토큰이 발급된다."
-- "JWT 페이로드는 {knox_id, iat, exp}만 포함한다."
-- "신규 사용자 생성 후:"
-  - "users 테이블에 모든 사용자 정보가 저장된다."
-  - "login_history 테이블에 첫 로그인 레코드가 생성된다."
-  - "JWT 토큰 + is_new_user=true로 반환된다."
-- "재로그인 시:"
-  - "새로운 JWT 토큰이 생성된다."
-  - "login_history 테이블에 새로운 로그인 레코드가 추가된다."
-  - "users 테이블의 last_login이 SQLModel Relation으로 최신 login_history 레코드를 참조한다."
-  - "is_new_user=false로 반환된다."
-- "JWT 검증 시 knox_id를 이용해 사용자를 식별할 수 있다."
-- "login_history 조회를 통해 전체 접속 히스토리 분석 가능하다."
-- "users.last_login(SQLModel Relation)을 통해 가장 최근 로그인 정보를 성능 저하 없이 조회 가능하다."
+- "Frontend로부터 code + codeVerifier 수신 후 2초 내 응답한다."
+- "Azure AD 토큰 교환이 성공하고 ID Token을 받는다."
+- "ID Token 검증 (signature, iss, aud, exp)이 통과한다."
+- "사용자 정보가 users 테이블에 저장/업데이트된다."
+- "자체 JWT가 생성되고 HttpOnly 쿠키로 Set-Cookie된다."
+- "신규 사용자는 is_new_user=true, 기존 사용자는 false로 응답한다."
+- "이후 API 요청 시 쿠키의 JWT로 사용자를 인증할 수 있다."
+- "login_history 테이블에 로그인 기록이 추가된다."
 
 ---
 
