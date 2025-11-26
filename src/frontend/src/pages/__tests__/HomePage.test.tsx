@@ -22,7 +22,7 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('../../utils/auth', () => ({
-  getToken: vi.fn(() => 'mock_jwt_token'),
+  isAuthenticated: vi.fn(async () => true),
 }))
 
 const renderHomePage = () =>
@@ -36,7 +36,7 @@ describe('HomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNavigate.mockReset()
-    vi.spyOn(authUtils, 'getToken').mockReturnValue('mock_jwt_token')
+    vi.spyOn(authUtils, 'isAuthenticated').mockResolvedValue(true)
     localStorage.setItem('slea_ssem_api_mock', 'true')
     localStorage.removeItem('slea_ssem_cached_nickname')
     localStorage.removeItem('lastSurveyId')
@@ -63,10 +63,12 @@ describe('HomePage', () => {
     localStorage.removeItem('lastSurveyLevel')
   })
 
-  it('redirects to login when no token is available', () => {
-    vi.spyOn(authUtils, 'getToken').mockReturnValue(null)
+  it('redirects to login when not authenticated', async () => {
+    vi.spyOn(authUtils, 'isAuthenticated').mockResolvedValue(false)
     renderHomePage()
-    expect(mockNavigate).toHaveBeenCalledWith('/')
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/')
+    })
   })
 
   it('renders hero copy and CTA button', () => {

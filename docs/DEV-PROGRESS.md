@@ -14,6 +14,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-F-A1-1 | "Samsung AD로 로그인" 버튼 표시 | 4 | ✅ Done | 5 tests (100%), Commit: 744fc3e, Progress: docs/progress/REQ-F-A1-1.md |
 | REQ-F-A1-2 | SSO 콜백 페이지 구현 | 4 | ✅ Done | 15 tests (100%), Commit: 3eeff9d, Progress: docs/progress/REQ-F-A1-2.md |
 | REQ-F-A1-3 | 로그인 실패 시 에러 메시지 및 헬프 링크 | 4 | ✅ Done | 2 tests (100%), Commit: 2bd263b, Progress: docs/progress/REQ-F-A1-3.md |
+| REQ-F-A1-7 | 로그인 실패 시 명확한 에러 메시지 표시 ("계정 정보 확인", "관리자 문의" 링크) | 4 | ✅ Done | 7 tests (100%), Commit: 745158b, Progress: docs/progress/REQ-F-A1-7.md (REQ-F-A1-3으로 이미 구현됨) |
 | REQ-F-A2 | 회원가입 화면 (닉네임 등록) | 4 | ✅ Done | 7개 sub-tasks |
 | REQ-F-A2-1 | 홈화면 "시작하기" 클릭 시 닉네임 체크 | 4 | ✅ Done | 7 tests (100%), Commit: fa43b6d, Progress: docs/progress/REQ-F-A2-1.md |
 | REQ-F-A2-2 | 닉네임 입력 필드와 "중복 확인" 버튼 제공 | 4 | ✅ Done | Commit: 2190e73, Progress: docs/progress/REQ-F-A2-2.md |

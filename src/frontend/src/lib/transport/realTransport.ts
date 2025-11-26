@@ -1,7 +1,7 @@
 // Real HTTP transport using fetch API
+// REQ: REQ-F-A1-6, REQ-B-A1 (HttpOnly cookie authentication)
 
 import { HttpTransport, RequestConfig } from './types'
-import { getToken } from '../../utils/auth'
 
 class RealTransport implements HttpTransport {
   private async request<T>(
@@ -9,20 +9,15 @@ class RealTransport implements HttpTransport {
     method: string,
     config?: RequestConfig
   ): Promise<T> {
-    const token = getToken()
-
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...config?.headers,
     }
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
     const fetchConfig: RequestInit = {
       method,
       headers,
+      credentials: 'include', // REQ-F-A1-6: Include HttpOnly cookies automatically
     }
 
     if (config?.body) {
