@@ -34,23 +34,28 @@ export function useAuthCallback(searchParams: URLSearchParams): UseAuthCallbackR
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // DEV MODE: Error simulation for testing REQ-F-A1-7 error display
-        const errorType = searchParams.get('error')
-        if (errorType) {
-          // Simulate various error scenarios for testing
-          const errorMessages: Record<string, string> = {
-            missing_code: '인증 코드가 누락되었습니다.',
-            missing_state: 'State 파라미터가 누락되었습니다.',
-            expired: '인증 정보가 만료되었습니다. 다시 로그인해주세요.',
-            state_mismatch: '잘못된 요청입니다. (State mismatch)',
-            invalid_code: '잘못된 인증 코드입니다.',
-            backend: '로그인에 실패했습니다. 다시 시도해주세요.',
-            network: '네트워크 오류가 발생했습니다.',
-            test: '테스트용 에러 메시지입니다. 계정 정보를 확인하거나 관리자에게 문의하세요.',
+        // DEV/MOCK MODE ONLY: Error simulation for testing REQ-F-A1-7 error display
+        // SECURITY: Only enabled when VITE_MOCK_API=true to prevent auth bypass in production
+        const mockAPI = import.meta.env.VITE_MOCK_API === 'true'
+        if (mockAPI) {
+          const errorType = searchParams.get('error')
+          if (errorType) {
+            // Simulate various error scenarios for testing
+            const errorMessages: Record<string, string> = {
+              missing_code: '인증 코드가 누락되었습니다.',
+              missing_state: 'State 파라미터가 누락되었습니다.',
+              expired: '인증 정보가 만료되었습니다. 다시 로그인해주세요.',
+              state_mismatch: '잘못된 요청입니다. (State mismatch)',
+              invalid_code: '잘못된 인증 코드입니다.',
+              backend: '로그인에 실패했습니다. 다시 시도해주세요.',
+              network: '네트워크 오류가 발생했습니다.',
+              test: '테스트용 에러 메시지입니다. 계정 정보를 확인하거나 관리자에게 문의하세요.',
+            }
+            console.log(`[MOCK API] Simulating error: ${errorType}`)
+            setError(errorMessages[errorType] || '알 수 없는 오류가 발생했습니다.')
+            setLoading(false)
+            return
           }
-          setError(errorMessages[errorType] || '알 수 없는 오류가 발생했습니다.')
-          setLoading(false)
-          return
         }
 
         // Step 1: Extract authorization code and state from URL
