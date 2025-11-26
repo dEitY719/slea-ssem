@@ -27,6 +27,11 @@ COMMAND_LAYOUT = {
                 "usage": "auth oidc-callback [code] [code_verifier]",
                 "target": "src.cli.actions.auth.oidc_callback",
             },
+            "status": {
+                "description": "인증 상태 확인 (JWT 쿠키 유효성 검증)",
+                "usage": "auth status",
+                "target": "src.cli.actions.auth.status",
+            },
         },
     },
     "survey": {

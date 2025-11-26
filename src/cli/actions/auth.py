@@ -8,6 +8,7 @@ def auth_help(context: CLIContext, *args: str) -> None:
     context.console.print("[bold yellow]Auth Commands:[/bold yellow]")
     context.console.print("  auth login [username] - Samsung AD 로그인 (JWT 토큰 발급)")
     context.console.print("  auth oidc-callback [code] [code_verifier] - OIDC 콜백 (Azure AD 인증, JWT 쿠키 발급)")
+    context.console.print("  auth status - 현재 인증 상태 확인 (JWT 쿠키 유효성 검증)")
 
 
 def login(context: CLIContext, *args: str) -> None:
@@ -123,3 +124,45 @@ def oidc_callback(context: CLIContext, *args: str) -> None:
     token_display = f"{token[:8]}...{token[-8:]}"
     context.console.print(f"[dim]  Token (Total {token_length} chars): {token_display}[/dim]")
     context.logger.info(f"OIDC callback successful. User ID: {user_id}, Is new: {is_new_user}")
+
+
+def status(context: CLIContext, *args: str) -> None:
+    """현재 인증 상태를 확인합니다 (JWT 쿠키 유효성 검증)."""
+    context.console.print("[dim]인증 상태를 확인 중입니다...[/dim]")
+
+    # API 호출
+    status_code, response, error = context.client.make_request(
+        "GET",
+        "/auth/status",
+    )
+
+    if error:
+        context.console.print("[bold red]✗ 상태 확인 실패[/bold red]")
+        context.console.print(f"[red]  Error: {error}[/red]")
+        context.logger.error(f"Auth status check failed: {error}")
+        return
+
+    if status_code == 401:
+        context.console.print("[bold yellow]✗ 인증되지 않음 (로그인 필요)[/bold yellow]")
+        context.console.print("[dim]  설명: JWT 토큰이 유효하지 않거나 만료되었습니다.[/dim]")
+        context.logger.info("User is not authenticated")
+        return
+
+    if status_code != 200:
+        context.console.print(f"[bold red]✗ 상태 확인 실패 (HTTP {status_code})[/bold red]")
+        context.logger.error(f"Auth status check failed with status {status_code}")
+        return
+
+    # 응답 처리
+    is_authenticated = response.get("authenticated", False)
+    user_id = response.get("user_id")
+    knox_id = response.get("knox_id")
+
+    if is_authenticated:
+        context.console.print("[bold green]✓ 인증됨[/bold green]")
+        context.console.print(f"[cyan]  User ID: {user_id}[/cyan]")
+        context.console.print(f"[cyan]  Knox ID: {knox_id}[/cyan]")
+        context.logger.info(f"User authenticated. User ID: {user_id}, Knox ID: {knox_id}")
+    else:
+        context.console.print("[bold yellow]✗ 인증되지 않음[/bold yellow]")
+        context.logger.info("User is not authenticated")
