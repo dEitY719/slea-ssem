@@ -29,6 +29,14 @@ const LoginPage: React.FC = () => {
           return
         }
 
+        // MOCK MODE: Bypass Azure AD and go directly to callback
+        const mockSSO = import.meta.env.VITE_MOCK_SSO === 'true'
+        if (mockSSO) {
+          console.log('[MOCK SSO] Bypassing Azure AD, redirecting to callback')
+          navigate('/auth/callback', { replace: true })
+          return
+        }
+
         // REQ-F-A1-1: Generate PKCE parameters
         const pkceParams = await generatePKCEParams()
 
