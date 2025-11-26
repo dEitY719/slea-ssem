@@ -268,7 +268,14 @@ class TestOIDCAuthService:
         code_verifier = "code_verifier_valid"
 
         # Mock httpx.post to Azure AD endpoint
-        with patch("src.backend.services.auth_service.httpx.post") as mock_post:
+        with patch("src.backend.services.auth_service.httpx.post") as mock_post, patch(
+            "src.backend.services.auth_service.settings"
+        ) as mock_settings:
+            # Setup mock settings to bypass mock token generation
+            mock_settings.OIDC_CLIENT_ID = "test_client_id"  # Not "your-azure-app-id"
+            mock_settings.OIDC_TENANT_ID = "test_tenant_id"
+            mock_settings.OIDC_TOKEN_ENDPOINT = "https://login.microsoftonline.com/test_tenant_id/oauth2/v2.0/token"
+
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {
