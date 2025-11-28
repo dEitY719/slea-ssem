@@ -1,6 +1,6 @@
 # Feature Requirement - MVP 1.0.0
 
-**Project**: SLEA-SSEM (S.LSI Education AI Teacher)
+**Project**: SLEA-SSEM (Education AI Teacher)
 **Version**: 1.0
 **Last Updated**: 2025-11-06
 **Status**: In Development
@@ -9,9 +9,9 @@
 
 ## 📌 Executive Summary
 
-SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 측정하고 등급화**하는 시스템입니다. Samsung AD SSO를 통한 가입, 적응형 2단계 레벨 테스트, LLM 기반 자동 채점·해설, 그리고 상대 순위 제시로 구성됩니다. 핵심 기능(문제 생성/채점)은 **Multi-AI-Agent 아키텍처**로 자동화되며, 관리자 개입을 최소화합니다.
+SLEA-SSEM MVP 1.0.0은 임직원의 **AI 역량 수준을 객관적으로 측정하고 등급화**하는 시스템입니다. SSO를 통한 가입, 적응형 2단계 레벨 테스트, LLM 기반 자동 채점·해설, 그리고 상대 순위 제시로 구성됩니다. 핵심 기능(문제 생성/채점)은 **Multi-AI-Agent 아키텍처**로 자동화되며, 관리자 개입을 최소화합니다.
 
-**Target Users**: S.LSI 전사 임직원(총 ~7000명 기준)
+**Target Users**: 전체 임직원(총 ~7000명 기준)
 
 ---
 
@@ -19,7 +19,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 ### 포함 (In Scope)
 
-- ✅ Samsung AD 기반 사용자 인증
+- ✅ SSO 기반 사용자 인증
 - ✅ 닉네임 등록 및 중복 검증
 - ✅ **닉네임 재설정 (기존 사용자 프로필 수정)**
 - ✅ **자기평가 정보 수정**
@@ -68,7 +68,7 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 | 서비스 | 역할 | 담당 시나리오 | 책임 |
 |------|------|---------|--------|
-| **Auth-Service** | 인증 관리 | 시나리오 0 | Samsung AD 통합, 토큰 발급, 세션 관리 |
+| **Auth-Service** | 인증 관리 | 시나리오 0 | IDP 통합, 토큰 발급, 세션 관리 |
 | **Profile-Service** | 프로필 관리 | 시나리오 0 | 닉네임 검증, 중복 체크, 사용자 프로필 저장 |
 | **Survey-Service** | 자기평가 관리 | 시나리오 1-1 | 폼 데이터 검증, DB 저장 |
 | **Rank-Service** | 순위 산출 | 시나리오 1-5 | 최종 등급 계산, 상대 순위 및 백분위 산출 |
@@ -82,89 +82,36 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 
 # 📋 FRONTEND REQUIREMENTS
 
-## REQ-F-A1: 자동 SSO 인증 (OIDC + PKCE + JWT Cookie)
+## REQ-F-A1: 자동 SSO 인증 (OIDC + JWT Cookie)
 
-> **인증 방식**: OpenID Connect Authorization Code Flow + PKCE
-> **아키텍처**: BFF 패턴 - 백엔드가 자체 JWT를 HttpOnly 쿠키로 발급
+> **인증 방식**: OpenID Connect Authorization Code Flow
+> **아키텍처**: BFF 패턴 - 백엔드가 IDP 콜백 처리, JWT 쿠키 발급
+> **IDP 콜백**: 브라우저 → IDP → 백엔드 POST 콜백
 > **보안**: JWT는 쿠키에만 저장, JavaScript 접근 불가 (XSS 방어)
-> **참고**: OAuth 2.0 for Browser-Based Apps (IETF BCP 권장)
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-F-A1-1** | `/` 경로 접속 시 인증 쿠키 유무를 확인하고, 쿠키가 없으면 PKCE code_verifier와 code_challenge를 생성해야 한다. | **M** |
-| **REQ-F-A1-2** | code_challenge를 포함하여 Azure AD `/authorize` 엔드포인트로 자동 리다이렉트해야 한다. (state, nonce 포함) | **M** |
-| **REQ-F-A1-3** | 인증 쿠키가 이미 있으면 `/home`으로 리다이렉트해야 한다. | **M** |
-| **REQ-F-A1-4** | SSO 콜백 페이지(`/auth/callback`)를 구현하여 authorization code를 수신하고, code와 code_verifier를 백엔드로 전달해야 한다. | **M** |
-| **REQ-F-A1-5** | 백엔드로부터 자체 JWT를 HttpOnly 쿠키로 수신하고 `/home`으로 리다이렉트해야 한다. | **M** |
-| **REQ-F-A1-6** | 이후 모든 API 호출은 쿠키를 자동 첨부하여 요청해야 한다. (fetch credentials: 'include') | **M** |
-| **REQ-F-A1-7** | **로그인 실패 시 명확한 에러 메시지를 표시하고, "계정 정보 확인" 링크 및 "관리자 문의" 헬프 링크를 함께 제공해야 한다.** | **M** |
+| **REQ-F-A1-1** | `/` 경로 접속 시 인증 쿠키 유무를 확인하고, 쿠키가 없으면 IDP authorize URL로 리다이렉트해야 한다. | **M** |
+| **REQ-F-A1-2** | 인증 쿠키가 이미 있으면 `/home`으로 리다이렉트해야 한다. | **M** |
+| **REQ-F-A1-3** | 이후 모든 API 호출은 쿠키를 자동 첨부하여 요청해야 한다. (fetch credentials: 'include') | **M** |
 
 **인증 플로우**:
 
 ```
-[1. SPA - OIDC 로그인 시작 (PKCE)]
+[1. 브라우저 - 인증 확인]
 - 사용자가 "/" 접속
-- 인증 쿠키 확인
-  → 있음: /home 리다이렉트
-  → 없음: PKCE 시작
+- GET /auth/status로 인증 쿠키 확인
+  → 인증됨: /home 리다이렉트
+  → 미인증: IDP로 리다이렉트
 
-- code_verifier 생성 (43-128자 랜덤, sessionStorage 저장)
-- code_challenge = BASE64URL(SHA256(code_verifier))
-- state, nonce 생성
+[2. IDP - 사용자 인증]
 
-- Azure AD 리다이렉트:
-  https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?
-    client_id={client_id}&
-    response_type=code&
-    redirect_uri=https://app.com/auth/callback&
-    scope=openid profile email&
-    code_challenge={code_challenge}&
-    code_challenge_method=S256&
-    state={state}&
-    nonce={nonce}
+[3. 백엔드 - 콜백 처리 (POST /auth/oidc/callback)]
 
-[2. Azure AD - 사용자 인증]
-- Samsung AD 로그인
-- authorization code 발급
-
-[3. SPA - code 수신 및 백엔드 전달]
-- /auth/callback?code=xxx&state=xxx 수신
-- state 검증
-- code를 백엔드로 POST:
-  POST /api/auth/oidc/callback
-  Body: { code: "xxx", codeVerifier: "...", redirectUri: "..." }
-
-[4. 백엔드 - 토큰 교환 및 JWT 발급]
-- Azure AD 토큰 교환:
-  POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
-  Body: {
-    grant_type: 'authorization_code',
-    client_id: {client_id},
-    code: {code},
-    code_verifier: {code_verifier},
-    redirect_uri: {redirect_uri}
-  }
-
-- ID Token + Access Token 수신
-- ID Token 검증 (signature, claims)
-- 사용자 정보 추출 (sub, email, name, dept, business_unit)
-- DB에 사용자 저장/업데이트
-
-- **자체 JWT 발급**:
-  Payload: { user_id: "uuid", knox_id: "bwyoon", iat, exp }
-
-- **JWT를 HttpOnly 쿠키로 응답**:
-  Set-Cookie: __Host-session={JWT}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400
-  Body: { success: true, user_id: "...", is_new_user: true/false }
-
-[5. SPA - 인증 완료]
-- 브라우저가 쿠키 자동 저장 (JavaScript 접근 불가)
-- /home 리다이렉트
-
-[6. 이후 API 호출]
-- fetch("/api/profile/nickname", { credentials: 'include' })
+[4. 이후 API 호출]
+- fetch(..., { credentials: 'include' })
 - 브라우저가 쿠키(JWT) 자동 첨부
-- 백엔드가 쿠키의 JWT 검증 → 사용자 인증
+- 백엔드가 JWT 검증
 ```
 
 **보안 특징**:
@@ -172,19 +119,15 @@ SLEA-SSEM MVP 1.0.0은 S.LSI 임직원의 **AI 역량 수준을 객관적으로 
 - **XSS 방어**: HttpOnly → JavaScript로 JWT 읽을 수 없음
 - **CSRF 방어**: SameSite=Lax + state 검증
 - **Token 노출 방지**: JWT는 쿠키에만 존재, localStorage 사용 안 함
-- **PKCE**: code_verifier로 authorization code 탈취 방어
 - **Secure**: HTTPS에서만 쿠키 전송
 - **__Host- prefix**: Domain/Path 고정으로 쿠키 하이재킹 방지
 
 **수용 기준**:
 
-- "/" 접속 시 쿠키가 없으면 PKCE로 Azure AD 리다이렉트된다."
-- "콜백에서 code를 백엔드로 전달한다."
-- "백엔드가 Azure AD 토큰 교환 후 자체 JWT를 HttpOnly 쿠키로 발급한다."
+- "/" 접속 시 쿠키가 없으면 IDP로 리다이렉트된다."
 - "브라우저는 JWT를 localStorage에 저장하지 않는다."
 - "모든 API 호출은 쿠키의 JWT로 인증된다."
-- "인증 성공 후 3초 내 /home으로 이동한다."
-- "**로그인 실패 시, 에러 메시지와 함께 '계정 정보 확인', '관리자 문의' 두 링크가 표시된다.**"
+- "인증 성공 후 /home으로 리다이렉트된다."
 
 ---
 
@@ -611,7 +554,7 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 |--------|---------|---------|
 | **REQ-F-B4-1** | 최종 등급(1~5), 점수, 상대 순위, 백분위를 시각적으로 표시해야 한다. | **M** |
 | **REQ-F-B4-2** | **사용자의 등급에 따른 배지(시작자/중급자/엘리트 등)를 결과 페이지에 시각적으로 표시해야 한다.** 엘리트 등급인 경우, 추가 특수 배지(Agent Specialist 등)도 함께 표시하고, "마스터 클래스 강사 추천" 또는 "커뮤니티 기여자 등록" 링크를 제공해야 한다. | **M** |
-| **REQ-F-B4-3** | **결과 화면에 "전사 상대 순위 및 분포" 시각화를 표시해야 한다:** <br> - 최근 90일 응시자의 등급 분포 막대 차트 (Beginner ~ Elite) <br> - 사용자의 현재 위치를 차트에 하이라이트 <br> - "상위 28% (순위 3/506)"과 같은 텍스트 요약 | **M** |
+| **REQ-F-B4-3** | **결과 화면에 "전체 상대 순위 및 분포" 시각화를 표시해야 한다:** <br> - 최근 90일 응시자의 등급 분포 막대 차트 (Beginner ~ Elite) <br> - 사용자의 현재 위치를 차트에 하이라이트 <br> - "상위 28% (순위 3/506)"과 같은 텍스트 요약 | **M** |
 | **REQ-F-B4-4** | 모집단 < 100일 경우, "분포 신뢰도 낮음" 라벨을 눈에 띄게 표시해야 한다. | **S** |
 | **REQ-F-B4-5** | 결과 페이지에 "향후 학습 계획" 안내 문구 및 MVP 2.0 예고를 포함해야 한다. | **S** |
 | **REQ-F-B4-6** | 사용자가 공유용 배지/이미지를 다운로드할 수 있는 버튼을 제공해야 한다. | **S** |
@@ -740,7 +683,7 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 
 | 화면 | 주요 요소 | 필수 기능 |
 |------|---------|---------|
-| **로그인** | Samsung AD 로그인 버튼, 에러 메시지 | SSO 리다이렉트, 토큰 발급 |
+| **로그인** | SSO 로그인, 에러 메시지 | IDP 리다이렉트, 토큰 발급 |
 | **닉네임 등록** | 입력 필드, 중복 체크 버튼, 제안 목록 | 실시간 중복 검증, 자동 제안 |
 | **온보딩 모달** | 요약 텍스트, "시작하기" CTA | 웰컴 메시지 표시 |
 | **자기평가 폼** | 수준/경력/직군/업무/관심분야 입력 | 유효성 검사, 제출 |
@@ -755,48 +698,25 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 
 ## REQ-B-A1: OIDC 인증 및 JWT 쿠키 발급 (Backend)
 
-> **인증 방식**: OpenID Connect Authorization Code Flow + PKCE
-> **백엔드 책임**: Azure AD 토큰 교환, ID Token 검증, 자체 JWT 발급 및 HttpOnly 쿠키 설정
+> **인증 방식**: OpenID Connect Authorization Code Flow
+> **백엔드 책임**: IDP POST 콜백 수신, 토큰 교환, ID Token 검증, 자체 JWT 발급 및 HttpOnly 쿠키 설정
 > **보안**: JWT를 HttpOnly 쿠키로 발급하여 XSS 방어
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-B-A1-1** | Frontend로부터 authorization code와 code_verifier를 수신해야 한다. | **M** |
-| **REQ-B-A1-2** | Azure AD `/token` 엔드포인트로 토큰 교환 요청을 보내 ID Token과 Access Token을 수신해야 한다. (PKCE 검증 포함) | **M** |
+| **REQ-B-A1-1** | IDP로부터 POST form-urlencoded로 authorization code와 state를 수신해야 한다. | **M** |
+| **REQ-B-A1-2** | IDP `/token` 엔드포인트로 토큰 교환 요청을 보내 ID Token과 Access Token을 수신해야 한다. | **M** |
 | **REQ-B-A1-3** | ID Token의 JWT signature, issuer, audience, expiration, nonce를 검증해야 한다. | **M** |
 | **REQ-B-A1-4** | ID Token에서 사용자 정보(sub, email, name, dept, business_unit)를 추출하여 users 테이블에 저장/업데이트해야 한다. | **M** |
 | **REQ-B-A1-5** | 자체 JWT를 생성해야 한다. (Payload: {user_id, knox_id, iat, exp}) | **M** |
 | **REQ-B-A1-6** | **생성한 JWT를 HttpOnly 쿠키로 Set-Cookie 헤더에 설정하여 응답해야 한다.** | **M** |
-| **REQ-B-A1-7** | 신규 사용자 생성 시 is_new_user=true, 기존 사용자는 is_new_user=false로 응답해야 한다. | **M** |
+| **REQ-B-A1-7** | 인증 성공 후 프론트엔드 /home으로 302 리다이렉트해야 한다. | **M** |
 | **REQ-B-A1-8** | 이후 모든 API 요청에서 쿠키의 JWT를 검증하여 사용자를 인증해야 한다. | **M** |
 | **REQ-B-A1-9** | 인증 상태 확인 API(`GET /auth/status`)를 제공하여 쿠키의 유효성을 확인할 수 있어야 한다. | **M** |
 
 **API 엔드포인트**:
 
 **1. POST /auth/oidc/callback** - OIDC 토큰 교환 및 JWT 발급
-
-```
-POST /auth/oidc/callback
-Content-Type: application/json
-
-Request Body:
-{
-  "code": "authorization_code_from_azure_ad",
-  "codeVerifier": "pkce_code_verifier_from_frontend",
-  "redirectUri": "https://app.com/auth/callback"
-}
-
-Response:
-Set-Cookie: __Host-session={JWT}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400
-Content-Type: application/json
-
-{
-  "success": true,
-  "user_id": "uuid-string",
-  "knox_id": "bwyoon",
-  "is_new_user": true
-}
-```
 
 **2. GET /auth/status** - 인증 상태 확인 (REQ-B-A1-9)
 
@@ -825,20 +745,10 @@ Content-Type: application/json
 
 **구현 상세**:
 
-1. **Azure AD 토큰 교환**:
-   ```
-   POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
-   Content-Type: application/x-www-form-urlencoded
-
-   grant_type=authorization_code&
-   client_id={client_id}&
-   code={authorization_code}&
-   code_verifier={code_verifier}&
-   redirect_uri={redirect_uri}
-   ```
+1. **IDP 토큰 교환**
 
 2. **ID Token 검증** (PyJWT 라이브러리 사용):
-   - Signature 검증 (Azure AD public key)
+   - Signature 검증 (IDP public key)
    - iss (issuer) 확인
    - aud (audience) = client_id 확인
    - exp (expiration) 확인
@@ -877,8 +787,8 @@ Content-Type: application/json
 
 **수용 기준**:
 
-- "Frontend로부터 code + codeVerifier 수신 후 2초 내 응답한다."
-- "Azure AD 토큰 교환이 성공하고 ID Token을 받는다."
+- "수신 후 2초 내 응답한다."
+- "AD 토큰 교환이 성공하고 ID Token을 받는다."
 - "ID Token 검증 (signature, iss, aud, exp)이 통과한다."
 - "사용자 정보가 users 테이블에 저장/업데이트된다."
 - "자체 JWT가 생성되고 HttpOnly 쿠키로 Set-Cookie된다."
@@ -1431,7 +1341,7 @@ Content-Type: application/json
 | **REQ-B-B4-3** | 등급 산출 로직을 구현해야 한다: <br> - 기본: 종합 점수 + 난이도 보정 (문항별 정답률 기반 가중) <br> - 초기: 베이지안 평활로 컷오프 업데이트 | **M** |
 | **REQ-B-B4-4** | 동일 기간(최근 90일) 응시자 풀을 기준으로 상대 순위(RANK() OVER)와 백분위(percentile)를 계산해야 한다. | **M** |
 | **REQ-B-B4-5** | 모집단 < 100일 경우, percentile_confidence를 "medium"으로 설정해야 한다. | **S** |
-| **REQ-B-B4-6** | 등급 조회 API(GET /profile/ranking)는 전사 등급 분포 데이터(grade_distribution)를 포함하여 반환해야 한다. 각 등급별로 인원 수(count)와 비율(percentage)을 제공해야 한다. | **M** |
+| **REQ-B-B4-6** | 등급 조회 API(GET /profile/ranking)는 전체 등급 분포 데이터(grade_distribution)를 포함하여 반환해야 한다. 각 등급별로 인원 수(count)와 비율(percentage)을 제공해야 한다. | **M** |
 
 **수용 기준**:
 
@@ -1584,23 +1494,18 @@ Content-Type: application/json
 
 ## Auth-Service
 
+> **Note**: Auth API 명세는 REQ-B-A1 섹션 참조
+
 ```http
-POST /api/v1/auth/callback
-  설명: Frontend에서 Samsung AD SSO 완료 후 사용자 정보 전달
-  요청: {
-    knox_id: string,           // 고유한 회사 ID (unique)
-    name: string,              // 사용자명
-    email: string,             // 이메일
-    dept: string,              // 부서
-    business_unit: string      // 사업부
-  }
-  → {
-    access_token: string,      // JWT 토큰 (페이로드: {knox_id, iat, exp})
-    user_id: string,           // DB 사용자 ID (UUID)
-    knox_id: string,           // 반복 확인용
-    is_new_user: boolean,      // true: 신규, false: 기존
-    created_at?: timestamp     // 신규 사용자인 경우만 포함
-  }
+POST /auth/oidc/callback
+  설명: IDP로부터 POST 콜백 수신, 토큰 교환, JWT 발급
+  요청: form-urlencoded (code, state)
+  응답: 302 리다이렉트 + HttpOnly 쿠키
+
+GET /auth/status
+  설명: 인증 상태 확인
+  요청: Cookie (HttpOnly)
+  응답: { authenticated: boolean, user_id?: string, knox_id?: string }
 
 POST /api/v1/auth/logout
   설명: 로그아웃
@@ -1845,7 +1750,7 @@ POST /api/v1/history/save
 ```sql
 CREATE TABLE users (
   id UUID PRIMARY KEY,
-  knox_id VARCHAR(100) UNIQUE NOT NULL,      -- Samsung AD 고유 ID
+  knox_id VARCHAR(100) UNIQUE NOT NULL,      -- IDP 고유 ID
   email VARCHAR(255) UNIQUE NOT NULL,
   emp_no VARCHAR(50) UNIQUE,
   name VARCHAR(100) NOT NULL,                -- 사용자명
@@ -2172,7 +2077,7 @@ ELSE IF total_candidates >= 100:
 | | 채점/해설 ≤ 1s/문항 | 99th percentile |
 | | 결과 페이지 로드 ≤ 2s | 99th percentile |
 | **가용성** | 시스템 가동률 | 99.5%+ |
-| **보안** | Samsung AD, JWT 토큰 관리, 역할기반 접근 | 표준 준수 |
+| **보안** | SSO/IDP, JWT 토큰 관리, HttpOnly 쿠키 | 표준 준수 |
 | | 개인정보 최소 수집, 암호화 저장 | GDPR/개인정보보호법 준수 |
 | **감사/로깅** | 모든 생성·채점·결과 이벤트 추적 | Event ID, User ID, Timestamp |
 | **접근성** | 키보드 전용 탐색, 명도 대비 | WCAG 2.1 AA 준수 |
@@ -2184,7 +2089,7 @@ ELSE IF total_candidates >= 100:
 
 | 시나리오 | 처리 방식 | 사용자 안내 |
 |---------|---------|-----------|
-| **Samsung AD 인증 실패** | 재시도 1회 + 헬프 링크 제공 | "계정 정보를 다시 확인해주세요" |
+| **SSO 인증 실패** | 재시도 1회 + 헬프 링크 제공 | "계정 정보를 다시 확인해주세요" |
 | **닉네임 중복** | 대안 3개 자동 제안 | "다음 닉네임을 추천합니다" |
 | **닉네임 금칙어** | 거부 + 이유 안내 | "부적절한 단어가 포함되었습니다" |
 | **테스트 중 이탈/새로고침** | 자동 저장 후 재개 | "이전 진행 상황에서 재개됩니다" |
@@ -2198,7 +2103,7 @@ ELSE IF total_candidates >= 100:
 
 ### Must (필수)
 
-- ✅ **REQ-F-A1-1~3, REQ-B-A1-1~4: Samsung AD 로그인 + 실패 시 헬프 링크 (F/B)**
+- ✅ **REQ-F-A1-1~3, REQ-B-A1-1~9: SSO 로그인 (F/B)**
 - ✅ **REQ-F-A3-1~5, REQ-B-A3-1~2: 개인정보 수집 및 이용 동의 (F/B)**
 - ✅ REQ-F-A2-1~5, REQ-B-A2-1~5: 닉네임 등록 (F/B)
 - ✅ **REQ-F-A2-Edit-1~6, REQ-B-A2-Edit-1~4: 프로필 수정 (닉네임/자기평가) (F/B)**
@@ -2246,7 +2151,7 @@ ELSE IF total_candidates >= 100:
 ## ✅ 수용 기준 (Acceptance Criteria) 예시
 
 1. **가입 완료**
-   - "사용자가 Samsung AD 로그인 후 3초 내 토큰이 발급된다."
+   - "사용자가 SSO 로그인 후 토큰이 발급되고 /home으로 리다이렉트된다."
    - "닉네임 중복 시 1초 내 대안 3개가 제안된다."
    - "가입 완료 후 DB에 사용자 레코드가 생성된다."
 
@@ -2271,7 +2176,7 @@ ELSE IF total_candidates >= 100:
 
 ### R1: 기본 가입 및 프로필 설정
 
-- Samsung AD 로그인/SSO (REQ-F-A1-1~3, REQ-B-A1-1~4)
+- SSO 로그인 (REQ-F-A1-1~3, REQ-B-A1-1~9)
 - 개인정보 동의 (REQ-F-A3-1~5, REQ-B-A3-1~2)
 - 닉네임 등록 (중복 체크) (REQ-F-A2-1~5, REQ-B-A2-1~5)
 - 자기평가 입력 (REQ-F-A2-2-1~5, REQ-B-B1-1~2)
@@ -2307,7 +2212,7 @@ ELSE IF total_candidates >= 100:
 - **재미 모드 (카테고리 선택형 퀴즈) (REQ-F-B6-1~7, REQ-B-B6-Plus-1~5)**
 - History-Service 비교 (REQ-F-B5-1, REQ-B-B5-2)
 
-**완료 기준**: 사용자가 최종 등급, 배지를 시각적으로 확인하고, 분포 차트를 통해 전사 상대 순위를 이해하며, 공유 가능하고, 재미 모드에 참여하고 학습 일정을 확인 가능
+**완료 기준**: 사용자가 최종 등급, 배지를 시각적으로 확인하고, 분포 차트를 통해 전체 상대 순위를 이해하며, 공유 가능하고, 재미 모드에 참여하고 학습 일정을 확인 가능
 
 ---
 
@@ -2332,9 +2237,9 @@ ELSE IF total_candidates >= 100:
 ## Frontend (F 태그)
 
 로그인 화면:
-- [ ] REQ-F-A1-1: Samsung AD 로그인 버튼 구현
-- [ ] REQ-F-A1-2: SSO 콜백 페이지 구현
-- [ ] REQ-F-A1-3: 에러 메시지 표시
+- [ ] REQ-F-A1-1: 인증 확인 후 IDP 리다이렉트
+- [ ] REQ-F-A1-2: 인증된 경우 /home 리다이렉트
+- [ ] REQ-F-A1-3: API 호출 시 쿠키 자동 첨부
 
 회원가입 (닉네임 등록):
 - [ ] REQ-F-A2-1: 입력 필드 & 중복 확인 버튼
@@ -2415,11 +2320,15 @@ ELSE IF total_candidates >= 100:
 ## Backend (B 태그)
 
 인증:
-- [ ] REQ-B-A1-1: Samsung AD 사용자 정보 수신 및 저장
-- [ ] REQ-B-A1-2: JWT 토큰 생성
-- [ ] REQ-B-A1-3: 신규 사용자 처리
-- [ ] REQ-B-A1-4: 기존 사용자 재로그인 처리
-- [ ] REQ-F-A1-3 Backend: 로그인 실패 시 에러 응답 + 헬프 링크 정보 전달
+- [ ] REQ-B-A1-1: IDP POST 콜백 수신 (form-urlencoded)
+- [ ] REQ-B-A1-2: IDP 토큰 교환
+- [ ] REQ-B-A1-3: ID Token 검증
+- [ ] REQ-B-A1-4: 사용자 정보 DB 저장/업데이트
+- [ ] REQ-B-A1-5: 자체 JWT 생성
+- [ ] REQ-B-A1-6: HttpOnly 쿠키 설정
+- [ ] REQ-B-A1-7: /home으로 302 리다이렉트
+- [ ] REQ-B-A1-8: 쿠키 JWT 검증 미들웨어
+- [ ] REQ-B-A1-9: GET /auth/status 구현
 
 개인정보 동의:
 - [ ] REQ-B-A3-1: 개인정보 동의 여부 확인 API (GET /profile/consent)
