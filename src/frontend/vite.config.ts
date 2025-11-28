@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: '../backend/static',
+    outDir: 'dist',
     emptyOutDir: true,
   },
   server: {
