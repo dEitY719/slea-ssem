@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.backend.database import get_db
-from src.backend.services.auth_service import AuthService, OIDCAuthService
+from src.backend.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +22,10 @@ router = APIRouter(tags=["auth"])
 
 class LoginRequest(BaseModel):
     """
-    Request model for Samsung AD login.
+    Request model for SSO login.
 
     Attributes:
-        knox_id: User's Samsung Knox ID
+        knox_id: User's Knox ID
         name: User's full name
         dept: Department
         business_unit: Business unit
@@ -33,7 +33,7 @@ class LoginRequest(BaseModel):
 
     """
 
-    knox_id: str = Field(..., description="User's Samsung Knox ID")
+    knox_id: str = Field(..., description="User's Knox ID")
     name: str = Field(..., description="User's full name")
     dept: str = Field(..., description="Department")
     business_unit: str = Field(..., description="Business unit")
@@ -63,15 +63,10 @@ class OIDCCallbackRequest(BaseModel):
     Request model for OIDC callback endpoint.
 
     REQ: REQ-B-A1-1
-
-    Attributes:
-        code: Authorization code from Azure AD
-        code_verifier: PKCE code verifier from frontend
-
+    TODO: Define form-urlencoded parameters (code, state)
     """
 
-    code: str = Field(..., description="Authorization code from Azure AD")
-    code_verifier: str = Field(..., description="PKCE code verifier")
+    pass
 
 
 class StatusResponse(BaseModel):
@@ -95,20 +90,20 @@ class StatusResponse(BaseModel):
 @router.post(
     "/login",
     response_model=LoginResponse,
-    summary="Samsung AD Login",
-    description="Authenticate user via Samsung AD and return JWT token",
+    summary="SSO Login",
+    description="Authenticate user via SSO and return JWT token",
 )
 def login(
     request: LoginRequest,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> JSONResponse:
     """
-    Handle Samsung AD authentication.
+    Handle SSO authentication.
 
     REQ: REQ-B-A1-1, REQ-B-A1-2, REQ-B-A1-3, REQ-B-A1-4
 
     Args:
-        request: Login request with user data from Samsung AD
+        request: Login request with user data from SSO
         db: Database session
 
     Returns:
@@ -145,103 +140,38 @@ def login(
 
 @router.post(
     "/oidc/callback",
-    response_model=LoginResponse,
     summary="OIDC Callback",
-    description="Handle OIDC callback from Azure AD with authorization code and code_verifier",
+    description="Handle OIDC callback from IDP (form POST)",
 )
 def oidc_callback(
-    request: OIDCCallbackRequest,
     db: Session = Depends(get_db),  # noqa: B008
-) -> JSONResponse:
+):
     """
-    Handle OIDC callback from Azure AD.
+    Handle OIDC callback from IDP.
 
     REQ: REQ-B-A1-1, REQ-B-A1-2, REQ-B-A1-3, REQ-B-A1-4, REQ-B-A1-5, REQ-B-A1-6, REQ-B-A1-7
 
-    Flow:
-    1. Receive authorization code and code_verifier from frontend
-    2. Exchange authorization code for Azure AD tokens (ID Token + Access Token)
-    3. Validate ID Token (signature, issuer, audience, expiration)
-    4. Extract user claims from ID Token
-    5. Create or update user in database
-    6. Generate JWT token
-    7. Set JWT in HttpOnly cookie
-    8. Return user_id and is_new_user flag
+    TODO: Implement IDP callback handling
+    1. Receive form-urlencoded (code, state) from IDP
+    2. Validate state
+    3. Exchange code for IDP tokens (with client_secret)
+    4. Validate ID Token
+    5. Extract user claims and save to DB
+    6. Generate JWT and set HttpOnly cookie
+    7. Return 302 redirect to /home
 
     Args:
-        request: OIDC callback request with code and code_verifier
         db: Database session
 
     Returns:
-        JSONResponse with JWT token and is_new_user flag
-        Status code 201 for new users, 200 for existing users
-        Set-Cookie header with HttpOnly JWT cookie
+        RedirectResponse with HttpOnly cookie
 
     Raises:
         HTTPException: If OIDC callback fails
 
     """
-    try:
-        # REQ-B-A1-1: Receive authorization code and code_verifier
-        code = request.code
-        code_verifier = request.code_verifier
-
-        # REQ-B-A1-2: Exchange code for Azure AD tokens
-        oidc_service = OIDCAuthService()
-        tokens = oidc_service.exchange_code_for_tokens(code, code_verifier)
-
-        # REQ-B-A1-3: Validate ID Token
-        id_token = tokens.get("id_token")
-        if not id_token:
-            raise ValueError("ID token not received from Azure AD")
-
-        id_token_claims = oidc_service.validate_id_token(id_token)
-
-        # Extract user claims from ID Token
-        user_data = {
-            "knox_id": id_token_claims.get("sub", ""),  # Use 'sub' (subject/OID) as knox_id
-            "email": id_token_claims.get("email", ""),
-            "name": id_token_claims.get("name", ""),
-            "dept": id_token_claims.get("dept", ""),
-            "business_unit": id_token_claims.get("business_unit", ""),
-        }
-
-        # REQ-B-A1-4: Create or update user
-        auth_service = AuthService(db)
-        jwt_token, is_new_user, user_id = auth_service.authenticate_or_create_user(user_data)
-
-        # REQ-B-A1-5, REQ-B-A1-6: Generate JWT and set in HttpOnly cookie
-        status_code = 201 if is_new_user else 200
-
-        response = JSONResponse(
-            status_code=status_code,
-            content={
-                "access_token": jwt_token,
-                "token_type": "bearer",
-                "user_id": user_id,
-                "is_new_user": is_new_user,
-            },
-        )
-
-        # Set JWT in HttpOnly cookie (REQ-B-A1-6)
-        response.set_cookie(
-            key="auth_token",
-            value=jwt_token,
-            httponly=True,
-            secure=True,  # Should be True in production (HTTPS only)
-            samesite="Lax",
-            max_age=86400,  # 24 hours
-            path="/",
-        )
-
-        return response
-
-    except ValueError as e:
-        logger.warning(f"OIDC callback error: {str(e)}")
-        raise HTTPException(status_code=401, detail=str(e)) from e
-    except Exception as e:
-        logger.exception("OIDC callback error")
-        raise HTTPException(status_code=500, detail="OIDC callback failed") from e
+    # TODO: Implement OIDC callback logic
+    raise HTTPException(status_code=501, detail="OIDC callback not implemented")
 
 
 @router.get(
