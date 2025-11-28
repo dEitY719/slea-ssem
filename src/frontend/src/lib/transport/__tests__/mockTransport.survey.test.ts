@@ -10,7 +10,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
   })
 
   test('PUT /profile/survey with valid level (beginner)', async () => {
-    const response = await mockTransport.put('/profile/survey', {
+    const response = await mockTransport.put<any>('/profile/survey', {
       level: 'beginner',
     })
 
@@ -137,7 +137,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
   })
 
   test('PUT /profile/survey with all fields', async () => {
-    const response = await mockTransport.put('/profile/survey', {
+    const response = await mockTransport.put<any>('/profile/survey', {
       level: 'intermediate',
       career: 5,
       job_role: 'SW',

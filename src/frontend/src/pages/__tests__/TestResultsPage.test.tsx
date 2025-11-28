@@ -41,11 +41,11 @@ const mockResultData = {
   percentile_confidence: 'high' as const,
   percentile_description: '상위 30%',
   grade_distribution: [
-    { grade: 'Beginner', count: 50, percentage: 10 },
-    { grade: 'Intermediate', count: 100, percentage: 20 },
-    { grade: 'Inter-Advanced', count: 150, percentage: 30 },
-    { grade: 'Advanced', count: 120, percentage: 24 },
-    { grade: 'Elite', count: 80, percentage: 16 },
+    { grade: 'Beginner' as const, count: 50, percentage: 10 },
+    { grade: 'Intermediate' as const, count: 100, percentage: 20 },
+    { grade: 'Inter-Advanced' as const, count: 150, percentage: 30 },
+    { grade: 'Advanced' as const, count: 120, percentage: 24 },
+    { grade: 'Elite' as const, count: 80, percentage: 16 },
   ],
 }
 

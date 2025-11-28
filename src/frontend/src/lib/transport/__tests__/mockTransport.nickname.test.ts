@@ -3,6 +3,7 @@
 
 import { describe, test, expect, beforeEach } from 'vitest'
 import { mockTransport, mockConfig } from '../mockTransport'
+import type { NicknameCheckResponse, NicknameRegisterResponse } from '../../../services/profileService'
 
 describe('Mock Transport - Nickname Validation (REQ-F-A2-5)', () => {
   beforeEach(() => {
@@ -57,7 +58,7 @@ describe('Mock Transport - Nickname Validation (REQ-F-A2-5)', () => {
     })
 
     test('POST /profile/nickname/check - 유효한 형식 (영문+숫자+언더스코어)', async () => {
-      const response = await mockTransport.post('/profile/nickname/check', { nickname: 'player_123' })
+      const response = await mockTransport.post<NicknameCheckResponse>('/profile/nickname/check', { nickname: 'player_123' })
       expect(response).toHaveProperty('available')
       expect(response.available).toBe(true)
     })
@@ -148,7 +149,7 @@ describe('Mock Transport - Nickname Validation (REQ-F-A2-5)', () => {
     })
 
     test('POST /profile/nickname/check - 유효한 닉네임 + 중복 있음 (existing_user)', async () => {
-      const response = await mockTransport.post('/profile/nickname/check', { nickname: 'existing_user' })
+      const response = await mockTransport.post<NicknameCheckResponse>('/profile/nickname/check', { nickname: 'existing_user' })
 
       expect(response.available).toBe(false)
       expect(response.suggestions).toHaveLength(3)
@@ -181,7 +182,7 @@ describe('Mock Transport - Nickname Validation (REQ-F-A2-5)', () => {
     })
 
     test('POST /profile/register - 유효한 닉네임 등록 성공', async () => {
-      const response = await mockTransport.post('/profile/register', { nickname: 'newuser123' })
+      const response = await mockTransport.post<NicknameRegisterResponse>('/profile/register', { nickname: 'newuser123' })
 
       expect(response).toMatchObject({
         success: true,

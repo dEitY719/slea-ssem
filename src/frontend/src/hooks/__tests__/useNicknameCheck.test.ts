@@ -1,5 +1,5 @@
 // REQ: REQ-F-A2-2
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useNicknameCheck } from '../useNicknameCheck'
 import { mockConfig } from '../../lib/transport'

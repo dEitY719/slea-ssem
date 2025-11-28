@@ -1,7 +1,7 @@
 // REQ: REQ-F-B4-3
 import { render, screen } from '@testing-library/react'
 import { GradeDistributionChart } from '../GradeDistributionChart'
-import type { GradeDistribution, Grade } from '../../../services/resultService'
+import type { GradeDistribution } from '../../../services/resultService'
 
 describe('GradeDistributionChart', () => {
   // Test data

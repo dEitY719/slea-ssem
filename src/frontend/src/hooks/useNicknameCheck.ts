@@ -1,6 +1,6 @@
 // REQ: REQ-F-A2-2
 import { useState, useCallback } from 'react'
-import { profileService, type NicknameCheckResponse } from '../services'
+import { profileService } from '../services'
 
 /**
  * Check status type

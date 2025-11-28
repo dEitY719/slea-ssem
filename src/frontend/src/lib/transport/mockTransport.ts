@@ -1016,19 +1016,19 @@ class MockTransport implements HttpTransport {
     return data as T
   }
 
-  async get<T>(url: string, config?: RequestConfig): Promise<T> {
+  async get<T>(url: string, _config?: RequestConfig): Promise<T> {
     return this.mockRequest<T>(url, 'GET')
   }
 
-  async post<T>(url: string, data?: any, config?: RequestConfig): Promise<T> {
+  async post<T>(url: string, data?: any, _config?: RequestConfig): Promise<T> {
     return this.mockRequest<T>(url, 'POST', data)
   }
 
-  async put<T>(url: string, data?: any, config?: RequestConfig): Promise<T> {
+  async put<T>(url: string, data?: any, _config?: RequestConfig): Promise<T> {
     return this.mockRequest<T>(url, 'PUT', data)
   }
 
-  async delete<T>(url: string, config?: RequestConfig): Promise<T> {
+  async delete<T>(url: string, _config?: RequestConfig): Promise<T> {
     return this.mockRequest<T>(url, 'DELETE')
   }
 }

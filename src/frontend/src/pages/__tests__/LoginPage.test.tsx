@@ -24,7 +24,8 @@ describe('LoginPage - Auto-redirect (REQ-F-A1-1, REQ-F-A1-2)', () => {
     originalLocation = window.location
     // @ts-ignore
     delete window.location
-    window.location = { href: '', origin: 'http://localhost:3000' } as Location
+    // @ts-ignore
+    window.location = { href: '', origin: 'http://localhost:3000' }
 
     // Mock navigate
     mockNavigate = vi.fn()
@@ -37,6 +38,7 @@ describe('LoginPage - Auto-redirect (REQ-F-A1-1, REQ-F-A1-2)', () => {
   })
 
   afterEach(() => {
+    // @ts-ignore
     window.location = originalLocation
     vi.clearAllMocks()
     vi.unstubAllEnvs()

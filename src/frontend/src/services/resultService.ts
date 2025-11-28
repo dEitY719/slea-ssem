@@ -56,10 +56,10 @@ export const resultService = {
    *
    * REQ: REQ-F-B4-1
    *
-   * @param sessionId - Test session ID (not used in API, kept for validation)
+   * @param _sessionId - Test session ID (not used in API, kept for validation)
    * @returns Grade result with score, rank, percentile
    */
-  async getResults(sessionId: string): Promise<GradeResult> {
+  async getResults(_sessionId: string): Promise<GradeResult> {
     // Backend uses /profile/ranking (user-level, not session-level)
     // sessionId parameter kept for future extensibility
     return transport.get<GradeResult>('/api/profile/ranking')

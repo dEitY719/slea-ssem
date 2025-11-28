@@ -93,15 +93,17 @@ export const ComparisonSection: React.FC<ComparisonSectionProps> = ({
 
       <div className="comparison-content">
         {/* Grade Comparison */}
-        <div className={`comparison-item ${gradeChanged ? (gradeImproved ? 'improved' : 'declined') : 'unchanged'}`}>
+        <div className={`comparison-item ${gradeChanged ? (gradeImproved ? 'improved' : gradeDeclined ? 'declined' : 'unchanged') : 'unchanged'}`}>
           <span className="comparison-label">등급</span>
           {gradeChanged ? (
             <div className="comparison-change">
               <span className="old-value">{previousResult.grade}</span>
               {gradeImproved ? (
                 <ArrowUpIcon className="arrow arrow-up" />
-              ) : (
+              ) : gradeDeclined ? (
                 <ArrowDownIcon className="arrow arrow-down" />
+              ) : (
+                <ArrowRightIcon className="arrow arrow-right" />
               )}
               <span className="new-value">{currentGrade}</span>
             </div>

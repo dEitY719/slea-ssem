@@ -27,7 +27,6 @@ const LevelSelector: React.FC<LevelSelectorProps> = ({
   value,
   onChange,
   disabled = false,
-  showTitle = true,
 }) => {
   const handleChange = useCallback(
     (selectedLevel: number) => {
