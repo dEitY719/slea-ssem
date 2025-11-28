@@ -39,6 +39,9 @@ htmlcov/
 node_modules
 npm-debug.log
 
+# Frontend build output
+src/backend/static/
+
 # Misc
 tmp/
 .DS_Store
