@@ -1,17 +1,15 @@
-// REQ: REQ-F-A1-1, REQ-F-A1-2, REQ-F-A1-3
+// REQ: REQ-F-A1-1, REQ-F-A1-2
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '../components'
 import { isAuthenticated } from '../utils/auth'
-import { generatePKCEParams, storePKCEParams } from '../utils/pkce'
 import './LoginPage.css'
 
 /**
- * LoginPage - Auto-redirect to OIDC or /home
+ * LoginPage - Auto-redirect to IDP or /home
  *
- * REQ-F-A1-1: Check cookie, generate PKCE if not authenticated
- * REQ-F-A1-2: Redirect to Azure AD with PKCE
- * REQ-F-A1-3: Redirect to /home if already authenticated
+ * REQ-F-A1-1: Check cookie, redirect to IDP if not authenticated
+ * REQ-F-A1-2: Redirect to /home if already authenticated
  */
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
@@ -20,7 +18,7 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     const handleAutoRedirect = async () => {
       try {
-        // REQ-F-A1-3: Check if already authenticated
+        // REQ-F-A1-2: Check if already authenticated
         const authenticated = await isAuthenticated()
 
         if (authenticated) {
@@ -29,32 +27,18 @@ const LoginPage: React.FC = () => {
           return
         }
 
-        // MOCK MODE: Bypass Azure AD and go directly to callback
+        // MOCK MODE: Bypass IDP and go directly to home
         const mockSSO = import.meta.env.VITE_MOCK_SSO === 'true'
         if (mockSSO) {
-          console.log('[MOCK SSO] Bypassing Azure AD, redirecting to callback')
-          navigate('/auth/callback', { replace: true })
+          console.log('[MOCK SSO] Bypassing IDP, redirecting to home')
+          navigate('/home', { replace: true })
           return
         }
 
-        // REQ-F-A1-1: Generate PKCE parameters
-        const pkceParams = await generatePKCEParams()
+        // REQ-F-A1-1: Redirect to IDP authorize URL
+        const authUrl = buildIDPAuthUrl()
 
-        // Store in sessionStorage for callback
-        storePKCEParams({
-          codeVerifier: pkceParams.codeVerifier,
-          state: pkceParams.state,
-          nonce: pkceParams.nonce,
-        })
-
-        // REQ-F-A1-2: Build Azure AD authorization URL
-        const authUrl = buildAzureADAuthUrl(
-          pkceParams.codeChallenge,
-          pkceParams.state,
-          pkceParams.nonce
-        )
-
-        // Redirect to Azure AD
+        // Redirect to IDP
         window.location.href = authUrl
       } catch (error) {
         console.error('Auto-redirect failed:', error)
@@ -87,29 +71,12 @@ const LoginPage: React.FC = () => {
 }
 
 /**
- * Build Azure AD authorization URL with PKCE
- * @param codeChallenge - PKCE code_challenge
- * @param state - CSRF protection state
- * @param nonce - Replay attack protection nonce
+ * Build IDP authorization URL
  * @returns Authorization URL
  */
-function buildAzureADAuthUrl(codeChallenge: string, state: string, nonce: string): string {
-  const tenantId = import.meta.env.VITE_AZURE_AD_TENANT_ID || 'common'
-  const clientId = import.meta.env.VITE_AZURE_AD_CLIENT_ID || ''
-  const redirectUri = `${window.location.origin}/auth/callback`
-
-  const params = new URLSearchParams({
-    client_id: clientId,
-    response_type: 'code',
-    redirect_uri: redirectUri,
-    scope: 'openid profile email',
-    code_challenge: codeChallenge,
-    code_challenge_method: 'S256',
-    state: state,
-    nonce: nonce,
-  })
-
-  return `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?${params.toString()}`
+function buildIDPAuthUrl(): string {
+  // TODO: Implement IDP authorization URL construction
+  return ''
 }
 
 export default LoginPage
