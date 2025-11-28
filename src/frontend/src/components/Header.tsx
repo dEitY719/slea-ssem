@@ -89,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
     <header className="app-header">
       <div className="header-container">
         <div className="header-left">
-          <h1 className="header-logo">S.LSI Learning Platform</h1>
+          <h1 className="header-logo">Learning Platform</h1>
         </div>
 
         <div className="header-right">
@@ -139,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
                           </div>
                           <div className="profile-dropdown-info">
                             <span className="profile-name-text">{nickname}</span>
-                            <span className="profile-subtext">S.LSI Learning Member</span>
+                            <span className="profile-subtext">Learning Member</span>
                           </div>
                         </div>
                         <div className="profile-dropdown-divider" role="separator" />

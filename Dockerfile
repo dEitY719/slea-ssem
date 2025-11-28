@@ -111,7 +111,7 @@ EXPOSE ${PORT}
 
 # ==================== OCI LABELS ====================
 LABEL org.opencontainers.image.title="slea-ssem-backend" \
-    org.opencontainers.image.description="AI-driven learning platform for S.LSI employees" \
+    org.opencontainers.image.description="AI-driven learning platform for employees" \
     org.opencontainers.image.source="https://github.com/dEitY719/slea-ssem" \
     org.opencontainers.image.version="${APP_VERSION}" \
     org.opencontainers.image.created="2025-11-25"

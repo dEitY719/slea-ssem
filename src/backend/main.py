@@ -16,7 +16,7 @@ from src.backend.database import init_db  # noqa: E402
 
 app = FastAPI(
     title="SLEA-SSEM",
-    description="AI-driven learning platform for S.LSI employees",
+    description="AI-driven learning platform for employees",
     version="1.0.0",
 )
 

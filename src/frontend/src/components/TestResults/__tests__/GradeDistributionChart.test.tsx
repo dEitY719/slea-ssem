@@ -121,7 +121,7 @@ describe('GradeDistributionChart', () => {
         />
       )
 
-      expect(screen.getByText(/전사 상대 순위 및 분포/i)).toBeInTheDocument()
+      expect(screen.getByText(/전체 상대 순위 및 분포/i)).toBeInTheDocument()
     })
   })
 
@@ -139,7 +139,7 @@ describe('GradeDistributionChart', () => {
         )
 
         // 에러 없이 렌더링되어야 함
-        expect(screen.getByText(/전사 상대 순위 및 분포/i)).toBeInTheDocument()
+        expect(screen.getByText(/전체 상대 순위 및 분포/i)).toBeInTheDocument()
       })
 
       it('should handle large cohort size (1000+)', () => {

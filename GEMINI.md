@@ -6,7 +6,7 @@ This file provides guidance to Google Gemini when working with code in this repo
 
 ## Project
 
-**slea-ssem**: AI-driven learning platform for S.LSI employees. Two-round adaptive testing with RAG-based dynamic question generation, LLM auto-scoring, and ranking system.
+**slea-ssem**: AI-driven learning platform for employees. Two-round adaptive testing with RAG-based dynamic question generation, LLM auto-scoring, and ranking system.
 
 ## Tech Stack
 

@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 requires-python = ">=3.13"
 version = "0.1.0"
 name = "slea-ssem"
-description = "An AI-driven learning platform designed to guide S.LSI employees from beginner to expert in AI."
+description = "An AI-driven learning platform designed to guide employees from beginner to expert in AI."
 authors = [{ name = "deitey719", email = "deity719@github.com" }, { name = "larvine", email = "jeane2003@naver.com" }]
 dependencies = [
     # Web Framework

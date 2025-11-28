@@ -347,14 +347,14 @@ SLEA-SSEM의 Frontend-Backend API 통신 플로우를 정리했습니다.
 
 ## 📊 등급 및 순위 조회 API
 
-### 전사 등급 분포 포함 조회
+### 전체 등급 분포 포함 조회
 
 ```
 📍 시점: 세션 완료 후, 프론트엔드가 결과 페이지로 이동하기 전
 ┗━ 호출: GET /profile/ranking
    ├─ 요청: (인증된 사용자 기준, 별도 파라미터 불필요)
    └─ 응답: {user_id, grade, score, rank, total_cohort_size, percentile, percentile_confidence, percentile_description, grade_distribution}
-   └─ 역할: 사용자 등급, 순위, 백분위 및 전사 등급 분포 반환
+   └─ 역할: 사용자 등급, 순위, 백분위 및 전체 등급 분포 반환
 
 **응답 예시**:
 ```json
@@ -398,9 +398,9 @@ SLEA-SSEM의 Frontend-Backend API 통신 플로우를 정리했습니다.
 ```
 
 **특징**:
-- 사용자의 개인 등급 정보와 전사 분포를 한 번에 조회
+- 사용자의 개인 등급 정보와 전체 분포를 한 번에 조회
 - 최근 90일 기준 응시자 풀 데이터
-- grade_distribution으로 전사 등급 분포 시각화 가능
+- grade_distribution으로 전체 등급 분포 시각화 가능
 - 모집단 < 100일 경우 percentile_confidence = "medium"
 
 **프론트엔드 사용**:

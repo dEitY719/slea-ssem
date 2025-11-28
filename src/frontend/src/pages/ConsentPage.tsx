@@ -96,7 +96,7 @@ const ConsentPage: React.FC = () => {
           <section className="consent-section">
             <h2 className="section-heading">1. 수집 항목</h2>
             <p className="section-text">
-              S.LSI Learning Platform은 서비스 제공을 위해 다음 정보를 수집합니다:
+              Learning Platform은 서비스 제공을 위해 다음 정보를 수집합니다:
             </p>
             <ul className="consent-list">
               <li>필수 항목: 닉네임, 자기평가 정보 (수준, 경력, 직군, 관심분야)</li>
@@ -113,7 +113,7 @@ const ConsentPage: React.FC = () => {
               <li>개인 맞춤형 학습 콘텐츠 제공</li>
               <li>적응형 레벨 테스트 및 평가 제공</li>
               <li>학습 진행 상황 추적 및 분석</li>
-              <li>전사 상대 순위 및 통계 산출</li>
+              <li>전체 상대 순위 및 통계 산출</li>
               <li>서비스 개선 및 새로운 기능 개발</li>
             </ul>
           </section>

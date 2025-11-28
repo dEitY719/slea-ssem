@@ -250,7 +250,7 @@ test('nickname loading 중에는 "회원가입" 버튼 숨김', () => {
 
 **Expectation**:
 
-- Platform name "S.LSI Learning Platform" should be visible
+- Platform name "Learning Platform" should be visible
 
 #### Test 6: "nickname이 빈 문자열일 때도 '회원가입' 버튼 표시" ✅
 
@@ -283,7 +283,7 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
     <header className="app-header">
       <div className="header-container">
         <div className="header-left">
-          <h1 className="header-logo">S.LSI Learning Platform</h1>
+          <h1 className="header-logo">Learning Platform</h1>
         </div>
 
         <div className="header-right">

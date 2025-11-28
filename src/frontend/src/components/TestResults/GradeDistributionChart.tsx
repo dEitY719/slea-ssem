@@ -36,7 +36,7 @@ export const GradeDistributionChart: React.FC<GradeDistributionChartProps> = ({
 
   return (
     <div className="grade-distribution-container">
-      <h2 className="distribution-title">전사 상대 순위 및 분포</h2>
+      <h2 className="distribution-title">전체 상대 순위 및 분포</h2>
 
       {/* Confidence Warning Banner - REQ: REQ-F-B4-4 */}
       {showConfidenceWarning && (
