@@ -40,12 +40,6 @@ def startup_event() -> None:
 
 
 # API endpoints - defined first for priority matching
-@app.get("/")
-async def root() -> dict[str, str]:
-    """API status check endpoint."""
-    return {"status": "ok", "message": "SLEA-SSEM API is running"}
-
-
 @app.get("/health")
 async def health() -> dict[str, str]:
     """Health check endpoint."""
