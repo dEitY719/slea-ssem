@@ -25,10 +25,15 @@ WORKDIR /fe
 # Certificate handling (certs/ 폴더 전체 복사 - 빈 폴더라도 OK)
 COPY docker/certs/ /tmp/certs/
 
-# apk proxy 설정 (사내 환경에서 HTTPS 저장소 접근을 위해 필요)
+# 인증서가 있으면 먼저 복사 (apk 실행 전)
+RUN if [ -d /tmp/certs/internal ] && [ "$(ls -A /tmp/certs/internal/*.crt 2>/dev/null)" ]; then \
+        mkdir -p /usr/local/share/ca-certificates/ && \
+        cp /tmp/certs/internal/*.crt /usr/local/share/ca-certificates/; \
+    fi
+
+# HTTPS → HTTP로 변경 (사내 환경에서 인증서 검증 우회)
 RUN if [ -n "${HTTP_PROXY}" ]; then \
-        mkdir -p /etc/apk && \
-        echo "${HTTP_PROXY}" > /etc/apk/proxy; \
+        sed -i 's/https/http/g' /etc/apk/repositories; \
     fi
 
 # npm configuration (인증서 설치 전에 먼저 설정)
@@ -41,10 +46,8 @@ RUN if [ -n "${http_proxy}" ]; then \
         npm config set https-proxy ${https_proxy}; \
     fi
 
-# 인증서 처리 (사내 환경)
+# ca-certificates 설치 (이제 HTTP로 접근)
 RUN if [ -d /tmp/certs/internal ] && [ "$(ls -A /tmp/certs/internal/*.crt 2>/dev/null)" ]; then \
-        mkdir -p /usr/local/share/ca-certificates/ && \
-        cp /tmp/certs/internal/*.crt /usr/local/share/ca-certificates/ && \
         apk add --no-cache ca-certificates && \
         update-ca-certificates; \
     fi
