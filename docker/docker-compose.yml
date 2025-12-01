@@ -4,14 +4,14 @@ services:
     container_name: slea-db
     environment:
       POSTGRES_DB: ${DB_NAME:-sleassem_dev}
-      POSTGRES_USER: ${DB_USER:-himena}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_strong_pw}
+      POSTGRES_USER: ${DB_USER:-slea_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_dev_password}
     ports:
       - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-himena}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-slea_user}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -37,7 +37,7 @@ services:
       slea-db:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-himena}:${DB_PASSWORD:-change_me_strong_pw}@slea-db:5432/${DB_NAME:-sleassem_dev}
+      - DATABASE_URL=postgresql://${DB_USER:-slea_user}:${DB_PASSWORD:-change_me_dev_password}@slea-db:5432/${DB_NAME:-sleassem_dev}
       - PORT=${PORT:-8000}
       - HOST=${HOST:-0.0.0.0}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}

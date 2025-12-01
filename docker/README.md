@@ -117,7 +117,7 @@ docker-compose logs -f slea-db
 docker exec -it slea-backend sh
 
 # DB
-docker exec -it slea-db psql -U himena -d sleassem_dev
+docker exec -it slea-db psql -U slea_user -d sleassem_dev
 ```
 
 ---

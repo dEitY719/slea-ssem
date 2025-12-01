@@ -40,7 +40,7 @@ docker exec slea-backend ls -la /app/.env
 -rw-r--r-- 1 appuser appuser 1981 Nov 25 15:00 /app/.env
 ```
 **Root Cause**: `.env` 파일이 컨테이너에 복사되면서:
-- 로컬 DB 사용자 (`himena`) ≠ Docker DB 사용자 (`slea_user`)
+- 로컬 DB 사용자 (`slea_user`) ≠ Docker DB 사용자 (`slea_user`)
 - localhost (로컬 컨테이너) ≠ db (Docker 네트워크 호스트명)
 - 따라서 DATABASE_URL이 docker-compose.yml 설정을 무시
 
@@ -64,7 +64,7 @@ COPY . .  # .dockerignore는 무시됨 (BuildKit 미지원 또는 ConfigError)
 
 **Local Development (.env)**:
 ```
-DATABASE_URL=postgresql+asyncpg://himena:change_me_strong_pw@localhost:5432/sleassem_dev
+DATABASE_URL=postgresql+asyncpg://slea_user:change_me_dev_password@localhost:5432/sleassem_dev
 ```
 
 **Docker Environment (docker-compose.yml)**:
@@ -76,9 +76,9 @@ environment:
 **문제점**:
 | 항목 | .env (로컬) | docker-compose.yml (Docker) |
 |------|-----------|---------------------------|
-| 사용자 | `himena` | `slea_user` |
+| 사용자 | `slea_user` | `slea_user` |
 | 호스트 | `localhost` | `db` |
-| 암호 | `change_me_strong_pw` | `change_me_dev_password` |
+| 암호 | `change_me_dev_password` | `change_me_dev_password` |
 
 ### Problem 3: No Environment Detection
 
@@ -134,13 +134,13 @@ HEALTHCHECK ... CMD curl -f http://localhost:${PORT}/health || exit 1
 
 ## 🚨 What If .env Had Correct User?
 
-**질문**: 만약 `.env` 파일의 사용자가 `himena`가 아니라 `slea_user`였다면 문제가 없었을까?
+**질문**: 만약 `.env` 파일의 사용자가 `slea_user`가 아니라 `slea_user`였다면 문제가 없었을까?
 
 **답변**: **No, 여전히 문제 발생**
 
 **이유**:
 ```
-.env DATABASE_URL=postgresql+asyncpg://slea_user:change_me_strong_pw@localhost:5432/sleassem_dev
+.env DATABASE_URL=postgresql+asyncpg://slea_user:change_me_dev_password@localhost:5432/sleassem_dev
                                                        ↓
 Docker Container에서는 localhost = 컨테이너 자신 (DB 컨테이너 아님!)
                                                        ↓
@@ -162,7 +162,7 @@ postgresql://slea_user:change_me_dev_password@db:5432/sleassem_dev
 
 **로컬 개발용 (.env)**:
 ```
-DATABASE_URL=postgresql+asyncpg://himena:change_me_strong_pw@localhost:5432/sleassem_dev
+DATABASE_URL=postgresql+asyncpg://slea_user:change_me_dev_password@localhost:5432/sleassem_dev
 ```
 
 **Docker용 (docker-compose.yml)**:
@@ -188,7 +188,7 @@ if env_file.exists() and not is_docker:
 | 설정 | 로컬 개발 | Docker |
 |------|---------|--------|
 | 데이터베이스 | WSL PostgreSQL (localhost:5432) | Docker PostgreSQL (db:5432) |
-| 사용자 | himena | slea_user |
+| 사용자 | slea_user | slea_user |
 | .env 로드 | ✅ Yes | ❌ No (ENVIRONMENT 변수) |
 | HOST | 127.0.0.1 | 0.0.0.0 |
 
