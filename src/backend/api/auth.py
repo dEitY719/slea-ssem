@@ -5,10 +5,11 @@ REQ: REQ-B-A1-1, REQ-B-A1-2, REQ-B-A1-3, REQ-B-A1-4, REQ-B-A1-5, REQ-B-A1-6, REQ
 """
 
 import logging
+import os
 
 import jwt as pyjwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -18,6 +19,33 @@ from src.backend.services.auth_service import AuthService
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["auth"])
+
+
+@router.post(
+    "/",
+    summary="Open ID backend endpoint",
+    description="The Open ID backend endpoint is responsible for receiving an Open ID token, issuing a system token in exchange, and then redirecting the user (or the browser) to a pre-set redirection URL along with the newly issued system token.",
+)
+def auth_redirect() -> RedirectResponse:
+    """
+    The Open ID backend endpoint is responsible for receiving an Open ID token, issuing a system token in exchange, and then redirecting the user (or the browser) to a pre-set redirection URL along with the newly issued system token.
+
+    Web app -> (Redirect) Identity Provider -> (POST) Backend -> (Redirect) -> Web app
+
+    Returns:
+        RedirectResponse with 302 status code
+
+    Raises:
+        HTTPException: If AUTH_REDIRECTION_URL is not set
+
+    """
+    redirect_url = os.getenv("AUTH_REDIRECTION_URL")
+    if not redirect_url:
+        raise HTTPException(
+            status_code=500,
+            detail="AUTH_REDIRECTION_URL environment variable is not set",
+        )
+    return RedirectResponse(url=redirect_url, status_code=302)
 
 
 class LoginRequest(BaseModel):
