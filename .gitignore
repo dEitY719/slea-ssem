@@ -62,9 +62,9 @@ tmp/
 # ==============================================================================
 # Docker Standard Template
 # ==============================================================================
-# Certificates (CA 인증서는 커밋 가능 - 공개 정보)
-# docker/certs/internal/*.crt  # ← 주석 처리 (인증서 포함)
-#
+# Certificates (사내 CA 인증서 - 보안팀 정책에 따라 Git에서 제외)
+docker/certs/internal/*.crt
+
 # Private Key는 절대 커밋 금지!
 docker/certs/internal/*.key
 docker/certs/internal/*.pem
