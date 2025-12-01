@@ -24,20 +24,32 @@ WORKDIR /fe
 
 # Certificate handling (certs/ 폴더 전체 복사 - 빈 폴더라도 OK)
 COPY docker/certs/ /tmp/certs/
-RUN if [ -d /tmp/certs/internal ] && [ "$(ls -A /tmp/certs/internal/*.crt 2>/dev/null)" ]; then \
-        apk add --no-cache ca-certificates && \
-        cp /tmp/certs/internal/*.crt /usr/local/share/ca-certificates/ && \
-        update-ca-certificates; \
-    fi
-ENV NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates
 
-# npm configuration
+# apk proxy 설정 (사내 환경에서 HTTPS 저장소 접근을 위해 필요)
+RUN if [ -n "${HTTP_PROXY}" ]; then \
+        mkdir -p /etc/apk && \
+        echo "${HTTP_PROXY}" > /etc/apk/proxy; \
+    fi
+
+# npm configuration (인증서 설치 전에 먼저 설정)
 RUN npm config set registry ${NPM_REGISTRY} && \
-    npm config set strict-ssl ${NPM_STRICT_SSL} && \
-    if [ -n "${http_proxy}" ]; then \
+    npm config set strict-ssl ${NPM_STRICT_SSL}
+
+# npm proxy 설정
+RUN if [ -n "${http_proxy}" ]; then \
         npm config set proxy ${http_proxy} && \
         npm config set https-proxy ${https_proxy}; \
     fi
+
+# 인증서 처리 (사내 환경)
+RUN if [ -d /tmp/certs/internal ] && [ "$(ls -A /tmp/certs/internal/*.crt 2>/dev/null)" ]; then \
+        mkdir -p /usr/local/share/ca-certificates/ && \
+        cp /tmp/certs/internal/*.crt /usr/local/share/ca-certificates/ && \
+        apk add --no-cache ca-certificates && \
+        update-ca-certificates; \
+    fi
+
+ENV NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates
 
 # Frontend build (conditional)
 COPY src/frontend/package*.json ./
@@ -72,7 +84,21 @@ ENV http_proxy=${HTTP_PROXY} \
 
 WORKDIR /app
 
-# System dependencies
+# apt proxy 설정 (사내 환경에서 필요)
+RUN if [ -n "${HTTP_PROXY}" ]; then \
+        echo "Acquire::http::Proxy \"${HTTP_PROXY}\";" > /etc/apt/apt.conf.d/proxy.conf && \
+        echo "Acquire::https::Proxy \"${HTTPS_PROXY}\";" >> /etc/apt/apt.conf.d/proxy.conf; \
+    fi
+
+# Certificate handling (먼저 복사)
+COPY docker/certs/ /tmp/certs/
+RUN if [ -d /tmp/certs/internal ] && [ "$(ls -A /tmp/certs/internal/*.crt 2>/dev/null)" ]; then \
+        mkdir -p /usr/local/share/ca-certificates/ && \
+        cp /tmp/certs/internal/*.crt /usr/local/share/ca-certificates/ && \
+        update-ca-certificates; \
+    fi
+
+# System dependencies (인증서 설치 후)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -80,14 +106,6 @@ RUN apt-get update && \
     tini \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
-
-# Certificate handling
-COPY docker/certs/ /tmp/certs/
-RUN if [ -d /tmp/certs/internal ] && [ "$(ls -A /tmp/certs/internal/*.crt 2>/dev/null)" ]; then \
-        mkdir -p /usr/local/share/ca-certificates/ && \
-        cp /tmp/certs/internal/*.crt /usr/local/share/ca-certificates/ && \
-        update-ca-certificates; \
-    fi
 
 # pip configuration
 RUN mkdir -p /etc && \
@@ -120,6 +138,16 @@ ENV PYTHONUNBUFFERED=1 \
     HOST=0.0.0.0 \
     LOG_LEVEL=INFO \
     ENVIRONMENT=development
+
+# apt proxy 설정 (사내 환경, build args는 여기서 사용 불가하므로 ENV 사용)
+# Note: Runtime stage에서는 build args를 다시 선언해야 함
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+
+RUN if [ -n "${HTTP_PROXY}" ]; then \
+        echo "Acquire::http::Proxy \"${HTTP_PROXY}\";" > /etc/apt/apt.conf.d/proxy.conf && \
+        echo "Acquire::https::Proxy \"${HTTPS_PROXY}\";" >> /etc/apt/apt.conf.d/proxy.conf; \
+    fi
 
 # Runtime dependencies
 RUN apt-get update && \
