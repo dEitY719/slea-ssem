@@ -68,6 +68,87 @@ claude
 
 ---
 
+## 🐳 Docker 환경 (외부/사내)
+
+프로젝트는 **외부(집/공개망)**와 **사내(회사/폐쇄망)** 두 환경을 모두 지원합니다.
+
+### 외부 환경 (집 PC / 공개망)
+
+```bash
+# 1. 환경 설정 초기화
+make init                      # docker/.env 파일 생성 (from .env.example)
+
+# 2. 빌드 & 실행
+make build                     # 이미지 빌드
+make up                        # 서비스 시작 (Backend: 8000, DB: 5433)
+
+# 3. 확인
+make ps                        # 컨테이너 상태 확인
+curl http://localhost:8000/health
+```
+
+**환경 파일**: `docker/.env.example` → `docker/.env`
+- ✅ 공식 PyPI (`https://pypi.org/simple`)
+- ✅ 공식 npm (`https://registry.npmjs.org/`)
+- ✅ 프록시 없음
+
+---
+
+### 사내 환경 (회사 PC / 폐쇄망)
+
+```bash
+# 1. 환경 설정 초기화
+make init-internal             # docker/.env 파일 생성 (from .env.internal.example)
+
+# 2. 인증서 복사 (필수)
+# 회사 인증서를 docker/certs/internal/ 폴더에 복사
+cp /path/to/certificates/*.crt docker/certs/internal/
+
+# 3. 빌드 & 실행
+make build-internal            # 사내 환경 이미지 빌드
+make up-internal               # 사내 환경 서비스 시작
+
+# 4. 확인
+make ps
+curl http://localhost:8000/health
+```
+
+**환경 파일**: `docker/.env.internal.example` → `docker/.env`
+- ✅ 사내 Artifactory (`http://repo.samsungds.net/...`)
+- ✅ 사내 프록시 (`http://12.26.204.100:8080/`)
+- ✅ NO_PROXY 설정 (사내 IP/도메인 제외)
+
+**⚠️ 주의**: `.env` 파일의 `NO_PROXY` 값은 회사 환경에 맞게 수정하세요.
+
+---
+
+### 공통 명령어 (Makefile)
+
+```bash
+# 도움말
+make help                      # 모든 명령어 확인
+
+# 컨테이너 관리
+make down                      # 서비스 정지
+make restart                   # 재시작
+make rebuild                   # 재빌드 (clean + build + up)
+
+# 로깅 & 디버깅
+make logs                      # Backend 로그 (실시간)
+make shell                     # Backend 컨테이너 접속
+make shell-db                  # DB 컨테이너 접속
+
+# 개발 & 테스트
+make test                      # pytest 실행
+make lint                      # ruff 코드 검사
+make quality                   # lint + type-check + test
+
+# 정리
+make clean                     # 캐시 삭제
+```
+
+---
+
 ## 📋 개발 프로세스 상세
 
 ### REQ 기반 개발 (Requirement-Driven Development)

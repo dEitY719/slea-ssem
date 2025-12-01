@@ -1,0 +1,60 @@
+services:
+  slea-db:
+    image: postgres:16-alpine
+    container_name: slea-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-sleassem_dev}
+      POSTGRES_USER: ${DB_USER:-himena}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_strong_pw}
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-himena}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - slea-network
+
+  slea-backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        BUILD_FRONTEND: ${BUILD_FRONTEND:-true}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-pypi.org pypi.python.org files.pythonhosted.org}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
+        NPM_STRICT_SSL: ${NPM_STRICT_SSL:-true}
+    image: slea-backend:latest
+    container_name: slea-backend
+    depends_on:
+      slea-db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-himena}:${DB_PASSWORD:-change_me_strong_pw}@slea-db:5432/${DB_NAME:-sleassem_dev}
+      - PORT=${PORT:-8000}
+      - HOST=${HOST:-0.0.0.0}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    env_file:
+      - ${ENV_FILE:-.env}
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - ../logs:/app/logs
+    networks:
+      - slea-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  slea-network:
+    driver: bridge

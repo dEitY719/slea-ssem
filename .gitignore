@@ -58,3 +58,28 @@ tmp/
 # IDE caches
 .cache/
 .vscode/settings.json
+
+# ==============================================================================
+# Docker Standard Template
+# ==============================================================================
+# Certificates (사내 CA 인증서 - 보안팀 정책에 따라 Git에서 제외)
+docker/certs/internal/*.crt
+
+# Private Key는 절대 커밋 금지!
+docker/certs/internal/*.key
+docker/certs/internal/*.pem
+
+# Environment files (실제 사용 중인 .env)
+docker/.env
+docker/.env.internal
+docker/.env.external
+
+# Keep example files (재배포용)
+!docker/.env.example
+!docker/.env.internal.example
+
+# Backup files
+*.backup
+Dockerfile.backup
+Dockerfile-internal.backup
+docker-compose.yml.backup
