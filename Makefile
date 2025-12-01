@@ -1,12 +1,12 @@
 # ============================================================
 # SLEA-SSEM Makefile
-# Docker & docker-compose 기반 개발 환경 관리
-# 동료 피드백 반영: 간결함 + Proxy 자동 주입 + TDD
+# Docker 표준 템플릿 기반 개발 환경 관리
+# 외부(집/공개망) + 사내(회사/폐쇄망) 환경 지원
 # ============================================================
 
 SHELL := /bin/bash
 .ONESHELL:
-.PHONY: help init build up down restart logs ps shell shell-db test lint type-check quality clean rebuild
+.PHONY: help init init-internal build build-internal up up-internal down restart logs ps shell shell-db test lint type-check quality clean rebuild
 .SILENT:
 
 # ============================================================
@@ -14,12 +14,29 @@ SHELL := /bin/bash
 # ============================================================
 
 PROJECT_NAME := slea-ssem
+DOCKER_DIR := docker
+
 # Use 'docker compose' (v2) by default, fallback to 'docker-compose' (v1)
 DC := $(shell command -v docker-compose >/dev/null 2>&1 && echo docker-compose || echo "docker compose")
 
+# Environment (external or internal)
+ENV ?= external
+
+# Compose files (상대 경로 - docker/ 디렉토리 기준)
+COMPOSE_BASE := -f docker-compose.yml
+ifeq ($(ENV),internal)
+	COMPOSE_FILES := $(COMPOSE_BASE) -f docker-compose.internal.yml
+	ENV_FILE := .env.internal.example
+	ENV_NAME := 사내 (폐쇄망)
+else
+	COMPOSE_FILES := $(COMPOSE_BASE)
+	ENV_FILE := .env.example
+	ENV_NAME := 외부 (공개망)
+endif
+
 # Service names (from docker-compose.yml)
-BACKEND := backend
-DB := db
+BACKEND := slea-backend
+DB := slea-db
 
 # 색상
 RED := \033[0;31m
@@ -34,15 +51,20 @@ NC := \033[0m
 
 help:
 	@echo -e "$(BLUE)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
-	@echo -e "$(BLUE)$(PROJECT_NAME) - Docker 개발 환경$(NC)"
+	@echo -e "$(BLUE)$(PROJECT_NAME) - Docker 표준 템플릿$(NC)"
 	@echo -e "$(BLUE)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
 	@echo ""
+	@echo -e "$(YELLOW)현재 환경: $(ENV_NAME)$(NC)"
+	@echo ""
 	@echo -e "$(GREEN)초기 설정:$(NC)"
-	@echo "  make init              🔧 .env 파일 초기화"
+	@echo "  make init              🔧 .env 파일 초기화 (외부)"
+	@echo "  make init-internal     🔧 .env 파일 초기화 (사내)"
 	@echo ""
 	@echo -e "$(GREEN)Docker 관리:$(NC)"
-	@echo "  make build             🔨 이미지 빌드 (Proxy 자동 주입)"
-	@echo "  make up                🚀 서비스 시작"
+	@echo "  make build             🔨 이미지 빌드 (외부)"
+	@echo "  make build-internal    🔨 이미지 빌드 (사내)"
+	@echo "  make up                🚀 서비스 시작 (외부)"
+	@echo "  make up-internal       🚀 서비스 시작 (사내)"
 	@echo "  make down              🛑 서비스 정지"
 	@echo "  make restart           🔄 재시작"
 	@echo "  make rebuild           🆕 clean + build + up"
@@ -62,10 +84,19 @@ help:
 	@echo -e "$(GREEN)정리:$(NC)"
 	@echo "  make clean             🧹 캐시 삭제"
 	@echo ""
-	@echo -e "$(GREEN)사용 예시:$(NC)"
+	@echo -e "$(GREEN)사용 예시 (외부):$(NC)"
 	@echo "  make init              # 1. 초기화"
 	@echo "  make up                # 2. 시작"
 	@echo "  make test              # 3. 테스트"
+	@echo ""
+	@echo -e "$(GREEN)사용 예시 (사내):$(NC)"
+	@echo "  make init-internal     # 1. 초기화"
+	@echo "  make up-internal       # 2. 시작"
+	@echo "  make test              # 3. 테스트"
+	@echo ""
+	@echo -e "$(GREEN)고급 사용 (ENV 변수):$(NC)"
+	@echo "  ENV=external make up   # 외부 환경"
+	@echo "  ENV=internal make up   # 사내 환경"
 	@echo ""
 
 # ============================================================
@@ -73,12 +104,22 @@ help:
 # ============================================================
 
 init:
-	@if [ ! -f .env ]; then \
-		echo -e "$(YELLOW)🔧 .env 파일 생성 중...$(NC)"; \
-		cp .env.example .env; \
-		echo -e "$(GREEN)✅ .env 생성 완료$(NC)"; \
+	@echo -e "$(YELLOW)🔧 외부 환경 .env 파일 생성 중...$(NC)"
+	@if [ ! -f $(DOCKER_DIR)/.env ]; then \
+		cp $(DOCKER_DIR)/.env.example $(DOCKER_DIR)/.env; \
+		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env 생성 완료 (외부 환경)$(NC)"; \
 	else \
-		echo -e "$(BLUE)ℹ️  .env 파일이 이미 있습니다$(NC)"; \
+		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env 파일이 이미 있습니다$(NC)"; \
+	fi
+
+init-internal:
+	@echo -e "$(YELLOW)🔧 사내 환경 .env 파일 생성 중...$(NC)"
+	@if [ ! -f $(DOCKER_DIR)/.env ]; then \
+		cp $(DOCKER_DIR)/.env.internal.example $(DOCKER_DIR)/.env; \
+		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env 생성 완료 (사내 환경)$(NC)"; \
+		echo -e "$(YELLOW)⚠️  인증서 복사 필요: cp assets/*.crt $(DOCKER_DIR)/certs/internal/$(NC)"; \
+	else \
+		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env 파일이 이미 있습니다$(NC)"; \
 	fi
 
 # ============================================================
@@ -87,7 +128,7 @@ init:
 
 # Pre-build validation (check required files exist)
 validate:
-	@echo -e "$(BLUE)✓ 빌드 전제조건 검사 중...$(NC)"
+	@echo -e "$(BLUE)✓ 빌드 전제조건 검사 중 ($(ENV_NAME))...$(NC)"
 	@if [ ! -f pyproject.toml ]; then \
 		echo -e "$(RED)❌ 오류: pyproject.toml 파일이 없습니다$(NC)"; \
 		exit 1; \
@@ -96,47 +137,62 @@ validate:
 		echo -e "$(RED)❌ 오류: README.md 파일이 없습니다$(NC)"; \
 		exit 1; \
 	fi
-	@if [ ! -f Dockerfile ]; then \
-		echo -e "$(RED)❌ 오류: Dockerfile이 없습니다$(NC)"; \
+	@if [ ! -f $(DOCKER_DIR)/Dockerfile ]; then \
+		echo -e "$(RED)❌ 오류: $(DOCKER_DIR)/Dockerfile이 없습니다$(NC)"; \
+		exit 1; \
+	fi
+	@if [ ! -f $(DOCKER_DIR)/docker-compose.yml ]; then \
+		echo -e "$(RED)❌ 오류: $(DOCKER_DIR)/docker-compose.yml이 없습니다$(NC)"; \
+		exit 1; \
+	fi
+	@if [ "$(ENV)" = "internal" ] && [ ! -f $(DOCKER_DIR)/docker-compose.internal.yml ]; then \
+		echo -e "$(RED)❌ 오류: $(DOCKER_DIR)/docker-compose.internal.yml이 없습니다$(NC)"; \
 		exit 1; \
 	fi
 	@echo -e "$(GREEN)✅ 모든 파일 검증 완료$(NC)"
 
 build: validate
-	@echo -e "$(YELLOW)🔨 이미지 빌드 중...$(NC)"
-	@echo -e "$(BLUE)   - HTTP_PROXY: $${HTTP_PROXY:-[미설정]}$(NC)"
-	@echo -e "$(BLUE)   - HTTPS_PROXY: $${HTTPS_PROXY:-[미설정]}$(NC)"
-	@echo -e "$(BLUE)   - PIP_INDEX_URL: $${PIP_INDEX_URL:-[기본]}$(NC)"
-	$(DC) build \
-		--build-arg HTTP_PROXY=$${HTTP_PROXY} \
-		--build-arg HTTPS_PROXY=$${HTTPS_PROXY} \
-		--build-arg NO_PROXY=$${NO_PROXY} \
-		--build-arg PIP_INDEX_URL=$${PIP_INDEX_URL}
+	@echo -e "$(YELLOW)🔨 이미지 빌드 중 ($(ENV_NAME))...$(NC)"
+	@if [ -f $(DOCKER_DIR)/.env ]; then \
+		echo -e "$(BLUE)   - HTTP_PROXY: $$(grep HTTP_PROXY $(DOCKER_DIR)/.env | cut -d= -f2 || echo [미설정])$(NC)"; \
+		echo -e "$(BLUE)   - PIP_INDEX_URL: $$(grep PIP_INDEX_URL $(DOCKER_DIR)/.env | cut -d= -f2 || echo [기본])$(NC)"; \
+	fi
+	cd $(DOCKER_DIR)
+	$(DC) $(COMPOSE_FILES) build
 	@echo -e "$(GREEN)✅ 빌드 완료$(NC)"
+
+build-internal:
+	@$(MAKE) build ENV=internal
 
 # ============================================================
 # 3. 실행 및 관리
 # ============================================================
 
 up:
-	@echo -e "$(YELLOW)🚀 서비스 시작 중...$(NC)"
-	$(DC) up -d
+	@echo -e "$(YELLOW)🚀 서비스 시작 중 ($(ENV_NAME))...$(NC)"
+	cd $(DOCKER_DIR)
+	$(DC) $(COMPOSE_FILES) up -d
 	@sleep 2
-	@$(DC) ps
+	$(DC) $(COMPOSE_FILES) ps
 	@echo ""
 	@echo -e "$(GREEN)✅ 시작 완료!$(NC)"
 	@echo -e "$(BLUE)포트:$(NC)"
 	@echo "  - Backend: http://localhost:8000"
-	@echo "  - Database: localhost:5432"
+	@echo "  - Database: localhost:5433"
+
+up-internal:
+	@$(MAKE) up ENV=internal
 
 down:
-	@echo -e "$(YELLOW)🛑 서비스 정지 중...$(NC)"
-	$(DC) down
+	@echo -e "$(YELLOW)🛑 서비스 정지 중 ($(ENV_NAME))...$(NC)"
+	cd $(DOCKER_DIR)
+	$(DC) $(COMPOSE_FILES) down
 	@echo -e "$(GREEN)✅ 정지 완료$(NC)"
 
 restart:
-	@echo -e "$(YELLOW)🔄 서비스 재시작 중...$(NC)"
-	$(DC) restart
+	@echo -e "$(YELLOW)🔄 서비스 재시작 중 ($(ENV_NAME))...$(NC)"
+	cd $(DOCKER_DIR)
+	$(DC) $(COMPOSE_FILES) restart
 	@echo -e "$(GREEN)✅ 재시작 완료$(NC)"
 
 rebuild: down build up
@@ -148,13 +204,15 @@ rebuild: down build up
 
 logs:
 	@echo -e "$(YELLOW)📊 Backend 로그 (실시간)$(NC)"
-	$(DC) logs -f $(BACKEND)
+	cd $(DOCKER_DIR)
+	$(DC) $(COMPOSE_FILES) logs -f $(BACKEND)
 
 ps:
 	@echo -e "$(BLUE)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
-	@echo -e "$(BLUE)실행 중인 서비스$(NC)"
+	@echo -e "$(BLUE)실행 중인 서비스 ($(ENV_NAME))$(NC)"
 	@echo -e "$(BLUE)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
-	$(DC) ps
+	cd $(DOCKER_DIR)
+	$(DC) $(COMPOSE_FILES) ps
 
 # ============================================================
 # 5. 컨테이너 접속
@@ -162,11 +220,13 @@ ps:
 
 shell:
 	@echo -e "$(YELLOW)💻 Backend 셸 접속$(NC)"
-	$(DC) exec $(BACKEND) bash
+	cd $(DOCKER_DIR)
+	$(DC) $(COMPOSE_FILES) exec $(BACKEND) sh
 
 shell-db:
 	@echo -e "$(YELLOW)💻 Database 접속$(NC)"
-	$(DC) exec $(DB) psql -U slea_user -d sleassem_dev
+	cd $(DOCKER_DIR)
+	$(DC) $(COMPOSE_FILES) exec $(DB) psql -U himena -d sleassem_dev
 
 # ============================================================
 # 6. 개발 (TDD)
@@ -174,17 +234,20 @@ shell-db:
 
 test:
 	@echo -e "$(YELLOW)🧪 테스트 실행 중...$(NC)"
-	$(DC) exec $(BACKEND) pytest tests/backend/ -v --tb=short
+	cd $(DOCKER_DIR)
+	$(DC) $(COMPOSE_FILES) exec $(BACKEND) pytest tests/backend/ -v --tb=short
 
 lint:
 	@echo -e "$(YELLOW)🔎 코드 검사 중 (Ruff)...$(NC)"
-	$(DC) exec $(BACKEND) ruff check src tests
+	cd $(DOCKER_DIR)
+	$(DC) $(COMPOSE_FILES) exec $(BACKEND) ruff check src tests
 
 type-check:
 	@echo -e "$(YELLOW)✅ 타입 검사 중 (mypy strict)...$(NC)"
-	$(DC) exec $(BACKEND) mypy src --strict
+	cd $(DOCKER_DIR)
+	$(DC) $(COMPOSE_FILES) exec $(BACKEND) mypy src --strict
 
-quality: type-check lint test
+quality: lint type-check test
 	@echo -e "$(GREEN)✅ 품질 검사 완료$(NC)"
 
 # ============================================================

@@ -34,7 +34,15 @@ build/
 *~
 .DS_Store
 
-# Docker
+# Docker (재귀 빌드 방지 - docker/ 폴더 내부 파일만 허용)
+docker/docker-compose*.yml
+!docker/docker-compose.yml
+!docker/docker-compose.internal.yml
+docker/.env
+docker/.env.*
+!docker/.env.example
+!docker/.env.*.example
+# 기존 루트 Dockerfile은 제외 (이제 docker/ 폴더 사용)
 Dockerfile*
 docker-compose*.yml
 .dockerignore
@@ -67,3 +75,9 @@ dist/
 # Node modules (if any)
 node_modules/
 npm-debug.log
+
+# Migration guide (빌드에 불필요)
+MIGRATION_DOCKER_STANDARD.md
+
+# Backup files
+*.backup
