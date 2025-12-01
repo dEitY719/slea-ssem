@@ -73,7 +73,7 @@ ps aux | grep postgres
 #### 4. **Same Database Name in Both Instances**
 
 Both PostgreSQL instances had `sleassem_dev` database:
-- WSL's local PostgreSQL 16: sleassem_dev (user: himena)
+- WSL's local PostgreSQL 16: sleassem_dev (user: slea_user)
 - Docker's PostgreSQL 15: sleassem_dev (user: slea_user)
 
 This made debugging confusing—connections "worked" but connected to the wrong instance!
@@ -187,7 +187,7 @@ VSCode SQLTools Extension Configuration:
 │  │        localhost (127.0.0.1)                 │  │
 │  │                                              │  │
 │  │  :5432  ──→  PostgreSQL 16 (WSL native)    │  │
-│  │              (himena/sleassem_dev)          │  │
+│  │              (slea_user/sleassem_dev)          │  │
 │  │                                              │  │
 │  │  :5433  ──→  Docker Container               │  │
 │  │              ┌──────────────────────┐        │  │

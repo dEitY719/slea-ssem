@@ -54,7 +54,7 @@ postgresql+asyncpg://USER:PASSWORD@HOST:PORT/DBNAME
 ### 현재 프로젝트 설정 (정답)
 
 ```
-DATABASE_URL=postgresql+asyncpg://himena:change_me_strong_pw@localhost:5432/sleassem_dev
+DATABASE_URL=postgresql+asyncpg://slea_user:change_me_dev_password@localhost:5432/sleassem_dev
                       ↑
         FastAPI + SQLAlchemy 2.0과 호환
 ```
@@ -98,7 +98,7 @@ FastAPI 요청 2, 3, 4, ... (모두 대기)
 # localhost에서 직접 접근 가능
 
 # .env 설정
-DATABASE_URL=postgresql+asyncpg://himena:change_me_strong_pw@localhost:5432/sleassem_dev
+DATABASE_URL=postgresql+asyncpg://slea_user:change_me_dev_password@localhost:5432/sleassem_dev
             ↑ 필수                                           ↑ 로컬
 ```
 
@@ -121,9 +121,9 @@ DATABASE_URL=postgresql+asyncpg://slea_user:password@db:5432/sleassem_dev
 
 ```env
 # WSL에 PostgreSQL 설치되어 있는 경우
-DATABASE_URL=postgresql+asyncpg://himena:change_me_strong_pw@localhost:5432/sleassem_dev
-TEST_DATABASE_URL=postgresql+asyncpg://himena:change_me_strong_pw@localhost:5432/sleassem_test
-PROD_DATABASE_URL=postgresql+asyncpg://himena:change_me_strong_pw@localhost:5432/sleassem_prod
+DATABASE_URL=postgresql+asyncpg://slea_user:change_me_dev_password@localhost:5432/sleassem_dev
+TEST_DATABASE_URL=postgresql+asyncpg://slea_user:change_me_dev_password@localhost:5432/sleassem_test
+PROD_DATABASE_URL=postgresql+asyncpg://slea_user:change_me_dev_password@localhost:5432/sleassem_prod
 
 # 주의: 비밀번호는 .env에만 있고 git에는 커밋되지 않음
 ```
@@ -147,7 +147,7 @@ PROD_DATABASE_URL=postgresql+asyncpg://slea_user:change_me_dev_password@db:5432/
 
 ```bash
 # 기존: 로컬 PostgreSQL에서 데이터 백업
-pg_dump -U himena -h localhost sleassem_dev > backup.sql
+pg_dump -U slea_user -h localhost sleassem_dev > backup.sql
 
 # 새로운: Docker PostgreSQL에 복원
 # docker-compose up -d
@@ -165,7 +165,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 # 현재 설정 확인
-DATABASE_URL = "postgresql+asyncpg://himena:change_me_strong_pw@localhost:5432/sleassem_dev"
+DATABASE_URL = "postgresql+asyncpg://slea_user:change_me_dev_password@localhost:5432/sleassem_dev"
 
 # 엔진 생성
 engine = create_async_engine(DATABASE_URL, echo=True)
@@ -184,7 +184,7 @@ async def test_connection():
 
 ```bash
 # psql로 직접 테스트
-psql -U himena -h localhost -d sleassem_dev -c "SELECT version();"
+psql -U slea_user -h localhost -d sleassem_dev -c "SELECT version();"
 
 # 또는 Python asyncpg 사용
 python -c "
@@ -192,7 +192,7 @@ import asyncio
 import asyncpg
 
 async def test():
-    conn = await asyncpg.connect('postgresql://himena:change_me_strong_pw@localhost:5432/sleassem_dev')
+    conn = await asyncpg.connect('postgresql://slea_user:change_me_dev_password@localhost:5432/sleassem_dev')
     result = await conn.fetchrow('SELECT 1')
     print('✅ asyncpg 연결 성공')
     await conn.close()
@@ -224,7 +224,7 @@ Q2: Docker를 사용해서 PostgreSQL을 실행하나요?
 ### DATABASE_URL 설정 전
 
 - [ ] `postgresql+asyncpg://` 로 시작하나? (필수!)
-- [ ] 사용자명/비밀번호 맞나? (himena vs slea_user)
+- [ ] 사용자명/비밀번호 맞나? (slea_user vs slea_user)
 - [ ] 호스트 맞나? (localhost vs db)
 - [ ] 포트 맞나? (보통 5432)
 - [ ] 데이터베이스 이름 맞나? (sleassem_dev)
@@ -251,7 +251,7 @@ Q2: Docker를 사용해서 PostgreSQL을 실행하나요?
 
 ```
 1️⃣ 로컬 PostgreSQL (현재)
-   → DATABASE_URL=postgresql+asyncpg://himena:change_me_strong_pw@localhost:5432/sleassem_dev
+   → DATABASE_URL=postgresql+asyncpg://slea_user:change_me_dev_password@localhost:5432/sleassem_dev
 
 2️⃣ Docker PostgreSQL (향후)
    → DATABASE_URL=postgresql+asyncpg://slea_user:change_me_dev_password@db:5432/sleassem_dev

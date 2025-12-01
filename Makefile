@@ -226,7 +226,7 @@ shell:
 shell-db:
 	@echo -e "$(YELLOW)💻 Database 접속$(NC)"
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) exec $(DB) psql -U himena -d sleassem_dev
+	$(DC) $(COMPOSE_FILES) exec $(DB) psql -U slea_user -d sleassem_dev
 
 # ============================================================
 # 6. 개발 (TDD)

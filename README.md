@@ -256,9 +256,9 @@ sudo service postgresql status
 
 ```bash
 sudo -u postgres psql <<'SQL'
-CREATE ROLE himena WITH LOGIN PASSWORD 'change_me_strong_pw';
-CREATE DATABASE sleassem_dev OWNER himena;
-GRANT ALL PRIVILEGES ON DATABASE sleassem_dev TO himena;
+CREATE ROLE slea_user WITH LOGIN PASSWORD 'change_me_dev_password';
+CREATE DATABASE sleassem_dev OWNER slea_user;
+GRANT ALL PRIVILEGES ON DATABASE sleassem_dev TO slea_user;
 SQL
 ```
 
@@ -267,11 +267,11 @@ SQL
 ### 4. Test Connection
 
 ```bash
-psql "host=localhost dbname=sleassem_dev user=himena password=change_me_strong_pw" -c "\conninfo"
+psql "host=localhost dbname=sleassem_dev user=slea_user password=change_me_dev_password" -c "\conninfo"
 ```
 
 > 정상 출력 예시:
-> `You are connected to database "sleassem_dev" as user "himena" on host "localhost" (address "127.0.0.1") at port "5432".`
+> `You are connected to database "sleassem_dev" as user "slea_user" on host "localhost" (address "127.0.0.1") at port "5432".`
 
 ---
 
@@ -280,7 +280,7 @@ psql "host=localhost dbname=sleassem_dev user=himena password=change_me_strong_p
 `.env` 개발 환경에 다음 변수를 추가합니다. (.env_example을 복사해서 사용하세요.)
 
 ```bash
-DATABASE_URL="postgresql+asyncpg://himena:change_me_strong_pw@localhost:5432/sleassem_dev"
+DATABASE_URL="postgresql+asyncpg://slea_user:change_me_dev_password@localhost:5432/sleassem_dev"
 ```
 
 ---
