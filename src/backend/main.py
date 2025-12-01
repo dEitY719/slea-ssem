@@ -60,6 +60,12 @@ if STATIC_DIR.exists() and (STATIC_DIR / "index.html").exists():
     # Mount static assets (CSS, JS, images)
     app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
 
+    # Root path - serve index.html
+    @app.get("/")
+    async def serve_root() -> FileResponse:
+        """Serve React SPA root."""
+        return FileResponse(STATIC_DIR / "index.html")
+
     # SPA fallback - serve index.html for all non-API routes (must be last)
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str) -> FileResponse:
@@ -68,7 +74,7 @@ if STATIC_DIR.exists() and (STATIC_DIR / "index.html").exists():
         Enables client-side routing with React Router.
 
         Note: This must be defined AFTER all API routes to avoid conflicts.
-        API routes (/, /health, /auth/*, /profile/*, etc.) are matched first.
+        API routes (/health, /auth/*, /profile/*, etc.) are matched first.
         """
         return FileResponse(STATIC_DIR / "index.html")
 

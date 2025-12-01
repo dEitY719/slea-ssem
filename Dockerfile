@@ -1,9 +1,20 @@
-# SLEA-SSEM Backend Docker Image
-# Production-ready Dockerfile with multi-environment support
-# 사외(공개) + 사내(폐쇄) 환경 모두 지원
+# ==================== STAGE 1: Frontend Build ====================
+FROM node:20-alpine AS frontend-builder
 
+WORKDIR /app
+
+# Copy frontend source
+COPY src/frontend/package*.json ./src/frontend/
+RUN cd src/frontend && npm ci --only=production
+
+COPY src/frontend/ ./src/frontend/
+
+# Build frontend (output to /app/dist)
+RUN cd src/frontend && npm run build:prod
+
+# ==================== STAGE 2: Backend Builder ====================
 # Base Image: Python 3.13 (pyproject.toml requires-python: >=3.13)
-FROM python:3.13-slim AS builder
+FROM python:3.13-slim AS backend-builder
 
 # ==================== BUILD-TIME ARGS ====================
 # 빌드 시점 전용 설정 (이미지에 고정되지 않음)
@@ -41,9 +52,6 @@ WORKDIR /app
 # 패키지 메타 및 소스 코드 복사 (순서: 빌드 캐시 최적화)
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
-
-# (선택) 사내 pip.conf 사용 시
-# COPY ./pip.conf /etc/pip.conf
 
 # 패키지 설치
 RUN pip install --no-cache-dir .
@@ -87,10 +95,12 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Builder에서 설치된 Python 패키지 복사
-# (또는 requirements.txt/uv.lock 있으면 재설치)
-COPY --from=builder /app .
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+# Backend builder에서 설치된 Python 패키지 복사
+COPY --from=backend-builder /app .
+COPY --from=backend-builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+
+# Frontend builder에서 빌드된 정적 파일 복사
+COPY --from=frontend-builder /app/dist ./src/backend/static
 
 # ==================== SECURITY: NON-ROOT USER ====================
 # 비루트 사용자 생성 (호스트 UID 1000과 동일하게 설정해서 volume mount 접근 가능하게 함)

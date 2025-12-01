@@ -1,37 +1,16 @@
-# Outside-In 전략 (사외 GitHub → 사내 GitHub 단방향 동기화)
-# 개발 환경용 Docker Compose
-# 사외(공개): 기본값 포함
-# 사내(폐쇄): .env 또는 docker-compose.override.yml로 오버라이드
-
 services:
-  # ============================================================
-  # PostgreSQL 15 데이터베이스
-  # ============================================================
   db:
     image: postgres:15-alpine
     container_name: slea-db
 
     environment:
-      # 기본값 (사외)
       POSTGRES_DB: sleassem_dev
       POSTGRES_USER: slea_user
       POSTGRES_PASSWORD: change_me_dev_password
-
-      # 개발 환경: trust 인증으로 설정 (원격 접속 허용)
       POSTGRES_HOST_AUTH_METHOD: trust
-
-      # 타임존 설정
       TZ: Asia/Seoul
       PGTZ: Asia/Seoul
-
-    ports:
-      # 로컬 개발용 포트 노출 (사외)
-      # WSL 로컬 PostgreSQL과의 충돌을 피하기 위해 5433 사용
-      # 사내: docker-compose.override.yml에서 제거
-      - "5433:5432"
-
     volumes:
-      # 데이터 영속성
       - postgres_data:/var/lib/postgresql/data
 
     healthcheck:
@@ -46,19 +25,11 @@ services:
 
     restart: unless-stopped
 
-  # ============================================================
-  # FastAPI 백엔드
-  # ============================================================
   backend:
     # 빌드 설정
     build:
       context: .
       dockerfile: Dockerfile
-
-      # 빌드 시점 args (Proxy 자동 주입)
-      # .env 파일 또는 호스트 환경변수에서 자동 감지
-      # 사외(기본값): 비워둠 → Dockerfile에서 무시
-      # 사내: .env 또는 호스트 설정 → 자동 주입
       args:
         PIP_INDEX_URL: ${PIP_INDEX_URL:-}
         PIP_EXTRA_INDEX_URL: ${PIP_EXTRA_INDEX_URL:-}
@@ -75,7 +46,6 @@ services:
       # 호스트의 포트 5433 매핑은 여기서 불필요 (컨테이너 내부 통신)
       DATABASE_URL: postgresql://${DB_USER:-slea_user}:${DB_PASSWORD:-change_me_dev_password}@db:5432/${DB_NAME:-sleassem_dev}
 
-      # FastAPI 설정
       HOST: 127.0.0.1
       PORT: 8000
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -108,35 +78,18 @@ services:
       LITELLM_API_KEY: ${LITELLM_API_KEY:-sk-4444}
       LITELLM_MODEL: ${LITELLM_MODEL:-gemini-2.0-flash}
 
-      # 선택: 프록시 (사내 환경용)
-      HTTP_PROXY: ${HTTP_PROXY:-}
-      HTTPS_PROXY: ${HTTPS_PROXY:-}
-      NO_PROXY: ${NO_PROXY:-}
-
     ports:
-      # 개발용 포트 노출 (사외)
-      # 사내: docker-compose.override.yml에서 제거
-      - "8000:8000"
+      - "8001:8000"
 
     depends_on:
       db:
         condition: service_healthy
-
-    volumes:
-      # 실시간 코드 변경 반영 (개발 중)
-      - .:/app
-
-      # 캐시 제외
-      - /app/.pytest_cache
-      - /app/.mypy_cache
-      - /app/__pycache__
 
     networks:
       - slea-network
 
     restart: unless-stopped
 
-    # 개발 모드: uvicorn 서버 시작 (환경변수 전달 위해 exec form 사용)
     command:
       - /bin/sh
       - -c
@@ -146,77 +99,10 @@ services:
         echo '🚀 Starting Uvicorn server...';
         python -m uvicorn src.backend.main:app --host 0.0.0.0 --port 8000
 
-  # ============================================================
-  # React 프론트엔드 (Vite 개발 서버)
-  # ============================================================
-  frontend:
-    image: node:20-alpine
-    container_name: slea-frontend
-
-    working_dir: /app/src/frontend
-
-    volumes:
-      # 소스 코드 실시간 동기화
-      - .:/app
-      # node_modules 캐시 (로컬과 분리)
-      - /app/src/frontend/node_modules
-
-    ports:
-      - "5173:5173"  # Vite dev server
-
-    environment:
-      # Vite 설정
-      VITE_API_URL: http://localhost:8000
-      NODE_ENV: development
-      PYTHONUNBUFFERED: 1
-
-    command: >
-      sh -c "
-        echo '📦 Installing dependencies...';
-        npm install;
-        echo '🚀 Starting Vite dev server...';
-        npm run dev -- --host 0.0.0.0
-      "
-
-    networks:
-      - slea-network
-
-    restart: unless-stopped
-
-    # Vite dev server 상태 확인
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5173"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-  # ============================================================
-  # Redis 캐시 (선택)
-  # ============================================================
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: slea-redis
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
-  #   networks:
-  #     - slea-network
-  #   restart: unless-stopped
-
-# ============================================================
-# 네트워크
-# ============================================================
 networks:
   slea-network:
     driver: bridge
 
-# ============================================================
-# 볼륨
-# ============================================================
 volumes:
   postgres_data:
     driver: local
-  # redis_data:
-  #   driver: local
