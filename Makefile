@@ -137,8 +137,8 @@ validate:
 		echo -e "$(RED)❌ 오류: README.md 파일이 없습니다$(NC)"; \
 		exit 1; \
 	fi
-	@if [ ! -f $(DOCKER_DIR)/Dockerfile ]; then \
-		echo -e "$(RED)❌ 오류: $(DOCKER_DIR)/Dockerfile이 없습니다$(NC)"; \
+	@if [ ! -f Dockerfile ]; then \
+		echo -e "$(RED)❌ 오류: Dockerfile이 없습니다$(NC)"; \
 		exit 1; \
 	fi
 	@if [ ! -f $(DOCKER_DIR)/docker-compose.yml ]; then \
