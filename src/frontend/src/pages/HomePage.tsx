@@ -1,9 +1,10 @@
-// REQ: REQ-F-A1-2, REQ-F-A2-1, REQ-F-A3, REQ-F-A2-Signup-1, REQ-F-A1-Home
+// REQ: REQ-F-A1-2, REQ-F-A2-1, REQ-F-A3, REQ-F-A2-Signup-1, REQ-F-A1-Home, REQ-F-A1-Error-1
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PlayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { TrophyIcon } from '@heroicons/react/24/solid'
 import { isAuthenticated } from '../utils/auth'
+import { detectRedirectLoop, resetRedirectDetection } from '../utils/redirectDetection'
 import { useUserProfile } from '../hooks/useUserProfile'
 import { profileService } from '../services/profileService'
 import { homeService, type LastTestResult } from '../services/homeService'
@@ -48,14 +49,25 @@ const HomePage: React.FC = () => {
     const checkAuth = async () => {
       const authenticated = await isAuthenticated()
       if (!authenticated) {
+        // REQ-F-A1-Error-1: Detect redirect loop before redirecting
+        const detection = detectRedirectLoop()
+        if (detection.shouldShowError) {
+          console.warn(`[Auth Error] Redirect loop detected (${detection.count} attempts)`)
+          navigate('/auth-error', { replace: true })
+          return
+        }
+
         navigate('/')
+      } else {
+        // Successfully authenticated, reset redirect counter
+        resetRedirectDetection()
       }
     }
 
     checkAuth()
   }, [navigate])
 
-  // REQ-F-A2-Signup-1: Load nickname on mount to determine if signup button should show
+  // REQ-F-A2-Signup-1: Load nickname to determine if user data should be fetched
   useEffect(() => {
     const loadNickname = async () => {
       try {
@@ -69,8 +81,19 @@ const HomePage: React.FC = () => {
     loadNickname()
   }, [checkNickname])
 
-  // REQ: REQ-F-A1-Home-1, REQ-F-A1-Home-2 - Fetch last test result
+  // REQ: REQ-F-A1-Home-1, REQ-F-A1-Home-2 - Fetch last test result (only if logged in)
   useEffect(() => {
+    // Skip loading if nickname is not set (user not logged in)
+    if (nicknameLoading) {
+      return
+    }
+
+    if (!nickname) {
+      setIsLoadingResult(false)
+      setLastTestResult({ hasResult: false, grade: null, completedAt: null, badgeUrl: null })
+      return
+    }
+
     const fetchLastTestResult = async () => {
       setIsLoadingResult(true)
       try {
@@ -86,10 +109,21 @@ const HomePage: React.FC = () => {
     }
 
     fetchLastTestResult()
-  }, [])
+  }, [nickname, nicknameLoading])
 
-  // REQ: REQ-F-A1-Home-4 - Fetch total participants
+  // REQ: REQ-F-A1-Home-4 - Fetch total participants (only if logged in)
   useEffect(() => {
+    // Skip loading if nickname is not set (user not logged in)
+    if (nicknameLoading) {
+      return
+    }
+
+    if (!nickname) {
+      setIsLoadingStats(false)
+      setTotalParticipants(null)
+      return
+    }
+
     const fetchTotalParticipants = async () => {
       setIsLoadingStats(true)
       try {
@@ -104,7 +138,7 @@ const HomePage: React.FC = () => {
     }
 
     fetchTotalParticipants()
-  }, [])
+  }, [nickname, nicknameLoading])
 
     const handleStart = async () => {
       try {

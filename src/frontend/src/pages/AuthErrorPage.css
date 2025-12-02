@@ -1,0 +1,105 @@
+.auth-error-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.auth-error-container {
+  max-width: 600px;
+  width: 100%;
+}
+
+.auth-error-content {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.error-icon-large {
+  width: 64px;
+  height: 64px;
+  color: #dc2626;
+  margin: 0 auto 1.5rem;
+}
+
+.error-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.error-description {
+  font-size: 1rem;
+  color: #6b7280;
+  margin-bottom: 2rem;
+}
+
+.troubleshooting-section {
+  text-align: left;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.troubleshooting-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.troubleshooting-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.troubleshooting-list li {
+  margin-bottom: 1.5rem;
+}
+
+.troubleshooting-list li:last-child {
+  margin-bottom: 0;
+}
+
+.troubleshooting-list strong {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.troubleshooting-list p {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.try-again-button {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.try-again-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.try-again-button:active {
+  transform: translateY(0);
+}
