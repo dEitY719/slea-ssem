@@ -42,8 +42,7 @@ docker/.env
 docker/.env.*
 !docker/.env.example
 !docker/.env.*.example
-# 기존 루트 Dockerfile은 제외 (이제 docker/ 폴더 사용)
-Dockerfile*
+# 루트 Dockerfile은 이제 사용 (표준 위치)
 docker-compose*.yml
 .dockerignore
 
