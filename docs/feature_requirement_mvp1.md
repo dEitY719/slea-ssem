@@ -101,14 +101,22 @@ SLEA-SSEM MVP 1.0.0은 임직원의 **AI 역량 수준을 객관적으로 측정
 [1. 브라우저 - 인증 확인]
 - 사용자가 "/" 접속
 - GET /auth/status로 인증 쿠키 확인
-  → 인증됨: /home 리다이렉트
+  → 인증됨: /home 리다이렉트 (SSO 인증만 완료, 아직 회원가입/로그인 아님)
   → 미인증: IDP로 리다이렉트
 
 [2. IDP - 사용자 인증]
 
 [3. 백엔드 - 콜백 처리 (POST /auth/oidc/callback)]
 
-[4. 이후 API 호출]
+[4. /home 진입 후]
+- nickname 체크 (자동)
+  → nickname 있음: 회원 (데이터 로드)
+  → nickname 없음: 비회원 (데이터 로드 안 함, UI만 표시)
+- "레벨테스트 시작하기" 버튼 클릭 시:
+  → nickname 없으면: /consent (회원가입 플로우)
+  → nickname 있으면: 테스트 진행
+
+[5. 이후 API 호출]
 - fetch(..., { credentials: 'include' })
 - 브라우저가 쿠키(JWT) 자동 첨부
 - 백엔드가 JWT 검증
@@ -185,7 +193,7 @@ localStorage.setItem(redirectTimestampKey, String(now))
 
 ## REQ-F-A1-Home: 홈화면 마지막 테스트 결과 표시
 
-**Note**: 로그인 완료 후 홈화면에서 사용자의 마지막 레벨테스트 결과를 시각적으로 표시합니다.
+**Note**: 홈화면에서 사용자의 마지막 레벨테스트 결과를 시각적으로 표시합니다. SSO 인증만 된 상태(nickname 없음)에서는 카드 UI는 표시되나 데이터는 로드하지 않으며, 회원 가입 완료 후(nickname 있음) 실제 데이터를 로드합니다.
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
@@ -193,10 +201,14 @@ localStorage.setItem(redirectTimestampKey, String(now))
 | **REQ-F-A1-Home-2** | 레벨 테스트 완료 시, 마지막 테스트 완료 날짜를 "YYYY-MM-DD" 형식으로 표시해야 한다. | **M** |
 | **REQ-F-A1-Home-3** | 등급에 따른 뱃지 이미지를 표시해야 한다. 등급별 뱃지는 다음과 같다: <br> - Level 1: Beginner 뱃지 <br> - Level 2: Elementary 뱃지 <br> - Level 3: Intermediate 뱃지 <br> - Level 4: Advanced 뱃지 <br> - Level 5: Expert 뱃지 | **M** |
 | **REQ-F-A1-Home-4** | 홈화면에 2개의 정보 카드를 표시해야 한다: <br> 1) "나의 현재 레벨" 카드: 등급, 뱃지, 날짜 <br> 2) "전체 참여자" 카드: 전체 테스트 참여 인원 수 | **S** |
+| **REQ-F-A1-Home-5** | nickname이 없는 경우(SSO 인증만 된 상태), 카드 UI는 표시하되 실제 데이터는 로드하지 않아야 한다. 이 경우 기본값("-", "참여자 정보 없음")을 표시한다. | **M** |
+| **REQ-F-A1-Home-6** | nickname이 있는 경우(회원 가입 완료), `/api/profile/last-test-result` 및 `/api/statistics/total-participants` API를 호출하여 실제 데이터를 로드해야 한다. | **M** |
 
 **수용 기준**:
 
-- "로그인 후 홈화면에 '나의 현재 레벨' 카드가 우측에 표시된다."
+- "홈화면에 '나의 현재 레벨' 카드가 우측에 표시된다."
+- "nickname이 없는 경우(비회원), 카드는 표시되나 데이터 로드 없이 '-' 및 안내 메시지가 표시된다."
+- "nickname이 있는 경우(회원), API를 호출하여 실제 데이터를 로드한다."
 - "레벨 테스트 완료 시, 등급 숫자와 뱃지 이미지가 카드에 표시된다."
 - "레벨 테스트 미완료 시, '-' 및 '테스트를 완료하면 당신의 레벨이 표시됩니다' 안내 메시지가 표시된다."
 - "마지막 테스트 날짜가 'YYYY-MM-DD' 형식으로 표시된다."

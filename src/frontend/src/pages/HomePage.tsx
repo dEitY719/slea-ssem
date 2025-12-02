@@ -67,7 +67,7 @@ const HomePage: React.FC = () => {
     checkAuth()
   }, [navigate])
 
-  // REQ-F-A2-Signup-1: Load nickname on mount to determine if signup button should show
+  // REQ-F-A2-Signup-1: Load nickname to determine if user data should be fetched
   useEffect(() => {
     const loadNickname = async () => {
       try {
@@ -81,8 +81,19 @@ const HomePage: React.FC = () => {
     loadNickname()
   }, [checkNickname])
 
-  // REQ: REQ-F-A1-Home-1, REQ-F-A1-Home-2 - Fetch last test result
+  // REQ: REQ-F-A1-Home-1, REQ-F-A1-Home-2 - Fetch last test result (only if logged in)
   useEffect(() => {
+    // Skip loading if nickname is not set (user not logged in)
+    if (nicknameLoading) {
+      return
+    }
+
+    if (!nickname) {
+      setIsLoadingResult(false)
+      setLastTestResult({ hasResult: false, grade: null, completedAt: null, badgeUrl: null })
+      return
+    }
+
     const fetchLastTestResult = async () => {
       setIsLoadingResult(true)
       try {
@@ -98,10 +109,21 @@ const HomePage: React.FC = () => {
     }
 
     fetchLastTestResult()
-  }, [])
+  }, [nickname, nicknameLoading])
 
-  // REQ: REQ-F-A1-Home-4 - Fetch total participants
+  // REQ: REQ-F-A1-Home-4 - Fetch total participants (only if logged in)
   useEffect(() => {
+    // Skip loading if nickname is not set (user not logged in)
+    if (nicknameLoading) {
+      return
+    }
+
+    if (!nickname) {
+      setIsLoadingStats(false)
+      setTotalParticipants(null)
+      return
+    }
+
     const fetchTotalParticipants = async () => {
       setIsLoadingStats(true)
       try {
@@ -116,7 +138,7 @@ const HomePage: React.FC = () => {
     }
 
     fetchTotalParticipants()
-  }, [])
+  }, [nickname, nicknameLoading])
 
     const handleStart = async () => {
       try {
