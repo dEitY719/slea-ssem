@@ -49,11 +49,6 @@ const LoginPage: React.FC = () => {
           return
         }
 
-        // REQ-F-A1-1: Redirect to IDP authorize URL
-        const authUrl = buildIDPAuthUrl()
-
-        // Redirect to IDP
-        window.location.href = authUrl
       } catch (error) {
         console.error('Auto-redirect failed:', error)
         setIsLoading(false)
@@ -88,9 +83,5 @@ const LoginPage: React.FC = () => {
  * Build IDP authorization URL
  * @returns Authorization URL
  */
-function buildIDPAuthUrl(): string {
-  // TODO: Implement IDP authorization URL construction
-  return ''
-}
 
 export default LoginPage
