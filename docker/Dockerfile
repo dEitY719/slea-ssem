@@ -6,7 +6,7 @@
 # ------------------------------------------------------------------------------
 # Stage 1: Frontend Builder
 # ------------------------------------------------------------------------------
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 
 ARG BUILD_FRONTEND=true
 ARG NPM_REGISTRY=https://registry.npmjs.org/
@@ -55,16 +55,15 @@ RUN if [ -d /tmp/certs/internal ] && [ "$(ls -A /tmp/certs/internal/*.crt 2>/dev
 ENV NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates
 
 # Frontend build (conditional)
-COPY src/frontend/package*.json ./
-RUN if [ "$BUILD_FRONTEND" = "true" ] && [ -f package.json ]; then \
-        npm ci; \
+COPY src/frontend/ ./src/frontend/
+RUN if [ "$BUILD_FRONTEND" = "true" ] && [ -f src/frontend/package.json ]; then \
+        cd src/frontend && npm ci; \
     fi
 
-COPY src/frontend/ ./
-RUN if [ "$BUILD_FRONTEND" = "true" ] && [ -f package.json ]; then \
-        npm run build; \
+RUN if [ "$BUILD_FRONTEND" = "true" ] && [ -f src/frontend/package.json ]; then \
+        cd src/frontend && npm run build:prod; \
     else \
-        mkdir -p dist; \
+        mkdir -p src/frontend/dist; \
     fi
 
 
@@ -169,6 +168,7 @@ COPY --from=python-builder /usr/local/lib/python3.13/site-packages /usr/local/li
 COPY --from=python-builder /app ./
 
 # Copy Frontend build (dist 폴더는 항상 존재 - 빌드 결과 또는 빈 폴더)
+# Note: vite.config.ts에서 outDir: ../../dist로 설정되어 /fe/dist에 생성됨
 RUN mkdir -p ./src/backend/static
 COPY --from=frontend-builder /fe/dist ./src/backend/static/
 
