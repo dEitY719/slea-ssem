@@ -6,7 +6,7 @@
 
 SHELL := /bin/bash
 .ONESHELL:
-.PHONY: help init init-internal build build-internal up up-internal down restart logs ps shell shell-db test lint type-check quality clean clean-docker rebuild validate
+.PHONY: help init init-internal build build-internal up up-internal down restart logs ps shell shell-db test lint type-check quality clean rebuild validate
 .SILENT:
 
 # ============================================================
@@ -82,8 +82,7 @@ help:
 	@echo "  make quality           📈 전체 검사 (lint + type-check + test)"
 	@echo ""
 	@echo -e "$(GREEN)정리:$(NC)"
-	@echo "  make clean             🧹 Python 캐시 삭제"
-	@echo "  make clean-docker      🐳 Docker BuildKit 캐시 삭제"
+	@echo "  make clean             🧹 전체 캐시 삭제 (Python + Docker)"
 	@echo ""
 	@echo -e "$(GREEN)사용 예시 (외부):$(NC)"
 	@echo "  make init              # 1. 초기화"
@@ -256,17 +255,15 @@ quality: lint type-check test
 # ============================================================
 
 clean:
-	@echo -e "$(YELLOW)🧹 Python 캐시 파일 정리 중...$(NC)"
+	@echo -e "$(YELLOW)🧹 전체 캐시 정리 중 (Python + Docker)...$(NC)"
+	@echo -e "$(BLUE)   • Python 캐시...$(NC)"
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
-	@echo -e "$(GREEN)✅ Python 캐시 정리 완료$(NC)"
-
-clean-docker:
-	@echo -e "$(YELLOW)🐳 Docker BuildKit 캐시 정리 중...$(NC)"
+	@echo -e "$(BLUE)   • Docker BuildKit 캐시...$(NC)"
 	docker builder prune -af
-	@echo -e "$(GREEN)✅ Docker BuildKit 캐시 정리 완료$(NC)"
+	@echo -e "$(GREEN)✅ 전체 캐시 정리 완료$(NC)"
 
 # ============================================================
 # Default target
