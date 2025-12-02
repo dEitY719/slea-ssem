@@ -21,7 +21,7 @@ services:
   slea-backend:
     build:
       context: ..
-      dockerfile: docker/Dockerfile
+      dockerfile: Dockerfile
       args:
         BUILD_FRONTEND: ${BUILD_FRONTEND:-true}
         HTTP_PROXY: ${HTTP_PROXY:-}

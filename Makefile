@@ -6,7 +6,7 @@
 
 SHELL := /bin/bash
 .ONESHELL:
-.PHONY: help init init-internal build build-internal up up-internal down restart logs ps shell shell-db test lint type-check quality clean rebuild
+.PHONY: help init init-internal build build-internal up up-internal down restart logs ps shell shell-db test lint type-check quality clean rebuild validate
 .SILENT:
 
 # ============================================================
@@ -82,7 +82,7 @@ help:
 	@echo "  make quality           📈 전체 검사 (lint + type-check + test)"
 	@echo ""
 	@echo -e "$(GREEN)정리:$(NC)"
-	@echo "  make clean             🧹 캐시 삭제"
+	@echo "  make clean             🧹 전체 캐시 삭제 (Python + Docker)"
 	@echo ""
 	@echo -e "$(GREEN)사용 예시 (외부):$(NC)"
 	@echo "  make init              # 1. 초기화"
@@ -107,19 +107,19 @@ init:
 	@echo -e "$(YELLOW)🔧 외부 환경 .env 파일 생성 중...$(NC)"
 	@if [ ! -f $(DOCKER_DIR)/.env ]; then \
 		cp $(DOCKER_DIR)/.env.example $(DOCKER_DIR)/.env; \
-		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env 생성 완료 (외부 환경)$(NC)"; \
+		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env 생성 완료 ($(DOCKER_DIR)/.env.example에서)$(NC)"; \
 	else \
-		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env 파일이 이미 있습니다$(NC)"; \
+		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env 파일이 이미 있습니다 (환경 변경 시: rm $(DOCKER_DIR)/.env && make init)$(NC)"; \
 	fi
 
 init-internal:
 	@echo -e "$(YELLOW)🔧 사내 환경 .env 파일 생성 중...$(NC)"
 	@if [ ! -f $(DOCKER_DIR)/.env ]; then \
 		cp $(DOCKER_DIR)/.env.internal.example $(DOCKER_DIR)/.env; \
-		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env 생성 완료 (사내 환경)$(NC)"; \
+		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env 생성 완료 ($(DOCKER_DIR)/.env.internal.example에서)$(NC)"; \
 		echo -e "$(YELLOW)⚠️  인증서 복사 필요: cp assets/*.crt $(DOCKER_DIR)/certs/internal/$(NC)"; \
 	else \
-		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env 파일이 이미 있습니다$(NC)"; \
+		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env 파일이 이미 있습니다 (환경 변경 시: rm $(DOCKER_DIR)/.env && make init-internal)$(NC)"; \
 	fi
 
 # ============================================================
@@ -137,8 +137,8 @@ validate:
 		echo -e "$(RED)❌ 오류: README.md 파일이 없습니다$(NC)"; \
 		exit 1; \
 	fi
-	@if [ ! -f $(DOCKER_DIR)/Dockerfile ]; then \
-		echo -e "$(RED)❌ 오류: $(DOCKER_DIR)/Dockerfile이 없습니다$(NC)"; \
+	@if [ ! -f Dockerfile ]; then \
+		echo -e "$(RED)❌ 오류: Dockerfile이 없습니다$(NC)"; \
 		exit 1; \
 	fi
 	@if [ ! -f $(DOCKER_DIR)/docker-compose.yml ]; then \
@@ -158,7 +158,7 @@ build: validate
 		echo -e "$(BLUE)   - PIP_INDEX_URL: $$(grep PIP_INDEX_URL $(DOCKER_DIR)/.env | cut -d= -f2 || echo [기본])$(NC)"; \
 	fi
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) build
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) build
 	@echo -e "$(GREEN)✅ 빌드 완료$(NC)"
 
 build-internal:
@@ -171,9 +171,9 @@ build-internal:
 up:
 	@echo -e "$(YELLOW)🚀 서비스 시작 중 ($(ENV_NAME))...$(NC)"
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) up -d
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) up -d
 	@sleep 2
-	$(DC) $(COMPOSE_FILES) ps
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) ps
 	@echo ""
 	@echo -e "$(GREEN)✅ 시작 완료!$(NC)"
 	@echo -e "$(BLUE)포트:$(NC)"
@@ -186,13 +186,13 @@ up-internal:
 down:
 	@echo -e "$(YELLOW)🛑 서비스 정지 중 ($(ENV_NAME))...$(NC)"
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) down
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) down
 	@echo -e "$(GREEN)✅ 정지 완료$(NC)"
 
 restart:
 	@echo -e "$(YELLOW)🔄 서비스 재시작 중 ($(ENV_NAME))...$(NC)"
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) restart
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) restart
 	@echo -e "$(GREEN)✅ 재시작 완료$(NC)"
 
 rebuild: down build up
@@ -205,14 +205,14 @@ rebuild: down build up
 logs:
 	@echo -e "$(YELLOW)📊 Backend 로그 (실시간)$(NC)"
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) logs -f $(BACKEND)
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) logs -f $(BACKEND)
 
 ps:
 	@echo -e "$(BLUE)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
 	@echo -e "$(BLUE)실행 중인 서비스 ($(ENV_NAME))$(NC)"
 	@echo -e "$(BLUE)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) ps
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) ps
 
 # ============================================================
 # 5. 컨테이너 접속
@@ -221,12 +221,12 @@ ps:
 shell:
 	@echo -e "$(YELLOW)💻 Backend 셸 접속$(NC)"
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) exec $(BACKEND) sh
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) exec $(BACKEND) sh
 
 shell-db:
 	@echo -e "$(YELLOW)💻 Database 접속$(NC)"
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) exec $(DB) psql -U slea_user -d sleassem_dev
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) exec $(DB) psql -U slea_user -d sleassem_dev
 
 # ============================================================
 # 6. 개발 (TDD)
@@ -235,17 +235,17 @@ shell-db:
 test:
 	@echo -e "$(YELLOW)🧪 테스트 실행 중...$(NC)"
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) exec $(BACKEND) pytest tests/backend/ -v --tb=short
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) exec $(BACKEND) pytest tests/backend/ -v --tb=short
 
 lint:
 	@echo -e "$(YELLOW)🔎 코드 검사 중 (Ruff)...$(NC)"
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) exec $(BACKEND) ruff check src tests
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) exec $(BACKEND) ruff check src tests
 
 type-check:
 	@echo -e "$(YELLOW)✅ 타입 검사 중 (mypy strict)...$(NC)"
 	cd $(DOCKER_DIR)
-	$(DC) $(COMPOSE_FILES) exec $(BACKEND) mypy src --strict
+	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) exec $(BACKEND) mypy src --strict
 
 quality: lint type-check test
 	@echo -e "$(GREEN)✅ 품질 검사 완료$(NC)"
@@ -255,12 +255,15 @@ quality: lint type-check test
 # ============================================================
 
 clean:
-	@echo -e "$(YELLOW)🧹 캐시 파일 정리 중...$(NC)"
+	@echo -e "$(YELLOW)🧹 전체 캐시 정리 중 (Python + Docker)...$(NC)"
+	@echo -e "$(BLUE)   • Python 캐시...$(NC)"
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
-	@echo -e "$(GREEN)✅ 정리 완료$(NC)"
+	@echo -e "$(BLUE)   • Docker BuildKit 캐시...$(NC)"
+	docker builder prune -af
+	@echo -e "$(GREEN)✅ 전체 캐시 정리 완료$(NC)"
 
 # ============================================================
 # Default target
