@@ -107,19 +107,19 @@ init:
 	@echo -e "$(YELLOW)🔧 외부 환경 .env 파일 생성 중...$(NC)"
 	@if [ ! -f $(DOCKER_DIR)/.env ]; then \
 		cp $(DOCKER_DIR)/.env.example $(DOCKER_DIR)/.env; \
-		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env 생성 완료 (외부 환경)$(NC)"; \
+		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env 생성 완료 ($(DOCKER_DIR)/.env.example에서)$(NC)"; \
 	else \
-		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env 파일이 이미 있습니다$(NC)"; \
+		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env 파일이 이미 있습니다 (환경 변경 시: rm $(DOCKER_DIR)/.env && make init)$(NC)"; \
 	fi
 
 init-internal:
 	@echo -e "$(YELLOW)🔧 사내 환경 .env 파일 생성 중...$(NC)"
 	@if [ ! -f $(DOCKER_DIR)/.env ]; then \
 		cp $(DOCKER_DIR)/.env.internal.example $(DOCKER_DIR)/.env; \
-		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env 생성 완료 (사내 환경)$(NC)"; \
+		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env 생성 완료 ($(DOCKER_DIR)/.env.internal.example에서)$(NC)"; \
 		echo -e "$(YELLOW)⚠️  인증서 복사 필요: cp assets/*.crt $(DOCKER_DIR)/certs/internal/$(NC)"; \
 	else \
-		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env 파일이 이미 있습니다$(NC)"; \
+		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env 파일이 이미 있습니다 (환경 변경 시: rm $(DOCKER_DIR)/.env && make init-internal)$(NC)"; \
 	fi
 
 # ============================================================
