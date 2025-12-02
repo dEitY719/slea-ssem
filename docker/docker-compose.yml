@@ -42,6 +42,8 @@ services:
       - HOST=${HOST:-0.0.0.0}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ENVIRONMENT=${ENVIRONMENT:-development}
+      - USE_LITE_LLM=False
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyAgNtdqGdWynhelR6JN3RXlnKMNl5OokPs}
     env_file:
       - ${ENV_FILE:-.env}
     ports:
