@@ -1081,7 +1081,7 @@ export function resetMockResults() {
 
 // Helper to simulate different scenarios
 export function setMockScenario(
-  scenario: 'no-nickname' | 'has-nickname' | 'no-consent' | 'has-consent' | 'no-survey' | 'has-survey' | 'error' | 'reset-results' | 'no-test-result' | 'has-test-result'
+  scenario: 'no-nickname' | 'has-nickname' | 'no-consent' | 'has-consent' | 'no-survey' | 'has-survey' | 'error' | 'reset-results' | 'no-test-result' | 'has-test-result' | 'auth-failed' | 'auth-success'
 ) {
   switch (scenario) {
     case 'no-nickname':
@@ -1150,6 +1150,22 @@ export function setMockScenario(
         grade: 3,
         completedAt: '2025-01-15',
         badgeUrl: null,
+      }
+      mockConfig.simulateError = false
+      break
+    case 'auth-failed':
+      // REQ-F-A1-Error: Simulate authentication failure to test redirect loop
+      mockData[API_AUTH_STATUS] = {
+        authenticated: false,
+        user_id: null,
+      }
+      mockConfig.simulateError = false
+      break
+    case 'auth-success':
+      // REQ-F-A1-Error: Restore normal authentication
+      mockData[API_AUTH_STATUS] = {
+        authenticated: true,
+        user_id: 'mock_user@samsung.com',
       }
       mockConfig.simulateError = false
       break

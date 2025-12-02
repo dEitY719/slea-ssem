@@ -1,9 +1,10 @@
-// REQ: REQ-F-A1-2, REQ-F-A2-1, REQ-F-A3, REQ-F-A2-Signup-1, REQ-F-A1-Home
+// REQ: REQ-F-A1-2, REQ-F-A2-1, REQ-F-A3, REQ-F-A2-Signup-1, REQ-F-A1-Home, REQ-F-A1-Error-1
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PlayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { TrophyIcon } from '@heroicons/react/24/solid'
 import { isAuthenticated } from '../utils/auth'
+import { detectRedirectLoop, resetRedirectDetection } from '../utils/redirectDetection'
 import { useUserProfile } from '../hooks/useUserProfile'
 import { profileService } from '../services/profileService'
 import { homeService, type LastTestResult } from '../services/homeService'
@@ -48,7 +49,18 @@ const HomePage: React.FC = () => {
     const checkAuth = async () => {
       const authenticated = await isAuthenticated()
       if (!authenticated) {
+        // REQ-F-A1-Error-1: Detect redirect loop before redirecting
+        const detection = detectRedirectLoop()
+        if (detection.shouldShowError) {
+          console.warn(`[Auth Error] Redirect loop detected (${detection.count} attempts)`)
+          navigate('/auth-error', { replace: true })
+          return
+        }
+
         navigate('/')
+      } else {
+        // Successfully authenticated, reset redirect counter
+        resetRedirectDetection()
       }
     }
 

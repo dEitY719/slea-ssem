@@ -1,8 +1,9 @@
-// REQ: REQ-F-A1-1, REQ-F-A1-2
+// REQ: REQ-F-A1-1, REQ-F-A1-2, REQ-F-A1-Error-1
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '../components'
 import { isAuthenticated } from '../utils/auth'
+import { detectRedirectLoop, resetRedirectDetection } from '../utils/redirectDetection'
 import './LoginPage.css'
 
 /**
@@ -22,8 +23,17 @@ const LoginPage: React.FC = () => {
         const authenticated = await isAuthenticated()
 
         if (authenticated) {
-          // Already logged in, redirect to home
+          // Already logged in, reset redirect counter and go to home
+          resetRedirectDetection()
           navigate('/home', { replace: true })
+          return
+        }
+
+        // REQ-F-A1-Error-1: Detect redirect loop before redirecting
+        const detection = detectRedirectLoop()
+        if (detection.shouldShowError) {
+          console.warn(`[Auth Error] Redirect loop detected (${detection.count} attempts)`)
+          navigate('/auth-error', { replace: true })
           return
         }
 

@@ -131,6 +131,58 @@ SLEA-SSEM MVP 1.0.0은 임직원의 **AI 역량 수준을 객관적으로 측정
 
 ---
 
+## REQ-F-A1-Error: 인증 실패 시 에러 페이지
+
+**Note**: 인증이 제대로 작동하지 않는 경우 사용자에게 명확한 피드백을 제공합니다.
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-F-A1-Error-1** | 인증 실패가 반복되는 경우(3회 이상 `/` ↔ `/home` 리다이렉트), 에러 페이지(`/auth-error`)로 이동해야 한다. | **M** |
+| **REQ-F-A1-Error-2** | 에러 페이지는 다음 정보를 표시해야 한다: <br> - 명확한 에러 메시지: "로그인이 정상적으로 완료되지 않았습니다" <br> - 권장 조치: "브라우저 쿠키 설정 확인", "다른 브라우저로 시도", "IT 헬프데스크 연락" | **M** |
+| **REQ-F-A1-Error-3** | 에러 페이지에서 "다시 시도" 버튼을 제공하여 로그인 재시도를 할 수 있어야 한다. | **M** |
+
+**에러 시나리오**:
+
+```
+[무한 리다이렉트 감지]
+1. "/" (LoginPage) → isAuthenticated() 호출 → 401 응답
+2. LoginPage → /home으로 리다이렉트 (MOCK_SSO 또는 IDP 콜백 후)
+3. "/home" (HomePage) → isAuthenticated() 호출 → 401 응답
+4. HomePage → /로 리다이렉트
+5. (1-4 반복)
+6. 3회 이상 반복 감지 → /auth-error로 리다이렉트
+```
+
+**리다이렉트 감지 로직**:
+
+```typescript
+// localStorage에 리다이렉트 카운트 저장
+const redirectKey = 'auth_redirect_count'
+const redirectTimestampKey = 'auth_redirect_timestamp'
+
+// 리다이렉트 발생 시
+const count = Number(localStorage.getItem(redirectKey) || 0) + 1
+const lastTimestamp = Number(localStorage.getItem(redirectTimestampKey) || 0)
+const now = Date.now()
+
+// 5분 이내에 3회 이상 리다이렉트 → 에러 페이지
+if (count >= 3 && (now - lastTimestamp) < 5 * 60 * 1000) {
+  navigate('/auth-error')
+  return
+}
+
+localStorage.setItem(redirectKey, String(count))
+localStorage.setItem(redirectTimestampKey, String(now))
+```
+
+**수용 기준**:
+
+- "인증 실패가 3회 이상 반복되면 에러 페이지로 자동 이동한다."
+- "에러 페이지에 명확한 에러 메시지와 권장 조치가 표시된다."
+- "'다시 시도' 버튼으로 로그인을 재시도할 수 있다."
+
+---
+
 ## REQ-F-A1-Home: 홈화면 마지막 테스트 결과 표시
 
 **Note**: 로그인 완료 후 홈화면에서 사용자의 마지막 레벨테스트 결과를 시각적으로 표시합니다.
