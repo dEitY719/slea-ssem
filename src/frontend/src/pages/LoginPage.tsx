@@ -1,35 +1,41 @@
 // @ts-nocheck
-// REQ: REQ-F-A1-1, REQ-F-A1-2, REQ-F-A1-Error-1
+// REQ: REQ-F-A0-Landing, REQ-F-A1-1, REQ-F-A1-2, REQ-F-A1-Error-1
 /// <reference types="vite/client" />
 // @ts-ignore
 import React, { useEffect, useState } from 'react'
  // @ts-ignore
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageLayout } from '../components'
-import { isAuthenticated } from '../utils/auth'
+import { authService } from '../services/authService'
 import { detectRedirectLoop, resetRedirectDetection } from '../utils/redirectDetection'
 import './LoginPage.css'
 
 /**
- * LoginPage - Auto-redirect to IDP or /home
+ * LoginPage (SSO Page) - Handle SSO authentication
  *
+ * REQ-F-A0-Landing: SSO authentication page at /sso
  * REQ-F-A1-1: Check cookie, redirect to IDP if not authenticated
- * REQ-F-A1-2: Redirect to /home if already authenticated
+ * REQ-F-A1-2: Redirect to returnTo or / if already authenticated
  */
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const handleAutoRedirect = async () => {
       try {
-        // REQ-F-A1-2: Check if already authenticated
-        const authenticated = await isAuthenticated()
+        // REQ-F-A0-Landing: Get returnTo parameter
+        const returnTo = searchParams.get('returnTo') || '/'
 
-        if (authenticated) {
-          // Already logged in, reset redirect counter and go to home
+        // REQ-F-A1-2: Check if already authenticated
+        const authStatus = await authService.getAuthStatus()
+
+        if (authStatus.authenticated) {
+          // Already logged in, reset redirect counter and go to returnTo
           resetRedirectDetection()
-          navigate('/home', { replace: true })
+          console.log(`[SSO] Already authenticated, redirecting to ${returnTo}`)
+          navigate(returnTo, { replace: true })
           return
         }
 
@@ -41,16 +47,27 @@ const LoginPage: React.FC = () => {
           return
         }
 
-        // MOCK MODE: Bypass IDP and go directly to home
+        // MOCK MODE: Simulate SSO success
         const mockSSO = import.meta.env.VITE_MOCK_SSO === 'true'
         if (mockSSO) {
-          console.log('[MOCK SSO] Bypassing IDP, redirecting to home')
-          navigate('/home', { replace: true })
+          console.log('[MOCK SSO] Simulating SSO authentication success')
+
+          // REQ-F-A0-Landing: Simulate SSO login to update mock auth state
+          await authService.login({
+            knox_id: 'mock_user',
+            name: 'Mock User',
+            dept: 'Engineering',
+            business_unit: 'DX',
+            email: 'mock_user@samsung.com'
+          })
+
+          console.log(`[MOCK SSO] Authentication successful, redirecting to ${returnTo}`)
+          navigate(returnTo, { replace: true })
           return
         }
 
         // REQ-F-A1-1: Redirect to IDP authorize URL
-        const authUrl = buildIDPAuthUrl()
+        const authUrl = buildIDPAuthUrl(returnTo)
 
         // Redirect to IDP
         window.location.href = authUrl
@@ -61,7 +78,7 @@ const LoginPage: React.FC = () => {
     }
 
     handleAutoRedirect()
-  }, [navigate])
+  }, [navigate, searchParams])
 
   if (isLoading) {
     return (
@@ -86,10 +103,15 @@ const LoginPage: React.FC = () => {
 
 /**
  * Build IDP authorization URL
+ * REQ-F-A0-Landing: Include returnTo in state parameter
+ *
+ * @param returnTo - Path to return to after authentication
  * @returns Authorization URL
  */
-function buildIDPAuthUrl(): string {
+function buildIDPAuthUrl(returnTo: string): string {
   // TODO: Implement IDP authorization URL construction
+  // Should include returnTo in state parameter for SSO callback
+  // Example: https://idp.example.com/authorize?client_id=...&state={returnTo: '/consent'}
   return ''
 }
 
