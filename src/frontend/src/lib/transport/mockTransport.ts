@@ -409,6 +409,29 @@ class MockTransport implements HttpTransport {
     // Endpoint-specific error override
     const endpointError = endpointErrors.get(normalizedUrl)
     if (endpointError) {
+      // REQ-F-A0-API: Handle authentication errors with redirect simulation
+      if (endpointError.includes('401') || endpointError.includes('Unauthorized')) {
+        if (accessLevel === 'private-auth' || accessLevel === 'private-member') {
+          const returnTo = encodeURIComponent(window.location.pathname)
+          debugLog(`[Mock Transport] 401 Unauthorized - would redirect to /sso?returnTo=${returnTo}`)
+          // In real app, realTransport will handle actual redirect
+          throw new Error(`401 Unauthorized (mock: redirect to /sso?returnTo=${returnTo})`)
+        }
+      }
+
+      if (endpointError.includes('403') && endpointError.includes('NEED_SIGNUP')) {
+        if (accessLevel === 'private-member') {
+          const returnTo = encodeURIComponent(window.location.pathname)
+          debugLog(`[Mock Transport] 403 Signup Required - would redirect to /signup?returnTo=${returnTo}`)
+          throw new Error(`403 NEED_SIGNUP (mock: redirect to /signup?returnTo=${returnTo})`)
+        }
+      }
+
+      if (endpointError.includes('403') && endpointError.includes('Forbidden')) {
+        debugLog(`[Mock Transport] 403 Forbidden`)
+        throw new Error('Forbidden')
+      }
+
       throw new Error(endpointError)
     }
 
