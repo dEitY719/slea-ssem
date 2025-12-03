@@ -394,10 +394,13 @@ export const mockConfig = {
 
 // 실제로 요청을 처리하는 객체
 class MockTransport implements HttpTransport {
-  private async mockRequest<T>(url: string, method: string, requestData?: any): Promise<T> {
+  private async mockRequest<T>(url: string, method: string, requestData?: any, config?: RequestConfig): Promise<T> {
     const normalizedUrl = ensureApiPath(url)
     requestLog.push({ url: normalizedUrl, method, body: requestData })
     debugLog(`[Mock Transport] ${method} ${normalizedUrl}`, requestData)
+
+    // REQ-F-A0-API: Get access level (default: 'private-member')
+    const accessLevel = config?.accessLevel ?? 'private-member'
 
     // Simulate network delay
     const delay = mockConfig.slowNetwork ? 3000 : mockConfig.delay
@@ -1016,20 +1019,20 @@ class MockTransport implements HttpTransport {
     return data as T
   }
 
-  async get<T>(url: string, _config?: RequestConfig): Promise<T> {
-    return this.mockRequest<T>(url, 'GET')
+  async get<T>(url: string, config?: RequestConfig): Promise<T> {
+    return this.mockRequest<T>(url, 'GET', undefined, config)
   }
 
-  async post<T>(url: string, data?: any, _config?: RequestConfig): Promise<T> {
-    return this.mockRequest<T>(url, 'POST', data)
+  async post<T>(url: string, data?: any, config?: RequestConfig): Promise<T> {
+    return this.mockRequest<T>(url, 'POST', data, config)
   }
 
-  async put<T>(url: string, data?: any, _config?: RequestConfig): Promise<T> {
-    return this.mockRequest<T>(url, 'PUT', data)
+  async put<T>(url: string, data?: any, config?: RequestConfig): Promise<T> {
+    return this.mockRequest<T>(url, 'PUT', data, config)
   }
 
-  async delete<T>(url: string, _config?: RequestConfig): Promise<T> {
-    return this.mockRequest<T>(url, 'DELETE')
+  async delete<T>(url: string, config?: RequestConfig): Promise<T> {
+    return this.mockRequest<T>(url, 'DELETE', undefined, config)
   }
 }
 
