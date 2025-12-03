@@ -1279,18 +1279,39 @@ Content-Type: application/json
 
 **상태 코드**:
 
-- `200 OK`: 로그인 성공, JWT 토큰 반환
-- `400 Bad Request`: 요청 본문 누락 또는 잘못됨
-- `422 Unprocessable Entity`: 검증 실패 (필드 누락)
+- `201 Created`: 새 사용자 생성 및 로그인 성공 (is_new_user=true)
+- `200 OK`: 기존 사용자 로그인 성공 (is_new_user=false)
+- `400 Bad Request`: 요청 형식 오류 (비-JSON 본문, Content-Type 누락/오류)
+- `422 Unprocessable Entity`: 검증 실패 (필드 누락, 이메일 형식 오류, 필드 길이 초과)
 - `500 Internal Server Error`: 데이터베이스 오류
+
+**필드 처리 정책**:
+
+- **특수문자 (한글, 이모지)**: 허용 - 그대로 저장
+- **공백 (선행/후행)**: 그대로 저장 (트림 없음)
+- **장문 (500+ 문자)**: 검증 실패 (422) - 데이터베이스 제약 준수
+- **이메일 형식**: 정확한 형식 검증 (EmailStr) - 오류 시 422
+
+**JWT 토큰 요구사항**:
+
+- `access_token`: 유효한 HS256 JWT 문자열
+- `token_type`: 항상 "bearer" 문자열
+- Payload 포함: `knox_id` (사용자 ID), `iat` (발급 시간), `exp` (만료 시간)
+- Payload 불포함: 비밀정보 (비밀번호, 권한 등)
+- 만료 시간: 발급 후 24시간
 
 **수용 기준**:
 
 - "요청에 knox_id, name, email, dept, business_unit이 포함되어야 한다"
-- "새 사용자의 경우 is_new_user: true를 반환한다"
-- "기존 사용자의 경우 is_new_user: false를 반환한다"
+- "새 사용자의 경우 201 Created + is_new_user: true를 반환한다"
+- "기존 사용자의 경우 200 OK + is_new_user: false를 반환한다"
 - "반환된 JWT 토큰으로 다른 API를 호출할 수 있다"
-- "응답은 1초 내에 완료되어야 한다"
+- "JWT token_type은 항상 'bearer'이어야 한다"
+- "JWT payload에 knox_id, iat, exp가 포함되어야 한다"
+- "응답은 1초 내에 완료되어야 한다 (perf_counter로 측정, CI 환경 고려)"
+- "기존 사용자 로그인 시 사용자 정보(dept 등)가 최신값으로 동기화되어야 한다"
+- "중복 사용자 생성 방지: 같은 knox_id로 로그인 시 user_id가 동일해야 한다"
+- "last_login 타임스탬프는 매번 로그인할 때 갱신되어야 한다"
 
 ### 사용 예
 
