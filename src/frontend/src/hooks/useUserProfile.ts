@@ -27,7 +27,9 @@ import { clearCachedNickname, getCachedNickname, setCachedNickname } from '../ut
  */
 export function useUserProfile() {
   const [nickname, setNickname] = useState<string | null>(() => getCachedNickname())
-  const [loading, setLoading] = useState(false)
+  // REQ-F-A0-Landing: Start with loading=true to prevent HomePage from calling
+  // Private-Member APIs before auth status is checked
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const checkNickname = useCallback(async (): Promise<string | null> => {
