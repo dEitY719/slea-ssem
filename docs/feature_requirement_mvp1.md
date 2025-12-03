@@ -1573,10 +1573,10 @@ GET /auth/status
   요청: Cookie (HttpOnly)
   응답: { authenticated: boolean, user_id?: string, knox_id?: string }
 
-POST /api/v1/auth/logout
-  설명: 로그아웃
-  요청: {access_token: string}
-  → {success: boolean}
+POST /auth/logout
+  설명: 로그아웃 (HttpOnly 쿠키 제거)
+  요청: Cookie (HttpOnly)
+  응답: 302 리다이렉트 / + Set-Cookie 만료
 ```
 
 ## Profile-Service
