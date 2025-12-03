@@ -26,7 +26,6 @@ services:
     restart: unless-stopped
 
   backend:
-    # 빌드 설정
     build:
       context: .
       dockerfile: Dockerfile
@@ -40,10 +39,6 @@ services:
     container_name: slea-backend
 
     environment:
-      # 데이터베이스 연결
-      # 주의: 'db' 호스트명은 Docker 컨테이너 네트워크 내부 이름
-      # Docker 내부에서 PostgreSQL 컨테이너는 항상 5432에서 리스닝
-      # 호스트의 포트 5433 매핑은 여기서 불필요 (컨테이너 내부 통신)
       DATABASE_URL: postgresql://${DB_USER:-slea_user}:${DB_PASSWORD:-change_me_dev_password}@db:5432/${DB_NAME:-sleassem_dev}
 
       HOST: 127.0.0.1
@@ -51,28 +46,20 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       ENVIRONMENT: ${ENVIRONMENT:-development}
 
-      # Python 설정
       PYTHONUNBUFFERED: 1
       PYTHONDONTWRITEBYTECODE: 1
       PYTHONPATH: /app
 
-      # 타임존
       TZ: Asia/Seoul
 
       # JWT Configuration (REQ-B-A1)
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-secret-key-change-in-production}
 
-      # OIDC / Azure AD Configuration (REQ-B-A1)
-      # 개발: .env에서 자동 로드 (your-azure-app-id 사용 시 mock 모드)
-      # 프로덕션: 실제 Azure 자격증명으로 교체
       OIDC_TENANT_ID: ${OIDC_TENANT_ID:-common}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-your-azure-app-id}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-your-azure-client-secret}
       OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-http://localhost:3000/auth/callback}
 
-      # LLM Configuration (Docker container → Host LiteLLM)
-      # host.docker.internal: 호스트의 localhost에 접근하기 위한 특수 DNS명
-      # 참고: Linux에서는 172.17.0.1 또는 host.docker.internal 사용
       USE_LITE_LLM: "True"
       LITELLM_BASE_URL: ${LITELLM_BASE_URL:-http://host.docker.internal:4444/v1}
       LITELLM_API_KEY: ${LITELLM_API_KEY:-sk-4444}
