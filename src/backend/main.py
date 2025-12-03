@@ -70,6 +70,7 @@ if STATIC_DIR.exists() and (STATIC_DIR / "index.html").exists():
     async def serve_spa(full_path: str) -> FileResponse:
         """
         Serve React SPA for routes not matched by API endpoints.
+
         Enables client-side routing with React Router.
 
         Note: This must be defined AFTER all API routes to avoid conflicts.

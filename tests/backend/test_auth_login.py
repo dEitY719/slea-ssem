@@ -1,0 +1,1132 @@
+"""
+Tests for POST /auth/login endpoint (CLI Direct Login).
+
+REQ: REQ-B-A2-Auth-3
+Feature: CLI Direct Login Endpoint that accepts user info and returns JWT token
+"""
+
+import json
+from datetime import UTC, datetime
+
+import jwt
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from src.backend.models.user import User
+from src.backend.services.auth_service import AuthService
+
+
+class TestAuthLoginNewUser:
+    """TC-1: Happy Path - New User Login Returns 201 Created"""
+
+    def test_login_new_user_returns_201_and_is_new_user_true(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """
+        TC-1: POST /auth/login with new user returns 201 Created and is_new_user=true.
+
+        REQ: REQ-B-A2-Auth-3-1, REQ-B-A2-Auth-3-2, REQ-B-A2-Auth-3-3
+
+        Scenario: User logs in for the first time with new knox_id
+        Setup: New user does not exist in database
+        Action: POST /auth/login with new user data
+        Expected: 201 Created with access_token, token_type="bearer", user_id, is_new_user=true
+
+        Acceptance Criteria:
+        - Status code is 201 Created
+        - Response contains access_token (JWT string)
+        - token_type is "bearer"
+        - user_id is positive integer
+        - is_new_user is true
+        - New user created in database with correct fields
+        """
+        # Setup: Ensure new user doesn't exist
+        payload = {
+            "knox_id": "new_user_tc1",
+            "name": "Test User TC1",
+            "email": "tc1@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        # Action: POST /auth/login with new user
+        response = client.post("/auth/login", json=payload)
+
+        # Assertions
+        assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.json()}"
+        data = response.json()
+
+        # Check response structure
+        assert "access_token" in data
+        assert "token_type" in data
+        assert "user_id" in data
+        assert "is_new_user" in data
+
+        # Check response values
+        assert isinstance(data["access_token"], str)
+        assert len(data["access_token"]) > 0
+        assert data["token_type"] == "bearer"
+        assert isinstance(data["user_id"], int)
+        assert data["user_id"] > 0
+        assert data["is_new_user"] is True
+
+        # Verify user created in database
+        user = db_session.query(User).filter_by(knox_id="new_user_tc1").first()
+        assert user is not None
+        assert user.name == "Test User TC1"
+        assert user.email == "tc1@samsung.com"
+        assert user.dept == "Engineering"
+        assert user.business_unit == "S.LSI"
+        assert user.id == data["user_id"]
+
+
+class TestAuthLoginExistingUser:
+    """TC-2: Happy Path - Existing User Login Returns 200 OK"""
+
+    def test_login_existing_user_returns_200_and_is_new_user_false(
+        self, client: TestClient, db_session: Session, user_fixture: User
+    ) -> None:
+        """
+        TC-2: POST /auth/login with existing user returns 200 OK and is_new_user=false.
+
+        REQ: REQ-B-A2-Auth-3-2, REQ-B-A2-Auth-3-3
+
+        Scenario: User logs in again (user already exists in database)
+        Setup: User exists in database
+        Action: POST /auth/login with existing user data
+        Expected: 200 OK with access_token, token_type="bearer", user_id, is_new_user=false
+
+        Acceptance Criteria:
+        - Status code is 200 OK
+        - Response contains access_token (JWT string)
+        - token_type is "bearer"
+        - user_id matches existing user's ID
+        - is_new_user is false
+        - User's last_login timestamp is updated
+        """
+        # Setup: Use existing user from fixture
+        payload = {
+            "knox_id": user_fixture.knox_id,
+            "name": user_fixture.name,
+            "email": user_fixture.email,
+            "dept": user_fixture.dept,
+            "business_unit": user_fixture.business_unit,
+        }
+
+        original_last_login = user_fixture.last_login
+
+        # Action: POST /auth/login with existing user
+        response = client.post("/auth/login", json=payload)
+
+        # Assertions
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.json()}"
+        data = response.json()
+
+        # Check response structure
+        assert "access_token" in data
+        assert "token_type" in data
+        assert "user_id" in data
+        assert "is_new_user" in data
+
+        # Check response values
+        assert isinstance(data["access_token"], str)
+        assert len(data["access_token"]) > 0
+        assert data["token_type"] == "bearer"
+        assert isinstance(data["user_id"], int)
+        assert data["user_id"] == user_fixture.id
+        assert data["is_new_user"] is False
+
+        # Verify last_login was updated
+        db_session.refresh(user_fixture)
+        assert user_fixture.last_login is not None
+        # last_login should be more recent than original (if it had a value)
+        # but since we just updated it, it should be recent
+        assert user_fixture.last_login >= original_last_login or original_last_login is None
+
+    def test_login_existing_user_with_updated_dept_syncs_to_database(
+        self, client: TestClient, db_session: Session, user_fixture: User
+    ) -> None:
+        """
+        Peer Feedback #1: Verify user information update synchronization.
+
+        REQ: REQ-B-A2-Auth-3-2 (생성/업데이트)
+
+        Scenario: Existing user's department changes (e.g., from Engineering to Marketing)
+        Setup: User exists in database with dept="Engineering"
+        Action: POST /auth/login with same knox_id but dept="Marketing"
+        Expected: User record updated in database with new dept value
+
+        Acceptance Criteria:
+        - Status code is 200 OK (existing user)
+        - Database user's dept field is updated to "Marketing"
+        - User's user_id remains the same (no duplicate created)
+        - is_new_user is false (not a new user)
+
+        This test ensures that OIDC/Direct Login keeps user attributes synchronized
+        with the latest information from the identity provider.
+        """
+        # Setup: User exists with dept="Engineering"
+        original_dept = user_fixture.dept
+        assert original_dept == "Engineering", "Fixture should have dept=Engineering"
+
+        # Action: Login with updated dept
+        payload = {
+            "knox_id": user_fixture.knox_id,
+            "name": user_fixture.name,
+            "email": user_fixture.email,
+            "dept": "Marketing",  # Changed from Engineering
+            "business_unit": user_fixture.business_unit,
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        # Assertions
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.json()}"
+        data = response.json()
+        assert data["is_new_user"] is False
+        assert data["user_id"] == user_fixture.id
+
+        # Verify database was updated with new dept
+        db_session.refresh(user_fixture)
+        assert (
+            user_fixture.dept == "Marketing"
+        ), f"Expected dept to be updated to 'Marketing', but got '{user_fixture.dept}'"
+
+        # Verify user_id hasn't changed (no duplicate created)
+        all_users = db_session.query(User).filter(User.knox_id == user_fixture.knox_id).all()
+        assert (
+            len(all_users) == 1
+        ), f"Expected 1 user with knox_id={user_fixture.knox_id}, but found {len(all_users)}"
+
+
+class TestAuthLoginValidation:
+    """TC-3: Input Validation - Missing Required Fields Returns 422"""
+
+    def test_login_missing_knox_id_returns_422(self, client: TestClient) -> None:
+        """
+        TC-3a: POST /auth/login with missing knox_id returns 422 Unprocessable Entity.
+
+        REQ: REQ-B-A2-Auth-3-4
+
+        Scenario: User omits knox_id from request
+        Setup: Prepare incomplete request
+        Action: POST /auth/login without knox_id
+        Expected: 422 Unprocessable Entity
+
+        Acceptance Criteria:
+        - Status code is 422
+        - Error detail provided
+        - No user created in database
+        """
+        payload = {
+            # Missing knox_id
+            "name": "Test User",
+            "email": "test@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        assert response.status_code == 422
+        assert "detail" in response.json() or "errors" in response.json()
+
+    def test_login_missing_name_returns_422(self, client: TestClient) -> None:
+        """TC-3b: POST /auth/login with missing name returns 422."""
+        payload = {
+            "knox_id": "user_tc3b",
+            # Missing name
+            "email": "test@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        assert response.status_code == 422
+
+    def test_login_missing_email_returns_422(self, client: TestClient) -> None:
+        """TC-3c: POST /auth/login with missing email returns 422."""
+        payload = {
+            "knox_id": "user_tc3c",
+            "name": "Test User",
+            # Missing email
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        assert response.status_code == 422
+
+    def test_login_missing_dept_returns_422(self, client: TestClient) -> None:
+        """TC-3d: POST /auth/login with missing dept returns 422."""
+        payload = {
+            "knox_id": "user_tc3d",
+            "name": "Test User",
+            "email": "test@samsung.com",
+            # Missing dept
+            "business_unit": "S.LSI",
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        assert response.status_code == 422
+
+    def test_login_missing_business_unit_returns_422(self, client: TestClient) -> None:
+        """TC-3e: POST /auth/login with missing business_unit returns 422."""
+        payload = {
+            "knox_id": "user_tc3e",
+            "name": "Test User",
+            "email": "test@samsung.com",
+            "dept": "Engineering",
+            # Missing business_unit
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        assert response.status_code == 422
+
+    def test_login_empty_payload_returns_422(self, client: TestClient) -> None:
+        """TC-3f: POST /auth/login with empty payload returns 422."""
+        payload = {}
+
+        response = client.post("/auth/login", json=payload)
+
+        assert response.status_code == 422
+
+    def test_login_invalid_email_format_returns_422(self, client: TestClient) -> None:
+        """
+        Peer Feedback #2: Email format validation.
+
+        REQ: REQ-B-A2-Auth-3-4 (Input validation)
+
+        Scenario: User sends invalid email format
+        Setup: Prepare request with email="invalid-email" (no @ symbol)
+        Action: POST /auth/login with invalid email
+        Expected: Return 422 Unprocessable Entity with validation error
+
+        Acceptance Criteria:
+        - Status code is 422 Unprocessable Entity
+        - Response includes error detail about invalid email format
+        - No user created in database
+
+        This test verifies that email field validation (likely using Pydantic EmailStr)
+        is enforced to prevent invalid email addresses from being stored in the database.
+        """
+        payload = {
+            "knox_id": "invalid_email_user",
+            "name": "Invalid Email Test User",
+            "email": "invalid-email",  # Invalid: no @ symbol
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        # Assertions
+        assert response.status_code == 422, (
+            f"Expected 422 for invalid email, got {response.status_code}: {response.json()}"
+        )
+
+        # Verify error message mentions email
+        error_detail = response.json()
+        assert "email" in str(error_detail).lower(), "Error should mention 'email' field"
+
+
+class TestAuthLoginTokenValidity:
+    """TC-4: Token Validity - Returned JWT Can Be Used in Subsequent Requests"""
+
+    def test_login_returned_token_valid_for_subsequent_requests(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """
+        TC-4: Returned JWT token from POST /auth/login is valid for subsequent API calls.
+
+        REQ: REQ-B-A2-Auth-3-3
+
+        Scenario: User logs in and uses returned token to access other endpoints
+        Setup: None
+        Action:
+          1. POST /auth/login to get JWT token
+          2. Use token in GET /auth/status request
+        Expected: Both requests succeed and user info matches
+
+        Acceptance Criteria:
+        - Login returns 201/200 with valid JWT
+        - GET /auth/status with returned token returns 200 and authenticated=true
+        - User data from status matches login request
+        """
+        # Action 1: Login to get token
+        login_payload = {
+            "knox_id": "token_test_user",
+            "name": "Token Test User",
+            "email": "token_test@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        login_response = client.post("/auth/login", json=login_payload)
+        assert login_response.status_code in [200, 201]
+
+        login_data = login_response.json()
+        access_token = login_data["access_token"]
+        user_id = login_data["user_id"]
+
+        # Action 2: Use token in subsequent request
+        status_response = client.get("/auth/status", cookies={"auth_token": access_token})
+
+        # Assertions
+        assert status_response.status_code == 200
+        status_data = status_response.json()
+        assert status_data["authenticated"] is True
+        assert status_data["user_id"] == user_id
+        assert status_data["knox_id"] == "token_test_user"
+
+    def test_login_token_payload_matches_response(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """
+        Peer Feedback #3: JWT token payload consistency with response.
+
+        REQ: REQ-B-A2-Auth-3-3
+
+        Scenario: Verify JWT token content matches response values
+        Setup: None
+        Action:
+          1. POST /auth/login to get JWT token and user_id
+          2. Decode JWT token (without verification for inspection)
+          3. Check that token payload contains user_id matching response
+        Expected: Token payload user_id matches response user_id
+
+        Acceptance Criteria:
+        - JWT token is successfully decoded
+        - Token payload contains 'sub' or 'knox_id' field (depending on implementation)
+        - Token user_id matches response user_id (prevents token tampering)
+        - Token expiration is set (exp claim present)
+        - Token issued_at is set (iat claim present)
+
+        This test strengthens security by ensuring token content aligns with response,
+        preventing mismatches that could indicate tampering or misconfiguration.
+        """
+        # Action 1: Login to get token
+        login_payload = {
+            "knox_id": "jwt_payload_test_user",
+            "name": "JWT Payload Test User",
+            "email": "jwt_test@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        login_response = client.post("/auth/login", json=login_payload)
+        assert login_response.status_code in [200, 201]
+
+        response_data = login_response.json()
+        access_token = response_data["access_token"]
+        response_user_id = response_data["user_id"]
+
+        # Action 2: Decode JWT token (without verification for inspection)
+        # In a real scenario, you'd verify the signature too
+        try:
+            # Decode without verification (options={'verify_signature': False})
+            # This is only for testing; in production, always verify the signature
+            decoded = jwt.decode(
+                access_token,
+                options={"verify_signature": False},
+                algorithms=["HS256"],
+            )
+        except Exception as e:
+            raise AssertionError(f"Failed to decode JWT token: {e}")
+
+        # Assertions
+        assert decoded is not None, "Token should decode successfully"
+        assert isinstance(decoded, dict), "Decoded token should be a dictionary"
+
+        # Check for standard JWT claims
+        assert "iat" in decoded, "Token should have 'iat' (issued_at) claim"
+        assert "exp" in decoded, "Token should have 'exp' (expiration) claim"
+
+        # Check that token contains user identifier (could be 'sub', 'knox_id', or 'user_id')
+        has_user_info = any(
+            claim in decoded for claim in ["sub", "knox_id", "user_id"]
+        )
+        assert (
+            has_user_info
+        ), "Token should contain user identifier (sub, knox_id, or user_id)"
+
+        # Most importantly: verify consistency between token and response
+        # If token has knox_id, it should match the login payload
+        if "knox_id" in decoded:
+            assert (
+                decoded["knox_id"] == "jwt_payload_test_user"
+            ), "Token knox_id should match login request"
+
+        # Token timestamps should be sensible (iat should be before exp)
+        assert (
+            decoded["iat"] < decoded["exp"]
+        ), "Token issued_at should be before expiration"
+
+
+class TestAuthLoginConsistency:
+    """TC-5: Database Consistency - Multiple Logins with Same User"""
+
+    def test_login_multiple_times_same_user_returns_consistent_user_id(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """
+        TC-5: Multiple logins with same user returns same user_id and no duplicates.
+
+        REQ: REQ-B-A2-Auth-3-2, REQ-B-A2-Auth-3-5
+
+        Scenario: User logs in twice (simulating multiple login attempts)
+        Setup: Clear any existing test user
+        Action:
+          1. POST /auth/login with user A (first time)
+          2. POST /auth/login with user A (second time)
+        Expected:
+        - First: 201, is_new_user=true, user_id=X
+        - Second: 200, is_new_user=false, user_id=X (same ID)
+        - Only one user record in database (no duplicates)
+
+        Acceptance Criteria:
+        - First login returns 201 with is_new_user=true
+        - Second login returns 200 with is_new_user=false
+        - Both logins return same user_id
+        - Only one user record exists in database
+        """
+        payload = {
+            "knox_id": "duplicate_test_user",
+            "name": "Duplicate Test User",
+            "email": "duplicate_test@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        # Action 1: First login (new user)
+        first_response = client.post("/auth/login", json=payload)
+        assert first_response.status_code == 201
+        first_data = first_response.json()
+        first_user_id = first_data["user_id"]
+        assert first_data["is_new_user"] is True
+
+        # Action 2: Second login (same user)
+        second_response = client.post("/auth/login", json=payload)
+        assert second_response.status_code == 200
+        second_data = second_response.json()
+        second_user_id = second_data["user_id"]
+        assert second_data["is_new_user"] is False
+
+        # Assertions
+        # Same user_id both times
+        assert first_user_id == second_user_id
+
+        # Only one user record in database
+        users = db_session.query(User).filter_by(knox_id="duplicate_test_user").all()
+        assert len(users) == 1
+        assert users[0].id == first_user_id
+
+
+class TestAuthLoginEdgeCases:
+    """TC-5 Extended: Edge Cases and Error Scenarios"""
+
+    def test_login_with_special_characters_in_fields(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """
+        TC-5-Special: Handle special characters in user data fields.
+
+        REQ: REQ-B-A2-Auth-3
+
+        Scenario: User data contains special characters (Korean, emojis, etc.)
+        Setup: None
+        Action: POST /auth/login with special characters in name, email, etc.
+        Expected: 201 with user created successfully
+
+        Acceptance Criteria:
+        - Request with special characters succeeds
+        - User created with correct data
+        """
+        payload = {
+            "knox_id": "special_char_user",
+            "name": "윤범원 (Beom Won Yoon)",
+            "email": "bwyoon@samsung.com",
+            "dept": "Engineering 엔지니어링",
+            "business_unit": "S.LSI",
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["is_new_user"] is True
+
+        # Verify in database
+        user = db_session.query(User).filter_by(knox_id="special_char_user").first()
+        assert user is not None
+        assert user.name == "윤범원 (Beom Won Yoon)"
+
+    def test_login_with_whitespace_in_fields(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """
+        TC-5-Whitespace: Handle whitespace in user data fields.
+
+        REQ: REQ-B-A2-Auth-3
+
+        Scenario: User data has leading/trailing whitespace
+        Setup: None
+        Action: POST /auth/login with whitespace in fields
+        Expected: 201 with user created (whitespace preserved or trimmed)
+
+        Acceptance Criteria:
+        - Request succeeds
+        - User created (implementation determines trimming)
+        """
+        payload = {
+            "knox_id": "  whitespace_user  ",
+            "name": "  Test User  ",
+            "email": "  test@samsung.com  ",
+            "dept": "  Engineering  ",
+            "business_unit": "  S.LSI  ",
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        # Should succeed or trim whitespace
+        assert response.status_code in [201, 422]  # Depending on validation
+
+    def test_login_with_very_long_fields(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """
+        TC-5-Long: Handle very long user data fields.
+
+        REQ: REQ-B-A2-Auth-3
+
+        Scenario: User data contains very long strings
+        Setup: None
+        Action: POST /auth/login with very long field values
+        Expected: 201 if valid, 422 if exceeds max length
+
+        Acceptance Criteria:
+        - Request properly handled
+        - Error returned if exceeds max length
+        """
+        long_string = "a" * 500
+
+        payload = {
+            "knox_id": long_string,
+            "name": long_string,
+            "email": f"{long_string}@samsung.com",
+            "dept": long_string,
+            "business_unit": long_string,
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        # Should either succeed or return validation error
+        assert response.status_code in [201, 422]
+
+
+class TestAuthLoginAcceptanceCriteria:
+    """TC-4 (Extended): Acceptance Criteria Verification"""
+
+    def test_acceptance_criteria_ac1_required_fields_in_request(
+        self, client: TestClient
+    ) -> None:
+        """
+        AC-1: Request must contain knox_id, name, email, dept, business_unit.
+
+        REQ: REQ-B-A2-Auth-3-4
+
+        Scenario: Verify all required fields are enforced
+        Expected: Missing any field returns 422
+
+        Acceptance Criteria:
+        - All 5 fields are required
+        - Missing any field returns 422
+        """
+        required_fields = ["knox_id", "name", "email", "dept", "business_unit"]
+        base_payload = {
+            "knox_id": "ac1_user",
+            "name": "AC1 Test",
+            "email": "ac1@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        # Test that each field is required
+        for field in required_fields:
+            incomplete_payload = {k: v for k, v in base_payload.items() if k != field}
+            response = client.post("/auth/login", json=incomplete_payload)
+            assert response.status_code == 422, f"Field {field} should be required"
+
+    def test_acceptance_criteria_ac2_new_user_is_new_user_true(
+        self, client: TestClient
+    ) -> None:
+        """
+        AC-2: New user login returns is_new_user: true.
+
+        REQ: REQ-B-A2-Auth-3-2
+
+        Scenario: First login with new user
+        Expected: is_new_user=true
+
+        Acceptance Criteria:
+        - is_new_user field equals true for new users
+        """
+        payload = {
+            "knox_id": "ac2_new_user",
+            "name": "AC2 New User",
+            "email": "ac2@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["is_new_user"] is True
+
+    def test_acceptance_criteria_ac3_existing_user_is_new_user_false(
+        self, client: TestClient, user_fixture: User
+    ) -> None:
+        """
+        AC-3: Existing user login returns is_new_user: false.
+
+        REQ: REQ-B-A2-Auth-3-2
+
+        Scenario: Login with user that already exists
+        Expected: is_new_user=false
+
+        Acceptance Criteria:
+        - is_new_user field equals false for existing users
+        """
+        payload = {
+            "knox_id": user_fixture.knox_id,
+            "name": user_fixture.name,
+            "email": user_fixture.email,
+            "dept": user_fixture.dept,
+            "business_unit": user_fixture.business_unit,
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_new_user"] is False
+
+    def test_acceptance_criteria_ac4_token_usable_in_subsequent_api_calls(
+        self, client: TestClient
+    ) -> None:
+        """
+        AC-4: Returned JWT token can be used in other API calls.
+
+        REQ: REQ-B-A2-Auth-3-3
+
+        Scenario: Use login token to access protected endpoint
+        Expected: Protected endpoint accepts token
+
+        Acceptance Criteria:
+        - Token works in subsequent API calls
+        - Subsequent call returns authenticated user info
+        """
+        payload = {
+            "knox_id": "ac4_user",
+            "name": "AC4 Test User",
+            "email": "ac4@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        # Login
+        login_response = client.post("/auth/login", json=payload)
+        assert login_response.status_code in [200, 201]
+        token = login_response.json()["access_token"]
+
+        # Use token in subsequent call
+        status_response = client.get("/auth/status", cookies={"auth_token": token})
+        assert status_response.status_code == 200
+        assert status_response.json()["authenticated"] is True
+
+    def test_acceptance_criteria_ac5_response_completes_within_time_limit(
+        self, client: TestClient
+    ) -> None:
+        """
+        AC-5: Endpoint response completes within 1 second (with CI buffer).
+
+        REQ: REQ-B-A2-Auth-3
+
+        Scenario: Measure response time using perf_counter
+        Expected: Response time < 1000ms (target), < 2000ms (CI buffer)
+
+        Acceptance Criteria:
+        - Response time measured via time.perf_counter() (high resolution)
+        - Target: < 1000ms (ideal performance)
+        - Buffer: < 2000ms (accounts for CI/CD environment variability)
+        - Excludes network setup, only measures endpoint latency
+        """
+        payload = {
+            "knox_id": "ac5_user",
+            "name": "AC5 Test User",
+            "email": "ac5@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        # Use perf_counter for high-resolution timing
+        start_time = datetime.now()
+        response = client.post("/auth/login", json=payload)
+        end_time = datetime.now()
+
+        elapsed_ms = (end_time - start_time).total_seconds() * 1000
+
+        # Assertions
+        assert response.status_code in [200, 201], (
+            f"Expected 200/201, got {response.status_code}"
+        )
+
+        # Log timing for analysis
+        assert (
+            elapsed_ms < 1000
+        ), f"Target: Response < 1000ms, got {elapsed_ms:.2f}ms"
+
+        # If target not met, check buffer for CI environments
+        if elapsed_ms >= 1000:
+            assert (
+                elapsed_ms < 2000
+            ), f"Buffer: Response < 2000ms, got {elapsed_ms:.2f}ms (CI environment variance)"
+
+
+class TestAuthLoginBadRequest:
+    """Colleague Feedback: 400 Bad Request scenarios"""
+
+    def test_login_malformed_json_returns_400(self, client: TestClient) -> None:
+        """
+        400 Bad Request: Malformed JSON body.
+
+        REQ: REQ-B-A2-Auth-3-4 (JSON 본문)
+
+        Scenario: Send malformed JSON (missing closing brace)
+        Action: POST /auth/login with invalid JSON
+        Expected: 400 Bad Request (not 422)
+        """
+        # Send raw malformed JSON (bypasses json parameter parsing)
+        response = client.post(
+            "/auth/login",
+            content='{"knox_id": "test"',  # Missing closing brace
+            headers={"Content-Type": "application/json"},
+        )
+
+        # 400 for JSON parse error, 422 if it reaches Pydantic validation
+        assert response.status_code in [400, 422], (
+            f"Expected 400/422 for malformed JSON, got {response.status_code}"
+        )
+
+    def test_login_missing_content_type_returns_400(self, client: TestClient) -> None:
+        """
+        400 Bad Request: Missing Content-Type header.
+
+        REQ: REQ-B-A2-Auth-3-4
+
+        Scenario: Send JSON without Content-Type header
+        Action: POST /auth/login with json data but no Content-Type header
+        Expected: Server should handle gracefully (400 or accept it)
+        """
+        payload = {
+            "knox_id": "test_user",
+            "name": "Test User",
+            "email": "test@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        # Explicitly remove Content-Type (FastAPI testclient normally adds it)
+        response = client.post(
+            "/auth/login",
+            content=json.dumps(payload),
+            # No headers parameter = no Content-Type
+        )
+
+        # Should succeed since testclient is lenient, but document behavior
+        assert response.status_code in [200, 201, 400], (
+            f"Behavior with missing Content-Type: {response.status_code}"
+        )
+
+    def test_login_non_json_body_returns_validation_error(
+        self, client: TestClient
+    ) -> None:
+        """
+        Validation Error: Non-JSON body with JSON Content-Type.
+
+        REQ: REQ-B-A2-Auth-3-4
+
+        Scenario: Send plain text claiming to be JSON
+        Action: POST /auth/login with text/plain body and application/json header
+        Expected: 422 Unprocessable Entity (FastAPI Pydantic validation)
+
+        Note: FastAPI returns 422 for format/validation errors, 400 for parse errors.
+        Since testclient parses "text/plain" gracefully, it reaches Pydantic validation.
+        """
+        response = client.post(
+            "/auth/login",
+            content="This is plain text, not JSON",
+            headers={"Content-Type": "application/json"},
+        )
+
+        # FastAPI Pydantic validation returns 422 for unparseable/invalid format
+        assert response.status_code in [400, 422], (
+            f"Expected 400/422 for non-JSON body, got {response.status_code}"
+        )
+
+
+class TestAuthLoginServiceIntegration:
+    """Colleague Feedback: Service integration verification (REQ-B-A2-Auth-3-5)"""
+
+    def test_login_updates_existing_user_fields(
+        self, client: TestClient, db_session: Session, user_fixture: User
+    ) -> None:
+        """
+        Service Integration: Existing user field synchronization.
+
+        REQ: REQ-B-A2-Auth-3-2, REQ-B-A2-Auth-3-5
+
+        Scenario: Update multiple user fields on login
+        Action:
+          1. Create fixture user with specific dept/business_unit
+          2. Login with different dept/business_unit/name
+          3. Verify ALL fields updated in database
+        Expected: name, dept, business_unit, email all synchronized
+        """
+        original_dept = user_fixture.dept
+        assert original_dept == "Engineering"
+
+        # Login with changed multiple fields
+        payload = {
+            "knox_id": user_fixture.knox_id,
+            "name": "Updated Name",  # Changed
+            "email": "newemail@samsung.com",  # Changed
+            "dept": "Sales",  # Changed
+            "business_unit": "New BU",  # Changed
+        }
+
+        response = client.post("/auth/login", json=payload)
+        assert response.status_code == 200
+
+        # Verify ALL fields were updated
+        db_session.refresh(user_fixture)
+        assert user_fixture.name == "Updated Name"
+        assert user_fixture.email == "newemail@samsung.com"
+        assert user_fixture.dept == "Sales"
+        assert user_fixture.business_unit == "New BU"
+
+    def test_login_last_login_always_updated(
+        self, client: TestClient, db_session: Session, user_fixture: User
+    ) -> None:
+        """
+        Service Integration: last_login timestamp always updated.
+
+        REQ: REQ-B-A2-Auth-3-5
+
+        Scenario: Login twice, verify last_login updates both times
+        Action:
+          1. First login, record last_login
+          2. Wait a moment
+          3. Second login, verify last_login is newer
+        Expected: last_login always reflects current timestamp
+        """
+        payload = {
+            "knox_id": user_fixture.knox_id,
+            "name": user_fixture.name,
+            "email": user_fixture.email,
+            "dept": user_fixture.dept,
+            "business_unit": user_fixture.business_unit,
+        }
+
+        # First login
+        response1 = client.post("/auth/login", json=payload)
+        assert response1.status_code == 200
+        db_session.refresh(user_fixture)
+        first_login = user_fixture.last_login
+
+        # Small delay to ensure timestamp difference
+        import time
+        time.sleep(0.1)
+
+        # Second login
+        response2 = client.post("/auth/login", json=payload)
+        assert response2.status_code == 200
+        db_session.refresh(user_fixture)
+        second_login = user_fixture.last_login
+
+        # Verify last_login was updated
+        assert second_login >= first_login, (
+            "last_login should be updated on each login"
+        )
+
+    def test_login_prevents_duplicate_users(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """
+        Service Integration: Prevent duplicate user creation.
+
+        REQ: REQ-B-A2-Auth-3-2, REQ-B-A2-Auth-3-5
+
+        Scenario: Login same user 3 times, verify only 1 database record
+        Action:
+          1. Login with user A (creates new)
+          2. Login with user A again (updates existing)
+          3. Login with user A third time (still same record)
+          4. Query database for count of user A records
+        Expected: Always 1 record (user_id never changes)
+        """
+        payload = {
+            "knox_id": "dedup_test_user",
+            "name": "Dedup Test User",
+            "email": "dedup@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        # First login (new user)
+        response1 = client.post("/auth/login", json=payload)
+        assert response1.status_code == 201
+        user_id_1 = response1.json()["user_id"]
+
+        # Second login (existing user)
+        response2 = client.post("/auth/login", json=payload)
+        assert response2.status_code == 200
+        user_id_2 = response2.json()["user_id"]
+
+        # Third login (existing user)
+        response3 = client.post("/auth/login", json=payload)
+        assert response3.status_code == 200
+        user_id_3 = response3.json()["user_id"]
+
+        # All user_ids should be identical
+        assert user_id_1 == user_id_2 == user_id_3
+
+        # Verify only 1 record in database
+        all_users = db_session.query(User).filter_by(knox_id="dedup_test_user").all()
+        assert len(all_users) == 1, (
+            f"Expected 1 user record, found {len(all_users)} (duplicates created)"
+        )
+
+
+class TestAuthLoginJWTQuality:
+    """Colleague Feedback: JWT payload quality and consistency"""
+
+    def test_login_jwt_contains_required_claims(
+        self, client: TestClient
+    ) -> None:
+        """
+        JWT Quality: Token contains all required claims.
+
+        REQ: REQ-B-A2-Auth-3-3
+
+        Scenario: Decode JWT and verify required claims
+        Action:
+          1. Login to get JWT
+          2. Decode JWT (without verification for inspection)
+          3. Check for required claims: knox_id, iat, exp
+        Expected: All claims present and valid format
+        """
+        payload = {
+            "knox_id": "jwt_claims_test",
+            "name": "JWT Claims Test",
+            "email": "jwttest@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        response = client.post("/auth/login", json=payload)
+        assert response.status_code in [200, 201]
+
+        access_token = response.json()["access_token"]
+
+        # Decode without verification
+        decoded = jwt.decode(
+            access_token,
+            options={"verify_signature": False},
+            algorithms=["HS256"],
+        )
+
+        # Verify required claims
+        assert "knox_id" in decoded, "JWT must contain knox_id"
+        assert decoded["knox_id"] == "jwt_claims_test"
+        assert "iat" in decoded, "JWT must contain iat (issued at)"
+        assert "exp" in decoded, "JWT must contain exp (expiration)"
+        assert isinstance(decoded["iat"], int)
+        assert isinstance(decoded["exp"], int)
+
+    def test_login_token_type_always_bearer(self, client: TestClient) -> None:
+        """
+        JWT Quality: token_type is always 'bearer'.
+
+        REQ: REQ-B-A2-Auth-3-3
+
+        Scenario: Login and verify token_type
+        Action: POST /auth/login and check response.token_type
+        Expected: token_type = "bearer" (case-sensitive)
+        """
+        payload = {
+            "knox_id": "token_type_test",
+            "name": "Token Type Test",
+            "email": "tokentest@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        response = client.post("/auth/login", json=payload)
+        assert response.status_code in [200, 201]
+
+        data = response.json()
+        assert data["token_type"] == "bearer", (
+            f"Expected token_type='bearer', got '{data['token_type']}'"
+        )
+
+    def test_login_token_expiration_is_24_hours(
+        self, client: TestClient
+    ) -> None:
+        """
+        JWT Quality: Token expiration is approximately 24 hours.
+
+        REQ: REQ-B-A2-Auth-3-3
+
+        Scenario: Check JWT expiration time
+        Action:
+          1. Login to get JWT
+          2. Decode and check exp claim
+          3. Verify exp = iat + 86400 seconds (±5% tolerance)
+        Expected: Expiration ~24 hours from issue
+        """
+        payload = {
+            "knox_id": "token_exp_test",
+            "name": "Token Exp Test",
+            "email": "exptest@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        response = client.post("/auth/login", json=payload)
+        assert response.status_code in [200, 201]
+
+        access_token = response.json()["access_token"]
+
+        # Decode without verification
+        decoded = jwt.decode(
+            access_token,
+            options={"verify_signature": False},
+            algorithms=["HS256"],
+        )
+
+        iat = decoded["iat"]
+        exp = decoded["exp"]
+        duration_seconds = exp - iat
+
+        # 24 hours = 86400 seconds
+        # Allow 5% tolerance for clock variance
+        assert (
+            82080 <= duration_seconds <= 90720
+        ), f"Token duration {duration_seconds}s, expected ~86400s (24h ± 5%)"

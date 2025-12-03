@@ -10,7 +10,8 @@ import os
 import jwt as pyjwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy.exc import DataError
 from sqlalchemy.orm import Session
 
 from src.backend.database import get_db
@@ -28,6 +29,8 @@ router = APIRouter(tags=["auth"])
 )
 def auth_redirect() -> RedirectResponse:
     """
+    Open ID backend endpoint for OAuth token exchange and redirection.
+
     The Open ID backend endpoint is responsible for receiving an Open ID token, issuing a system token in exchange, and then redirecting the user (or the browser) to a pre-set redirection URL along with the newly issued system token.
 
     Web app -> (Redirect) Identity Provider -> (POST) Backend -> (Redirect) -> Web app
@@ -48,11 +51,47 @@ def auth_redirect() -> RedirectResponse:
     return RedirectResponse(url=redirect_url, status_code=302)
 
 
+class LoginRequest(BaseModel):
+    """
+    Request model for SSO login.
+
+    Attributes:
+        knox_id: User's Knox ID
+        name: User's full name
+        dept: Department
+        business_unit: Business unit
+        email: Email address (must be valid email format)
+
+    """
+
+    knox_id: str = Field(..., description="User's Knox ID")
+    name: str = Field(..., description="User's full name")
+    dept: str = Field(..., description="Department")
+    business_unit: str = Field(..., description="Business unit")
+    email: EmailStr = Field(..., description="Email address (validated format)")
+
+
+class LoginResponse(BaseModel):
+    """
+    Response model for authentication.
+
+    Attributes:
+        access_token: Signed JWT token
+        token_type: Token type (bearer)
+        user_id: User's database primary key (integer)
+        is_new_user: True if new user account was created
+
+    """
+
+    access_token: str = Field(..., description="JWT token")
+    token_type: str = Field(default="bearer", description="Token type")
+    user_id: int = Field(..., description="User's database ID (integer primary key)")
+    is_new_user: bool = Field(..., description="True if new user created")
+
+
 class StatusResponse(BaseModel):
     """
     Response model for authentication status endpoint.
-
-
 
     REQ: REQ-B-A1-9
 
@@ -66,6 +105,89 @@ class StatusResponse(BaseModel):
     authenticated: bool = Field(..., description="Authentication status")
     user_id: int | None = Field(default=None, description="User's database ID")
     knox_id: str | None = Field(default=None, description="User's Knox ID")
+
+
+@router.post(
+    "/login",
+    response_model=LoginResponse,
+    summary="Direct Login Endpoint",
+    description="CLI and development login endpoint that accepts user info and returns JWT token",
+)
+def login(
+    request: LoginRequest,
+    db: Session = Depends(get_db),  # noqa: B008
+) -> JSONResponse:
+    """
+    Direct login endpoint for CLI and development use.
+
+    REQ: REQ-B-A2-Auth-3
+
+    Accepts user data (knox_id, name, email, dept, business_unit),
+    creates new user if doesn't exist, updates if exists,
+    and returns JWT token with user info.
+
+    Args:
+        request: LoginRequest containing user information
+        db: Database session
+
+    Returns:
+        JSONResponse with:
+        - 201 Created (new user): {access_token, token_type, user_id, is_new_user: true}
+        - 200 OK (existing user): {access_token, token_type, user_id, is_new_user: false}
+
+    Raises:
+        HTTPException: 422 if validation fails, 500 if internal error
+
+    """
+    try:
+        # Prepare user data dict from request
+        user_data = {
+            "knox_id": request.knox_id,
+            "name": request.name,
+            "email": request.email,
+            "dept": request.dept,
+            "business_unit": request.business_unit,
+        }
+
+        # Call service to create/update user and generate token
+        auth_service = AuthService(db)
+        jwt_token, is_new_user, user_id = auth_service.authenticate_or_create_user(user_data)
+
+        # Determine status code: 201 for new user, 200 for existing
+        status_code = 201 if is_new_user else 200
+
+        # Return response with appropriate status code
+        return JSONResponse(
+            status_code=status_code,
+            content={
+                "access_token": jwt_token,
+                "token_type": "bearer",
+                "user_id": user_id,
+                "is_new_user": is_new_user,
+            },
+        )
+
+    except ValueError as e:
+        # Validation errors (missing required fields)
+        logger.warning(f"Login validation error: {str(e)}")
+        raise HTTPException(
+            status_code=422,
+            detail=str(e),
+        ) from e
+    except DataError as e:
+        # Database validation errors (e.g., field too long)
+        logger.warning(f"Login data validation error: {str(e)}")
+        raise HTTPException(
+            status_code=422,
+            detail="Input data validation failed: field value exceeds maximum length",
+        ) from e
+    except Exception as e:
+        # Unexpected errors
+        logger.exception("Login error")
+        raise HTTPException(
+            status_code=500,
+            detail="Login failed",
+        ) from e
 
 
 @router.get(
