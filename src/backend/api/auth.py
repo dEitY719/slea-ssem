@@ -86,20 +86,11 @@ class LoginResponse(BaseModel):
     is_new_user: bool = Field(..., description="True if new user created")
 
 
-class OIDCCallbackRequest(BaseModel):
-    """
-    Request model for OIDC callback endpoint.
-
-    REQ: REQ-B-A1-1
-    TODO: Define form-urlencoded parameters (code, state)
-    """
-
-    pass
-
-
 class StatusResponse(BaseModel):
     """
     Response model for authentication status endpoint.
+
+
 
     REQ: REQ-B-A1-9
 
@@ -164,42 +155,6 @@ def login(
     except Exception as e:
         logger.exception("Authentication error")
         raise HTTPException(status_code=500, detail="Authentication failed") from e
-
-
-@router.post(
-    "/oidc/callback",
-    summary="OIDC Callback",
-    description="Handle OIDC callback from IDP (form POST)",
-)
-def oidc_callback(
-    db: Session = Depends(get_db),  # noqa: B008
-):
-    """
-    Handle OIDC callback from IDP.
-
-    REQ: REQ-B-A1-1, REQ-B-A1-2, REQ-B-A1-3, REQ-B-A1-4, REQ-B-A1-5, REQ-B-A1-6, REQ-B-A1-7
-
-    TODO: Implement IDP callback handling
-    1. Receive form-urlencoded (code, state) from IDP
-    2. Validate state
-    3. Exchange code for IDP tokens (with client_secret)
-    4. Validate ID Token
-    5. Extract user claims and save to DB
-    6. Generate JWT and set HttpOnly cookie
-    7. Return 302 redirect to /home
-
-    Args:
-        db: Database session
-
-    Returns:
-        RedirectResponse with HttpOnly cookie
-
-    Raises:
-        HTTPException: If OIDC callback fails
-
-    """
-    # TODO: Implement OIDC callback logic
-    raise HTTPException(status_code=501, detail="OIDC callback not implemented")
 
 
 @router.get(
