@@ -106,7 +106,7 @@ SLEA-SSEM MVP 1.0.0은 임직원의 **AI 역량 수준을 객관적으로 측정
 
 [2. IDP - 사용자 인증]
 
-[3. 백엔드 - 콜백 처리 (POST /auth/oidc/callback)]
+[3. 백엔드 - 콜백 처리 (POST /auth)]
 
 [4. /home 진입 후]
 - nickname 체크 (자동)
@@ -780,7 +780,9 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 
 **API 엔드포인트**:
 
-**1. POST /auth/oidc/callback** - OIDC 토큰 교환 및 JWT 발급
+**1. POST /auth** - OIDC 토큰 교환 및 JWT 발급
+
+> **Note**: 이 엔드포인트는 별도로 구현되며, public API로 공개되지 않습니다.
 
 **2. GET /auth/status** - 인증 상태 확인 (REQ-B-A1-9)
 
@@ -1561,8 +1563,8 @@ Content-Type: application/json
 > **Note**: Auth API 명세는 REQ-B-A1 섹션 참조
 
 ```http
-POST /auth/oidc/callback
-  설명: IDP로부터 POST 콜백 수신, 토큰 교환, JWT 발급
+POST /auth
+  설명: IDP로부터 POST 콜백 수신, 토큰 교환, JWT 발급 (별도 구현, 비공개)
   요청: form-urlencoded (code, state)
   응답: 302 리다이렉트 + HttpOnly 쿠키
 
