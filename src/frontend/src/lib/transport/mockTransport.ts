@@ -423,22 +423,25 @@ class MockTransport implements HttpTransport {
     if (accessLevel === 'private-auth') {
       // Private-Auth: SSO 인증만 필요
       if (!mockAuthState.isAuthenticated) {
-        debugLog(`[Mock Transport] 401 Unauthorized - Private-Auth requires authentication`)
+        console.warn('[Mock Auth] 401 Unauthorized - redirecting to /sso')
         const returnTo = encodeURIComponent(window.location.pathname)
-        throw new Error(`401 Unauthorized (mock: redirect to /sso?returnTo=${returnTo})`)
+        window.location.href = `/sso?returnTo=${returnTo}`
+        return new Promise(() => {}) as Promise<T>
       }
     } else if (accessLevel === 'private-member') {
       // Private-Member: 회원 인증 필요 (nickname 필수)
       if (!mockAuthState.isAuthenticated) {
         // 인증 안됨 → 401
-        debugLog(`[Mock Transport] 401 Unauthorized - Private-Member requires authentication`)
+        console.warn('[Mock Auth] 401 Unauthorized - redirecting to /sso')
         const returnTo = encodeURIComponent(window.location.pathname)
-        throw new Error(`401 Unauthorized (mock: redirect to /sso?returnTo=${returnTo})`)
+        window.location.href = `/sso?returnTo=${returnTo}`
+        return new Promise(() => {}) as Promise<T>
       } else if (!mockAuthState.hasNickname) {
         // 인증됨 but 비회원 → 403 NEED_SIGNUP
-        debugLog(`[Mock Transport] 403 NEED_SIGNUP - Private-Member requires nickname`)
+        console.warn('[Mock Auth] 403 Signup Required - redirecting to /signup')
         const returnTo = encodeURIComponent(window.location.pathname)
-        throw new Error(`403 NEED_SIGNUP (mock: redirect to /signup?returnTo=${returnTo})`)
+        window.location.href = `/signup?returnTo=${returnTo}`
+        return new Promise(() => {}) as Promise<T>
       }
     }
     // Public: 인증 체크 안 함
@@ -493,18 +496,28 @@ class MockTransport implements HttpTransport {
       return response as T
     }
 
-    // Handle auth login endpoint (Public API)
-      if (normalizedUrl === API_AUTH_LOGIN && method === 'POST') {
-        const response = mockData[API_AUTH_LOGIN]
-        if (!response) {
-          throw new Error('Mock login response not configured')
-        }
-        // REQ-B-A0-API: Login grants SSO authentication
-        mockAuthState.isAuthenticated = true
-        debugLog('[Mock Transport] Login successful - authenticated=true')
-        debugLog('[Mock Transport] Response:', response)
-        return response as T
+    // Handle auth login endpoint (Private-Auth API)
+    // REQ-B-A0-API: Check SSO authentication, then check membership
+    if (normalizedUrl === API_AUTH_LOGIN && method === 'POST') {
+      // This endpoint is Private-Auth, so SSO check already happened above
+      // Now check membership status
+      if (!mockAuthState.hasNickname) {
+        // SSO authenticated but not a member → 403 NEED_SIGNUP
+        console.warn('[Mock Auth] 403 Signup Required - redirecting to /signup')
+        const returnTo = encodeURIComponent(window.location.pathname)
+        window.location.href = `/signup?returnTo=${returnTo}`
+        return new Promise(() => {}) as Promise<T>
       }
+
+      // SSO authenticated and is a member → success
+      const response = mockData[API_AUTH_LOGIN]
+      if (!response) {
+        throw new Error('Mock login response not configured')
+      }
+      debugLog('[Mock Transport] Login successful - authenticated and member')
+      debugLog('[Mock Transport] Response:', response)
+      return response as T
+    }
 
     // Handle nickname check endpoint
     if (normalizedUrl === API_PROFILE_NICKNAME_CHECK && method === 'POST' && requestData?.nickname) {

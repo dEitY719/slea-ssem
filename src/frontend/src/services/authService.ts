@@ -46,21 +46,21 @@ export const authService = {
    * @returns Auth status including authentication state and nickname
    */
   async getAuthStatus(): Promise<AuthStatusResponse> {
-    return transport.get<AuthStatusResponse>('/auth/status', {
+    return transport.get<AuthStatusResponse>('/api/auth/status', {
       accessLevel: 'public'
     })
   },
 
   /**
    * Login with Samsung AD credentials
-   * REQ-B-A0-API: Public API (no auth required to login)
+   * REQ-B-A0-API: Private-Auth API (checks SSO, then membership)
    *
    * @param userData - User data from Samsung AD
    * @returns Login response with JWT token
    */
   async login(userData: LoginRequest): Promise<LoginResponse> {
     return transport.post<LoginResponse>('/api/auth/login', userData, {
-      accessLevel: 'public'
+      accessLevel: 'private-auth'
     })
   },
 

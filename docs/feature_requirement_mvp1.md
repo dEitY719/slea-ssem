@@ -181,9 +181,9 @@ SLEA-SSEM MVP 1.0.0은 임직원의 **AI 역량 수준을 객관적으로 측정
 |--------------|----------|----------|-------------|-------------|
 | `GET /api/statistics/total-participants` | **Public** | ❌ | ❌ | 비인증 사용자도 전체 참여자 수 조회 |
 | `GET /api/statistics/grade-distribution` | **Public** | ❌ | ❌ | 비인증 사용자도 등급 분포 조회 |
-| `GET /auth/status` | **Public** | ❌ | ❌ | 인증 상태 확인 (쿠키 자동 포함) |
-| `POST /auth/login` | **Public** | ❌ | ❌ | 로그인 |
-| `POST /auth/logout` | **Private-Auth** | ✅ | ❌ | 로그아웃 |
+| `GET /api/auth/status` | **Public** | ❌ | ❌ | 인증 상태 확인 (쿠키 자동 포함) |
+| `POST /api/auth/login` | **Private-Auth** | ✅ | ❌ | 로그인 체크 (SSO + 회원여부) |
+| `POST /api/auth/logout` | **Private-Auth** | ✅ | ❌ | 로그아웃 |
 | `GET /api/profile/consent` | **Private-Auth** | ✅ | ❌ | 약관 동의 여부 확인 |
 | `POST /api/profile/consent` | **Private-Auth** | ✅ | ❌ | 약관 동의 |
 | `GET /api/profile/nickname` | **Private-Auth** | ✅ | ❌ | 닉네임 존재 여부 확인 |
@@ -1042,9 +1042,10 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 |--------------|----------|------------|---------|---------|------|
 | `GET /api/statistics/total-participants` | **Public** | - | ❌ | ❌ | 전체 참여자 수 (개인정보 없음) |
 | `GET /api/statistics/grade-distribution` | **Public** | - | ❌ | ❌ | 등급 분포 (개인정보 없음) |
-| `GET /auth/status` | **Public** | - | ❌ | ❌ | 쿠키 있으면 검증, 없으면 401 |
-| `POST /auth` | **Public** | - | ❌ | ❌ | IDP 콜백 처리 |
-| `POST /auth/logout` | **Private-Auth** | `auth_required` | ✅ | ❌ | SSO 인증만 확인 |
+| `GET /api/auth/status` | **Public** | - | ❌ | ❌ | 쿠키 있으면 검증, 없으면 401 |
+| `POST /api/auth` | **Public** | - | ❌ | ❌ | IDP 콜백 처리 |
+| `POST /api/auth/login` | **Private-Auth** | `auth_required` | ✅ | ❌ | 로그인 체크 (SSO + 회원여부 검증) |
+| `POST /api/auth/logout` | **Private-Auth** | `auth_required` | ✅ | ❌ | SSO 인증만 확인 |
 | `GET /api/profile/consent` | **Private-Auth** | `auth_required` | ✅ | ❌ | 약관 동의 여부 |
 | `POST /api/profile/consent` | **Private-Auth** | `auth_required` | ✅ | ❌ | 약관 동의 |
 | `GET /api/profile/nickname` | **Private-Auth** | `auth_required` | ✅ | ❌ | 닉네임 존재 여부 |
