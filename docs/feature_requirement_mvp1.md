@@ -161,17 +161,19 @@ SLEA-SSEM MVP 1.0.0은 임직원의 **AI 역량 수준을 객관적으로 측정
 ## REQ-F-A0-API: Frontend API 접근 레벨 정의
 
 > **목적**: Frontend에서 API를 3가지 레벨로 구분하여 호출
+>
 > **원칙**:
 > - **Public**: 인증 불필요, 개인정보 없음, 유저 식별 불가 데이터만
-> - **Private-Auth**: 인증만 필요 (회원가입 전), 회원 레코드 확인 안 함
-> - **Private-Member**: 인증 + 회원 레코드 필요 (회원가입 후), DB에 nickname 있어야 함
+> - **Private-Auth**: SSO 인증만 필요 (회원가입 전 단계: 약관동의, 닉네임등록 등)
+> - **Private-Member**: 회원 로그인 필요 (nickname 있는 회원, 테스트/프로필 등)
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-F-A0-API-1** | Public API 호출 시 인증 토큰을 포함하지 않아야 한다. | **M** |
-| **REQ-F-A0-API-2** | Private-Auth API 호출 시 인증 토큰만 포함해야 한다. (회원 레코드 확인 안 함) | **M** |
-| **REQ-F-A0-API-3** | Private-Member API 호출 시 인증 토큰을 포함하고, 401 응답 시 로그인 유도해야 한다. | **M** |
-| **REQ-F-A0-API-4** | Private-Member API 호출 시 403 응답(회원 레코드 없음)이면 회원가입 유도해야 한다. | **M** |
+| **REQ-F-A0-API-1** | Public API 호출 시 credentials를 포함하지 않아야 한다. | **M** |
+| **REQ-F-A0-API-2** | Private-Auth/Private-Member API 호출 시 credentials: 'include'로 쿠키를 포함해야 한다. | **M** |
+| **REQ-F-A0-API-3** | 401 응답 시 `/sso?returnTo=<현재경로>`로 자동 리다이렉트해야 한다. | **M** |
+| **REQ-F-A0-API-4** | 403 + code=NEED_SIGNUP 응답 시 `/signup?returnTo=<현재경로>`로 자동 리다이렉트해야 한다. | **M** |
+| **REQ-F-A0-API-5** | 403 기타 응답 시 Error를 throw해야 한다. (권한 없음) | **M** |
 
 ### API 분류표 (Frontend)
 
@@ -197,44 +199,108 @@ SLEA-SSEM MVP 1.0.0은 임직원의 **AI 역량 수준을 객관적으로 측정
 
 ### Transport Layer 구현 가이드
 
-**현재**: `transport.get()` → 모든 요청에 `credentials: 'include'` (쿠키 자동 포함)
-
-**변경 필요**:
-
 ```typescript
 // transport/types.ts
 export type ApiAccessLevel = 'public' | 'private-auth' | 'private-member'
 
 export interface RequestConfig {
   accessLevel?: ApiAccessLevel // 기본값: 'private-member'
-  // ... 기타 옵션
+  headers?: Record<string, string>
+  body?: any
 }
 
 // transport/realTransport.ts
-async get<T>(url: string, config?: RequestConfig): Promise<T> {
-  const accessLevel = config?.accessLevel ?? 'private-member'
+class RealTransport implements HttpTransport {
+  private async request<T>(
+    url: string,
+    method: string,
+    config?: RequestConfig
+  ): Promise<T> {
+    // REQ-F-A0-API: Default access level is 'private-member'
+    const accessLevel = config?.accessLevel ?? 'private-member'
 
-  const fetchConfig: RequestInit = {
-    method: 'GET',
-    headers: {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-    },
+      ...config?.headers,
+    }
+
+    const fetchConfig: RequestInit = {
+      method,
+      headers,
+    }
+
+    // REQ-F-A0-API-1: Public API does not include credentials
+    // REQ-F-A0-API-2, REQ-F-A0-API-3: Private APIs include credentials
+    if (accessLevel !== 'public') {
+      fetchConfig.credentials = 'include' // Include HttpOnly cookies (S1, S2)
+    }
+
+    if (config?.body) {
+      fetchConfig.body = JSON.stringify(config.body)
+    }
+
+    const response = await fetch(url, fetchConfig)
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        detail: `HTTP ${response.status}`,
+        code: null
+      }))
+
+      // REQ-F-A0-API-3: 401 → SSO 리다이렉트 (인증 필요)
+      if (response.status === 401) {
+        console.warn('[Auth] 401 Unauthorized - redirecting to /sso')
+        const returnTo = encodeURIComponent(window.location.pathname)
+        window.location.href = `/sso?returnTo=${returnTo}`
+        return new Promise(() => {}) as Promise<T>
+      }
+
+      // REQ-F-A0-API-4: 403 + NEED_SIGNUP → 회원가입 리다이렉트 (비회원)
+      if (response.status === 403 && error.code === 'NEED_SIGNUP') {
+        console.warn('[Auth] 403 Signup Required - redirecting to /signup')
+        const returnTo = encodeURIComponent(window.location.pathname)
+        window.location.href = `/signup?returnTo=${returnTo}`
+        return new Promise(() => {}) as Promise<T>
+      }
+
+      // REQ-F-A0-API-5: 403 기타 → Forbidden (권한 없음)
+      if (response.status === 403) {
+        const errorMessage = error.detail || 'Forbidden'
+        throw new Error(errorMessage)
+      }
+
+      // Other errors - throw for page to handle
+      const errorMessage = error.detail || `HTTP ${response.status}`
+      throw new Error(errorMessage)
+    }
+
+    return response.json()
   }
 
-  // Public API는 credentials 포함 안 함
-  if (accessLevel !== 'public') {
-    fetchConfig.credentials = 'include'
+  async get<T>(url: string, config?: RequestConfig): Promise<T> {
+    return this.request<T>(url, 'GET', config)
   }
 
-  const response = await fetch(url, fetchConfig)
-
-  // Private-Member API에서 403이면 회원가입 유도
-  if (accessLevel === 'private-member' && response.status === 403) {
-    throw new MembershipRequiredError('회원가입이 필요합니다')
+  async post<T>(url: string, data?: any, config?: RequestConfig): Promise<T> {
+    return this.request<T>(url, 'POST', {
+      ...config,
+      body: data,
+    })
   }
 
-  // ... 기타 에러 처리
+  async put<T>(url: string, data?: any, config?: RequestConfig): Promise<T> {
+    return this.request<T>(url, 'PUT', {
+      ...config,
+      body: data,
+    })
+  }
+
+  async delete<T>(url: string, config?: RequestConfig): Promise<T> {
+    return this.request<T>(url, 'DELETE', config)
+  }
 }
+
+export const realTransport = new RealTransport()
 ```
 
 **사용 예시**:
@@ -245,24 +311,24 @@ const stats = await transport.get('/api/statistics/total-participants', {
   accessLevel: 'public'
 })
 
-// Private-Auth API 호출 (인증만 필요)
+// Private-Auth API 호출 (S1만 필요)
 const consent = await transport.get('/api/profile/consent', {
   accessLevel: 'private-auth'
 })
 
-// Private-Member API 호출 (인증 + 회원가입 필요)
+// Private-Member API 호출 (S2 필요)
 const lastTestResult = await transport.get('/api/profile/last-test-result', {
   accessLevel: 'private-member' // 기본값이므로 생략 가능
 })
 ```
 
-### 에러 처리
+### 에러 처리 매트릭스
 
-| HTTP Status | Access Level | Frontend 동작 |
-|------------|--------------|--------------|
-| **401 Unauthorized** | Private-Auth, Private-Member | → `/sso` 리다이렉트 (재인증) |
-| **403 Forbidden** | Private-Member | → `/signup` 리다이렉트 (회원가입 유도) |
-| **403 Forbidden** | Private-Auth | → 에러 표시 (예: 약관 동의 필요) |
+| HTTP Status | Error Code | 상황 | Frontend 동작 |
+|------------|------------|------|--------------|
+| **401** | - | 인증 필요 또는 세션 만료 | `/sso?returnTo=...` |
+| **403** | `NEED_SIGNUP` | 비회원 (회원가입 필요) | `/signup?returnTo=...` |
+| **403** | - | 권한 없음 (기타) | throw Error (Forbidden) |
 
 **수용 기준**:
 
@@ -955,28 +1021,30 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 ## REQ-B-A0-API: Backend API 접근 레벨 및 Middleware 구현
 
 > **목적**: Backend API를 3가지 접근 레벨로 구분하여 인증 및 회원 레코드 검증 수행
+>
 > **원칙**:
 > - **Public**: 인증 불필요, 개인정보 제외, 누구나 접근 가능
-> - **Private-Auth**: JWT 인증만 필요, users 테이블 레코드 확인 안 함 (회원가입 전)
-> - **Private-Member**: JWT 인증 + users 테이블 레코드 확인 (nickname 필수, 회원가입 후)
+> - **Private-Auth**: SSO 인증만 필요 (회원가입 전 단계: 약관동의, 닉네임등록 등)
+> - **Private-Member**: 회원 로그인 필요 (nickname 있는 회원만 접근)
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
 | **REQ-B-A0-API-1** | Public API는 인증 미들웨어를 적용하지 않고, 개인정보나 유저 식별 가능한 데이터를 반환하지 않아야 한다. | **M** |
-| **REQ-B-A0-API-2** | Private-Auth API는 JWT 인증만 검증하고, users 테이블 레코드 존재 여부는 확인하지 않아야 한다. | **M** |
-| **REQ-B-A0-API-3** | Private-Member API는 JWT 인증과 users 테이블 레코드 존재 여부(nickname 필수)를 모두 검증해야 한다. | **M** |
-| **REQ-B-A0-API-4** | JWT가 없거나 유효하지 않으면 401 Unauthorized를 반환해야 한다. | **M** |
-| **REQ-B-A0-API-5** | Private-Member API에서 JWT는 유효하지만 users 레코드가 없거나 nickname이 없으면 403 Forbidden을 반환해야 한다. | **M** |
+| **REQ-B-A0-API-2** | Private-Auth API는 SSO 인증만 검증해야 한다. (users 레코드 확인 안 함) | **M** |
+| **REQ-B-A0-API-3** | Private-Member API는 회원 인증을 검증해야 한다. (nickname 필수) | **M** |
+| **REQ-B-A0-API-4** | 인증 토큰이 없거나 유효하지 않으면 401 Unauthorized를 반환해야 한다. | **M** |
+| **REQ-B-A0-API-5** | Private-Member API에서 SSO 인증은 됐지만 비회원(nickname 없음)이면 403 + code=NEED_SIGNUP을 반환해야 한다. | **M** |
+| **REQ-B-A0-API-6** | Private-Member API에서 회원인데 세션이 만료된 경우 401을 반환해야 한다. | **M** |
 
 ### API 분류 및 Middleware 적용
 
-| API 엔드포인트 | 접근 레벨 | Middleware | JWT 필요 | 회원 레코드 필요 | 비고 |
-|--------------|----------|------------|---------|---------------|------|
+| API 엔드포인트 | 접근 레벨 | Middleware | 인증 필요 | 회원 필요 | 비고 |
+|--------------|----------|------------|---------|---------|------|
 | `GET /api/statistics/total-participants` | **Public** | - | ❌ | ❌ | 전체 참여자 수 (개인정보 없음) |
 | `GET /api/statistics/grade-distribution` | **Public** | - | ❌ | ❌ | 등급 분포 (개인정보 없음) |
 | `GET /auth/status` | **Public** | - | ❌ | ❌ | 쿠키 있으면 검증, 없으면 401 |
 | `POST /auth` | **Public** | - | ❌ | ❌ | IDP 콜백 처리 |
-| `POST /auth/logout` | **Private-Auth** | `auth_required` | ✅ | ❌ | JWT만 확인, 레코드 확인 안 함 |
+| `POST /auth/logout` | **Private-Auth** | `auth_required` | ✅ | ❌ | SSO 인증만 확인 |
 | `GET /api/profile/consent` | **Private-Auth** | `auth_required` | ✅ | ❌ | 약관 동의 여부 |
 | `POST /api/profile/consent` | **Private-Auth** | `auth_required` | ✅ | ❌ | 약관 동의 |
 | `GET /api/profile/nickname` | **Private-Auth** | `auth_required` | ✅ | ❌ | 닉네임 존재 여부 |
@@ -1149,24 +1217,27 @@ async def update_profile(
 
 ### 에러 응답 형식
 
-**401 Unauthorized** (JWT 없음 또는 유효하지 않음)
+**401 Unauthorized** (인증 필요 또는 세션 만료)
 ```json
 {
   "detail": "Authentication required"
 }
 ```
 
-**403 Forbidden** (회원 레코드 없음)
+**403 Forbidden + NEED_SIGNUP** (비회원)
 ```json
 {
-  "detail": "Member registration required"
+  "detail": {
+    "message": "Signup required",
+    "code": "NEED_SIGNUP"
+  }
 }
 ```
 
-**403 Forbidden** (nickname 없음)
+**403 Forbidden** (권한 없음, 기타)
 ```json
 {
-  "detail": "Nickname setup required"
+  "detail": "Forbidden"
 }
 ```
 
@@ -1182,9 +1253,9 @@ Public API는 다음 데이터만 반환 가능:
 **수용 기준**:
 
 - Public API는 인증 없이 호출 가능하며, 개인정보를 반환하지 않는다.
-- Private-Auth API는 JWT만 검증하고, users 레코드는 확인하지 않는다.
-- Private-Member API는 JWT와 users 레코드(nickname 필수)를 모두 검증한다.
-- JWT 없으면 401, 레코드 없으면 403을 반환한다.
+- Private-Auth API는 SSO 인증만 검증하고, users 레코드는 확인하지 않는다.
+- Private-Member API는 회원 인증을 검증한다. (nickname 필수)
+- 인증 없으면 401, 비회원이면 403 + NEED_SIGNUP을 반환한다.
 - `auth_required`와 `member_required` 미들웨어가 구현된다.
 
 ---
