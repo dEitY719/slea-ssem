@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import AuthErrorPage from './pages/AuthErrorPage'
 import HomePage from './pages/HomePage'
@@ -17,9 +17,11 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LoginPage />} />
+        {/* REQ-F-A0-Landing: Landing page accessible without authentication */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/sso" element={<LoginPage />} />
+        <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/auth-error" element={<AuthErrorPage />} />
-        <Route path="/home" element={<HomePage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/consent" element={<ConsentPage />} />
         <Route path="/nickname-setup" element={<NicknameSetupPage />} />
