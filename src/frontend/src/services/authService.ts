@@ -40,9 +40,11 @@ export const authService = {
   },
 
   /**
-   * Logout (client-side only - removes token from localStorage)
+   * Logout (HttpOnly cookie-based)
+   * TODO: Call backend /auth/logout to clear cookie
    */
   logout(): void {
-    localStorage.removeItem('auth_token')
+    // HttpOnly cookie cannot be removed from client-side
+    // Backend should provide /auth/logout endpoint to clear cookie
   },
 }
