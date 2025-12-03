@@ -1,7 +1,29 @@
 // Real HTTP transport using fetch API
-// REQ: REQ-F-A1-6, REQ-B-A1 (HttpOnly cookie authentication)
+// REQ: REQ-F-A1-6, REQ-B-A1 (HttpOnly cookie authentication), REQ-F-A0-API
 
 import { HttpTransport, RequestConfig } from './types'
+
+// REQ-F-A0-API: Custom error types for access control
+export class UnauthorizedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnauthorizedError'
+  }
+}
+
+export class SignupRequiredError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'SignupRequiredError'
+  }
+}
+
+export class MembershipRequiredError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'MembershipRequiredError'
+  }
+}
 
 class RealTransport implements HttpTransport {
   private async request<T>(
@@ -9,6 +31,9 @@ class RealTransport implements HttpTransport {
     method: string,
     config?: RequestConfig
   ): Promise<T> {
+    // REQ-F-A0-API: Default access level is 'private-member'
+    const accessLevel = config?.accessLevel ?? 'private-member'
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...config?.headers,
@@ -17,7 +42,12 @@ class RealTransport implements HttpTransport {
     const fetchConfig: RequestInit = {
       method,
       headers,
-      credentials: 'include', // REQ-F-A1-6: Include HttpOnly cookies automatically
+    }
+
+    // REQ-F-A0-API-1: Public API does not include credentials
+    // REQ-F-A0-API-2, REQ-F-A0-API-3: Private APIs include credentials
+    if (accessLevel !== 'public') {
+      fetchConfig.credentials = 'include' // Include HttpOnly cookies
     }
 
     if (config?.body) {
@@ -28,8 +58,28 @@ class RealTransport implements HttpTransport {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({
-        detail: `HTTP ${response.status}`
+        detail: `HTTP ${response.status}`,
+        code: null
       }))
+
+      // REQ-F-A0-API-3: Private-Auth + 401 → UnauthorizedError (redirect to /sso)
+      if (accessLevel === 'private-auth' && response.status === 401) {
+        throw new UnauthorizedError(error.detail || 'Authentication required')
+      }
+
+      // REQ-F-A0-API-4: Private-Member + 401 → UnauthorizedError (redirect to /sso)
+      if (accessLevel === 'private-member' && response.status === 401) {
+        throw new UnauthorizedError(error.detail || 'Authentication required')
+      }
+
+      // REQ-F-A0-API-4: Private-Member + 403 + code=NEED_SIGNUP → SignupRequiredError
+      if (accessLevel === 'private-member' && response.status === 403) {
+        if (error.code === 'NEED_SIGNUP') {
+          throw new SignupRequiredError(error.detail || 'Signup required')
+        }
+        throw new MembershipRequiredError(error.detail || 'Member registration required')
+      }
+
       throw new Error(error.detail || 'Request failed')
     }
 

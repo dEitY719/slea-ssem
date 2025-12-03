@@ -82,6 +82,199 @@ SLEA-SSEM MVP 1.0.0은 임직원의 **AI 역량 수준을 객관적으로 측정
 
 # 📋 FRONTEND REQUIREMENTS
 
+## REQ-F-A0-Landing: 비인증 사용자를 위한 랜딩 페이지 Preview
+
+> **목적**: SSO 인증을 하지 않은 사용자도 "/" 경로에서 서비스 내용을 미리 볼 수 있도록 함
+> **UX 원칙**: 모든 섹션의 영역은 항상 표시하되, 개인화 데이터는 인증/회원가입 완료 후에만 로딩
+> **공개 데이터**: 로그인 없이도 표시 (예: 전체 참여자 수)
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-F-A0-Landing-1** | `/` 경로는 인증 없이 접근 가능해야 하며, HomePage를 표시해야 한다. | **M** |
+| **REQ-F-A0-Landing-2** | HomePage는 인증 체크 후 리다이렉트하지 않고, 인증 여부와 관계없이 렌더링되어야 한다. | **M** |
+| **REQ-F-A0-Landing-3** | 모든 섹션의 영역(메인 CTA, 레벨 카드 등)은 인증 여부와 관계없이 항상 표시되어야 한다. | **M** |
+| **REQ-F-A0-Landing-4** | 개인화 데이터(nickname, lastTestResult)는 인증된 사용자에게만 로딩되어야 한다. | **M** |
+| **REQ-F-A0-Landing-5** | 공개 데이터(totalParticipants)는 비인증 사용자에게도 표시되어야 한다. | **M** |
+| **REQ-F-A0-Landing-6** | 비인증 사용자가 "레벨테스트 시작하기" 버튼을 클릭하면 `/sso`로 리다이렉트해야 한다. | **M** |
+| **REQ-F-A0-Landing-7** | 인증된 사용자가 "레벨테스트 시작하기" 버튼을 클릭하면 기존 플로우(consent → nickname → test)를 따라야 한다. | **M** |
+
+**라우팅 변경**:
+
+```
+변경 전:
+- "/" → LoginPage (자동 IDP 리다이렉트)
+- "/home" → HomePage (인증 필수)
+
+변경 후:
+- "/" → HomePage (인증 불필요, preview 가능)
+- "/sso" → SSOPage (기존 LoginPage, IDP 자동 리다이렉트)
+- "/home" → Redirect to "/" (deprecated, "/" 경로로 통합)
+```
+
+**Header 동작**:
+
+| 인증 상태 | 표시 내용 |
+|---------|----------|
+| **비인증** | "로그인" 버튼 → `/sso` <br> "회원가입" 버튼 → `/sso` |
+| **인증됨 + 닉네임 없음** | "회원가입" 버튼 → `/signup` |
+| **인증됨 + 닉네임 있음** | 닉네임 + 프로필 드롭다운 |
+
+**UX 플로우**:
+
+```
+[비인증 사용자]
+1. "/" 접속 → HomePage 렌더링 (인증 체크 없음)
+2. Header: "로그인" + "회원가입" 버튼 표시 (둘 다 /sso로 이동)
+3. 모든 섹션 영역 표시
+4. "나의 현재 레벨": "-" (placeholder)
+5. "전체 참여자": 실제 통계 표시 (Public API)
+6. "레벨테스트 시작하기" 클릭 → /sso 리다이렉트
+7. /sso에서 IDP로 자동 리다이렉트 → 인증 완료 → / 돌아옴
+8. 이제 인증됨 상태, 다시 "레벨테스트 시작하기" 클릭 → /consent
+
+[인증된 사용자 (닉네임 없음)]
+1. "/" 접속 → HomePage 렌더링
+2. Header: "회원가입" 버튼 표시
+3. "나의 현재 레벨": "-" (placeholder, 닉네임 없으면 데이터 로딩 안 함)
+4. "전체 참여자": 실제 통계 표시 (Public API)
+5. "레벨테스트 시작하기" 클릭 → /consent (회원가입 플로우)
+
+[인증된 사용자 (닉네임 있음)]
+1. "/" 접속 → HomePage 렌더링
+2. Header: 닉네임 + 프로필 드롭다운
+3. 개인화 데이터 로딩 (nickname, lastTestResult) (Private-Member API)
+4. "나의 현재 레벨": 실제 레벨 표시
+5. "전체 참여자": 실제 통계 표시 (Public API)
+6. "레벨테스트 시작하기" 클릭 → 기존 플로우 (consent → test)
+```
+
+**수용 기준**:
+
+- "/" 경로는 비인증 사용자도 접근 가능하다.
+- 비인증 사용자에게는 개인화 데이터가 로딩되지 않는다.
+- 공개 데이터(totalParticipants)는 비인증 사용자에게도 표시된다.
+- Header는 인증 상태에 따라 적절한 버튼을 표시한다.
+- 비인증 사용자가 "레벨테스트 시작하기" 클릭 시 /sso로 이동하고, IDP 인증 후 /로 돌아온다.
+- "/home" 경로는 "/"로 리다이렉트된다.
+
+---
+
+## REQ-F-A0-API: Frontend API 접근 레벨 정의
+
+> **목적**: Frontend에서 API를 3가지 레벨로 구분하여 호출
+> **원칙**:
+> - **Public**: 인증 불필요, 개인정보 없음, 유저 식별 불가 데이터만
+> - **Private-Auth**: 인증만 필요 (회원가입 전), 회원 레코드 확인 안 함
+> - **Private-Member**: 인증 + 회원 레코드 필요 (회원가입 후), DB에 nickname 있어야 함
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-F-A0-API-1** | Public API 호출 시 인증 토큰을 포함하지 않아야 한다. | **M** |
+| **REQ-F-A0-API-2** | Private-Auth API 호출 시 인증 토큰만 포함해야 한다. (회원 레코드 확인 안 함) | **M** |
+| **REQ-F-A0-API-3** | Private-Member API 호출 시 인증 토큰을 포함하고, 401 응답 시 로그인 유도해야 한다. | **M** |
+| **REQ-F-A0-API-4** | Private-Member API 호출 시 403 응답(회원 레코드 없음)이면 회원가입 유도해야 한다. | **M** |
+
+### API 분류표 (Frontend)
+
+| API 엔드포인트 | 접근 레벨 | 인증 필요 | 회원가입 필요 | 사용 시나리오 |
+|--------------|----------|----------|-------------|-------------|
+| `GET /api/statistics/total-participants` | **Public** | ❌ | ❌ | 비인증 사용자도 전체 참여자 수 조회 |
+| `GET /api/statistics/grade-distribution` | **Public** | ❌ | ❌ | 비인증 사용자도 등급 분포 조회 |
+| `GET /auth/status` | **Public** | ❌ | ❌ | 인증 상태 확인 (쿠키 자동 포함) |
+| `POST /auth/login` | **Public** | ❌ | ❌ | 로그인 |
+| `POST /auth/logout` | **Private-Auth** | ✅ | ❌ | 로그아웃 |
+| `GET /api/profile/consent` | **Private-Auth** | ✅ | ❌ | 약관 동의 여부 확인 |
+| `POST /api/profile/consent` | **Private-Auth** | ✅ | ❌ | 약관 동의 |
+| `GET /api/profile/nickname` | **Private-Auth** | ✅ | ❌ | 닉네임 존재 여부 확인 |
+| `POST /api/profile/nickname` | **Private-Auth** | ✅ | ❌ | 닉네임 등록 (회원가입) |
+| `POST /api/profile/survey` | **Private-Auth** | ✅ | ❌ | 자기평가 정보 저장 (회원가입) |
+| `GET /api/profile` | **Private-Member** | ✅ | ✅ | 프로필 조회 (닉네임 있어야 함) |
+| `PUT /api/profile` | **Private-Member** | ✅ | ✅ | 프로필 수정 |
+| `GET /api/profile/last-test-result` | **Private-Member** | ✅ | ✅ | 마지막 테스트 결과 조회 |
+| `POST /api/test/start` | **Private-Member** | ✅ | ✅ | 테스트 시작 |
+| `GET /api/test/questions` | **Private-Member** | ✅ | ✅ | 문제 조회 |
+| `POST /api/test/answers` | **Private-Member** | ✅ | ✅ | 답안 제출 |
+| `GET /api/test/results/:sessionId` | **Private-Member** | ✅ | ✅ | 테스트 결과 조회 |
+
+### Transport Layer 구현 가이드
+
+**현재**: `transport.get()` → 모든 요청에 `credentials: 'include'` (쿠키 자동 포함)
+
+**변경 필요**:
+
+```typescript
+// transport/types.ts
+export type ApiAccessLevel = 'public' | 'private-auth' | 'private-member'
+
+export interface RequestConfig {
+  accessLevel?: ApiAccessLevel // 기본값: 'private-member'
+  // ... 기타 옵션
+}
+
+// transport/realTransport.ts
+async get<T>(url: string, config?: RequestConfig): Promise<T> {
+  const accessLevel = config?.accessLevel ?? 'private-member'
+
+  const fetchConfig: RequestInit = {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  }
+
+  // Public API는 credentials 포함 안 함
+  if (accessLevel !== 'public') {
+    fetchConfig.credentials = 'include'
+  }
+
+  const response = await fetch(url, fetchConfig)
+
+  // Private-Member API에서 403이면 회원가입 유도
+  if (accessLevel === 'private-member' && response.status === 403) {
+    throw new MembershipRequiredError('회원가입이 필요합니다')
+  }
+
+  // ... 기타 에러 처리
+}
+```
+
+**사용 예시**:
+
+```typescript
+// Public API 호출 (비인증 사용자도 가능)
+const stats = await transport.get('/api/statistics/total-participants', {
+  accessLevel: 'public'
+})
+
+// Private-Auth API 호출 (인증만 필요)
+const consent = await transport.get('/api/profile/consent', {
+  accessLevel: 'private-auth'
+})
+
+// Private-Member API 호출 (인증 + 회원가입 필요)
+const lastTestResult = await transport.get('/api/profile/last-test-result', {
+  accessLevel: 'private-member' // 기본값이므로 생략 가능
+})
+```
+
+### 에러 처리
+
+| HTTP Status | Access Level | Frontend 동작 |
+|------------|--------------|--------------|
+| **401 Unauthorized** | Private-Auth, Private-Member | → `/sso` 리다이렉트 (재인증) |
+| **403 Forbidden** | Private-Member | → `/signup` 리다이렉트 (회원가입 유도) |
+| **403 Forbidden** | Private-Auth | → 에러 표시 (예: 약관 동의 필요) |
+
+**수용 기준**:
+
+- Public API는 credentials 없이 호출된다.
+- Private-Auth API는 credentials 포함하여 호출된다.
+- Private-Member API는 credentials 포함하고, 403 응답 시 회원가입 페이지로 이동한다.
+- Transport layer에 accessLevel 옵션이 추가된다.
+- homeService.getTotalParticipants()는 accessLevel: 'public'으로 호출된다.
+
+---
+
 ## REQ-F-A1: 자동 SSO 인증 (OIDC + JWT Cookie)
 
 > **인증 방식**: OpenID Connect Authorization Code Flow
@@ -759,6 +952,243 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 ---
 
 # 🔧 BACKEND REQUIREMENTS
+
+## REQ-B-A0-API: Backend API 접근 레벨 및 Middleware 구현
+
+> **목적**: Backend API를 3가지 접근 레벨로 구분하여 인증 및 회원 레코드 검증 수행
+> **원칙**:
+> - **Public**: 인증 불필요, 개인정보 제외, 누구나 접근 가능
+> - **Private-Auth**: JWT 인증만 필요, users 테이블 레코드 확인 안 함 (회원가입 전)
+> - **Private-Member**: JWT 인증 + users 테이블 레코드 확인 (nickname 필수, 회원가입 후)
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-B-A0-API-1** | Public API는 인증 미들웨어를 적용하지 않고, 개인정보나 유저 식별 가능한 데이터를 반환하지 않아야 한다. | **M** |
+| **REQ-B-A0-API-2** | Private-Auth API는 JWT 인증만 검증하고, users 테이블 레코드 존재 여부는 확인하지 않아야 한다. | **M** |
+| **REQ-B-A0-API-3** | Private-Member API는 JWT 인증과 users 테이블 레코드 존재 여부(nickname 필수)를 모두 검증해야 한다. | **M** |
+| **REQ-B-A0-API-4** | JWT가 없거나 유효하지 않으면 401 Unauthorized를 반환해야 한다. | **M** |
+| **REQ-B-A0-API-5** | Private-Member API에서 JWT는 유효하지만 users 레코드가 없거나 nickname이 없으면 403 Forbidden을 반환해야 한다. | **M** |
+
+### API 분류 및 Middleware 적용
+
+| API 엔드포인트 | 접근 레벨 | Middleware | JWT 필요 | 회원 레코드 필요 | 비고 |
+|--------------|----------|------------|---------|---------------|------|
+| `GET /api/statistics/total-participants` | **Public** | - | ❌ | ❌ | 전체 참여자 수 (개인정보 없음) |
+| `GET /api/statistics/grade-distribution` | **Public** | - | ❌ | ❌ | 등급 분포 (개인정보 없음) |
+| `GET /auth/status` | **Public** | - | ❌ | ❌ | 쿠키 있으면 검증, 없으면 401 |
+| `POST /auth` | **Public** | - | ❌ | ❌ | IDP 콜백 처리 |
+| `POST /auth/logout` | **Private-Auth** | `auth_required` | ✅ | ❌ | JWT만 확인, 레코드 확인 안 함 |
+| `GET /api/profile/consent` | **Private-Auth** | `auth_required` | ✅ | ❌ | 약관 동의 여부 |
+| `POST /api/profile/consent` | **Private-Auth** | `auth_required` | ✅ | ❌ | 약관 동의 |
+| `GET /api/profile/nickname` | **Private-Auth** | `auth_required` | ✅ | ❌ | 닉네임 존재 여부 |
+| `POST /api/profile/nickname` | **Private-Auth** | `auth_required` | ✅ | ❌ | 닉네임 등록 (회원가입) |
+| `POST /api/profile/survey` | **Private-Auth** | `auth_required` | ✅ | ❌ | 자기평가 저장 (회원가입) |
+| `GET /api/profile` | **Private-Member** | `member_required` | ✅ | ✅ | 프로필 조회 |
+| `PUT /api/profile` | **Private-Member** | `member_required` | ✅ | ✅ | 프로필 수정 |
+| `GET /api/profile/last-test-result` | **Private-Member** | `member_required` | ✅ | ✅ | 마지막 테스트 결과 |
+| `POST /api/test/start` | **Private-Member** | `member_required` | ✅ | ✅ | 테스트 시작 |
+| `GET /api/test/questions` | **Private-Member** | `member_required` | ✅ | ✅ | 문제 조회 |
+| `POST /api/test/answers` | **Private-Member** | `member_required` | ✅ | ✅ | 답안 제출 |
+| `GET /api/test/results/:sessionId` | **Private-Member** | `member_required` | ✅ | ✅ | 테스트 결과 조회 |
+
+### Middleware 구현 가이드
+
+**파일 구조**:
+```
+src/backend/
+├── middleware/
+│   ├── auth.py              # JWT 인증 미들웨어
+│   └── member.py            # 회원 레코드 검증 미들웨어
+└── api/
+    ├── auth.py              # Public API
+    ├── statistics.py        # Public API
+    ├── profile.py           # Private-Auth + Private-Member
+    └── test.py              # Private-Member
+```
+
+**1. JWT 인증 미들웨어** (`auth_required`)
+
+```python
+# src/backend/middleware/auth.py
+from fastapi import Depends, HTTPException, Cookie
+from sqlalchemy.orm import Session
+
+async def auth_required(
+    auth_token: str | None = Cookie(default=None),
+    db: Session = Depends(get_db)
+) -> dict:
+    """
+    JWT 인증만 검증 (Private-Auth API용)
+
+    Returns:
+        dict: {"user_id": int, "knox_id": str}
+
+    Raises:
+        HTTPException 401: JWT 없음 또는 유효하지 않음
+    """
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    try:
+        auth_service = AuthService(db)
+        payload = auth_service.decode_jwt(auth_token)
+        knox_id = payload.get("knox_id")
+
+        if not knox_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        # JWT는 유효하지만, users 레코드는 확인 안 함
+        return {"knox_id": knox_id}
+
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+```
+
+**2. 회원 레코드 검증 미들웨어** (`member_required`)
+
+```python
+# src/backend/middleware/member.py
+from fastapi import Depends, HTTPException, Cookie
+from sqlalchemy.orm import Session
+from src.backend.models.user import User
+
+async def member_required(
+    auth_token: str | None = Cookie(default=None),
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    JWT 인증 + users 레코드 검증 (Private-Member API용)
+
+    Returns:
+        User: 회원 레코드
+
+    Raises:
+        HTTPException 401: JWT 없음 또는 유효하지 않음
+        HTTPException 403: 회원 레코드 없음 또는 nickname 없음
+    """
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    try:
+        auth_service = AuthService(db)
+        payload = auth_service.decode_jwt(auth_token)
+        knox_id = payload.get("knox_id")
+
+        if not knox_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        # users 레코드 조회
+        user = db.query(User).filter_by(knox_id=knox_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=403,
+                detail="Member registration required"
+            )
+
+        # nickname 확인 (회원가입 완료 여부)
+        if not user.nickname:
+            raise HTTPException(
+                status_code=403,
+                detail="Nickname setup required"
+            )
+
+        return user
+
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+```
+
+**3. API 라우터 적용 예시**
+
+```python
+# src/backend/api/profile.py
+from fastapi import APIRouter, Depends
+from src.backend.middleware.auth import auth_required
+from src.backend.middleware.member import member_required
+from src.backend.models.user import User
+
+router = APIRouter(prefix="/api/profile", tags=["profile"])
+
+# Private-Auth API (인증만 필요)
+@router.get("/nickname")
+async def get_nickname(
+    auth: dict = Depends(auth_required)  # JWT만 검증
+):
+    knox_id = auth["knox_id"]
+    # nickname 존재 여부 확인
+    # ...
+
+@router.post("/nickname")
+async def create_nickname(
+    nickname: str,
+    auth: dict = Depends(auth_required)  # JWT만 검증
+):
+    knox_id = auth["knox_id"]
+    # nickname 등록 (회원가입)
+    # ...
+
+# Private-Member API (인증 + 회원 레코드 필요)
+@router.get("/")
+async def get_profile(
+    user: User = Depends(member_required)  # JWT + 레코드 검증
+):
+    # user 객체 사용
+    return {
+        "nickname": user.nickname,
+        "level": user.level,
+        # ...
+    }
+
+@router.put("/")
+async def update_profile(
+    profile_data: dict,
+    user: User = Depends(member_required)  # JWT + 레코드 검증
+):
+    # user 객체로 프로필 업데이트
+    # ...
+```
+
+### 에러 응답 형식
+
+**401 Unauthorized** (JWT 없음 또는 유효하지 않음)
+```json
+{
+  "detail": "Authentication required"
+}
+```
+
+**403 Forbidden** (회원 레코드 없음)
+```json
+{
+  "detail": "Member registration required"
+}
+```
+
+**403 Forbidden** (nickname 없음)
+```json
+{
+  "detail": "Nickname setup required"
+}
+```
+
+### Public API 데이터 제약사항
+
+Public API는 다음 데이터만 반환 가능:
+- ✅ 집계 통계 (전체 참여자 수, 등급 분포)
+- ✅ 공개 설정된 정보
+- ❌ 개인정보 (이름, 이메일, 부서 등)
+- ❌ 유저 식별 가능한 데이터 (user_id, knox_id)
+- ❌ 테스트 결과, 답안, 점수 등
+
+**수용 기준**:
+
+- Public API는 인증 없이 호출 가능하며, 개인정보를 반환하지 않는다.
+- Private-Auth API는 JWT만 검증하고, users 레코드는 확인하지 않는다.
+- Private-Member API는 JWT와 users 레코드(nickname 필수)를 모두 검증한다.
+- JWT 없으면 401, 레코드 없으면 403을 반환한다.
+- `auth_required`와 `member_required` 미들웨어가 구현된다.
+
+---
 
 ## REQ-B-A1: OIDC 인증 및 JWT 쿠키 발급 (Backend)
 

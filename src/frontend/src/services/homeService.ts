@@ -30,10 +30,13 @@ export const getLastTestResult = async (): Promise<LastTestResult> => {
 
 /**
  * Get total test participants count
- * REQ: REQ-F-A1-Home-4
+ * REQ: REQ-F-A1-Home-4, REQ-F-A0-API-1
  */
 export const getTotalParticipants = async (): Promise<StatisticsResponse> => {
-  return await transport.get<StatisticsResponse>('/api/statistics/total-participants')
+  // REQ-F-A0-API: Public API - no authentication required
+  return await transport.get<StatisticsResponse>('/api/statistics/total-participants', {
+    accessLevel: 'public'
+  })
 }
 
 /**
