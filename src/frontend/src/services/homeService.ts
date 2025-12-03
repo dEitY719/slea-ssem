@@ -23,9 +23,12 @@ export interface StatisticsResponse {
 /**
  * Get last test result for current user
  * REQ: REQ-F-A1-Home-1
+ * REQ-B-A0-API: Private-Member API (requires membership)
  */
 export const getLastTestResult = async (): Promise<LastTestResult> => {
-  return await transport.get<LastTestResult>('/api/profile/last-test-result')
+  return await transport.get<LastTestResult>('/api/profile/last-test-result', {
+    accessLevel: 'private-member'
+  })
 }
 
 /**

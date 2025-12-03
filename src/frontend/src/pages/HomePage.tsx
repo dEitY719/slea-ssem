@@ -48,9 +48,12 @@ const HomePage: React.FC = () => {
   // HomePage is now accessible to unauthenticated users as landing page
 
   // REQ-F-A2-Signup-1: Load nickname to determine if user data should be fetched
+  // Note: Nickname is loaded by App.tsx and passed to Header
+  // HomePage uses useUserProfile hook which calls authService.getAuthStatus() (Public API)
   useEffect(() => {
     const loadNickname = async () => {
       try {
+        // Use Public API to get auth status (includes nickname)
         await checkNickname()
       } catch (err) {
         console.error('Failed to load nickname:', err)
