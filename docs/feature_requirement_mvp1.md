@@ -1232,6 +1232,105 @@ Content-Type: application/json
 
 ---
 
+## REQ-B-A2-Auth-3: CLI Direct Login Endpoint (Backend)
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-B-A2-Auth-3-1** | CLI 및 개발용으로 사용자 정보를 직접 전송하여 JWT 토큰을 발급하는 엔드포인트를 제공해야 한다. | **H** |
+| **REQ-B-A2-Auth-3-2** | 엔드포인트는 사용자 정보(knox_id, name, email, dept, business_unit)를 받아 사용자를 생성/업데이트한 후 JWT 토큰을 반환해야 한다. | **H** |
+| **REQ-B-A2-Auth-3-3** | 응답에는 access_token, token_type, user_id, is_new_user 필드가 포함되어야 한다. | **H** |
+| **REQ-B-A2-Auth-3-4** | 요청은 JSON 본문을 통해 사용자 정보를 수신해야 한다. | **H** |
+| **REQ-B-A2-Auth-3-5** | 엔드포인트는 authenticate_or_create_user() 서비스를 사용하여 users 테이블과 동기화되어야 한다. | **H** |
+
+### API 엔드포인트
+
+#### POST /auth/login (CLI Direct Login)
+
+**요청**:
+
+```json
+{
+  "knox_id": "bwyoon",
+  "name": "Beom Won Yoon",
+  "email": "bwyoon@samsung.com",
+  "dept": "Engineering",
+  "business_unit": "S.LSI"
+}
+```
+
+**응답 (성공)**:
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "user_id": 123,
+  "is_new_user": false
+}
+```
+
+**응답 (실패)**:
+
+```json
+{
+  "detail": "Invalid request body"
+}
+```
+
+**상태 코드**:
+
+- `200 OK`: 로그인 성공, JWT 토큰 반환
+- `400 Bad Request`: 요청 본문 누락 또는 잘못됨
+- `422 Unprocessable Entity`: 검증 실패 (필드 누락)
+- `500 Internal Server Error`: 데이터베이스 오류
+
+**수용 기준**:
+
+- "요청에 knox_id, name, email, dept, business_unit이 포함되어야 한다"
+- "새 사용자의 경우 is_new_user: true를 반환한다"
+- "기존 사용자의 경우 is_new_user: false를 반환한다"
+- "반환된 JWT 토큰으로 다른 API를 호출할 수 있다"
+- "응답은 1초 내에 완료되어야 한다"
+
+### 사용 예
+
+**CLI에서 사용**:
+
+```bash
+# CLI에서 직접 로그인
+./tools/dev.sh cli
+> auth login bwyoon
+
+# 응답받은 토큰으로 다른 명령어 실행
+> profile update_survey intermediate 5
+> questions generate
+```
+
+**curl로 테스트**:
+
+```bash
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "knox_id": "bwyoon",
+    "name": "Beom Won Yoon",
+    "email": "bwyoon@samsung.com",
+    "dept": "Engineering",
+    "business_unit": "S.LSI"
+  }' \
+  -c cookies.txt
+
+# 응답:
+# {
+#   "access_token": "eyJ...",
+#   "token_type": "bearer",
+#   "user_id": 123,
+#   "is_new_user": false
+# }
+```
+
+---
+
 ## REQ-B-B1: 자기평가 데이터 수집 및 저장 (Backend)
 
 | REQ ID | 요구사항 | 우선순위 |
