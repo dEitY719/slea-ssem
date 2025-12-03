@@ -26,7 +26,7 @@ ENV ?= external
 COMPOSE_BASE := -f docker-compose.yml
 ifeq ($(ENV),internal)
 	COMPOSE_FILES := $(COMPOSE_BASE) -f docker-compose.internal.yml
-	ENV_FILE := .env.internal.example
+	ENV_FILE := .env.internal
 	ENV_NAME := 사내 (폐쇄망)
 else
 	COMPOSE_FILES := $(COMPOSE_BASE)
@@ -114,12 +114,12 @@ init:
 
 init-internal:
 	@echo -e "$(YELLOW)🔧 사내 환경 .env 파일 생성 중...$(NC)"
-	@if [ ! -f $(DOCKER_DIR)/.env ]; then \
-		cp $(DOCKER_DIR)/.env.internal.example $(DOCKER_DIR)/.env; \
-		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env 생성 완료 ($(DOCKER_DIR)/.env.internal.example에서)$(NC)"; \
+	@if [ ! -f $(DOCKER_DIR)/.env.internal ]; then \
+		cp $(DOCKER_DIR)/.env.internal.example $(DOCKER_DIR)/.env.internal; \
+		echo -e "$(GREEN)✅ $(DOCKER_DIR)/.env.internal 생성 완료 ($(DOCKER_DIR)/.env.internal.example에서)$(NC)"; \
 		echo -e "$(YELLOW)⚠️  인증서 복사 필요: cp assets/*.crt $(DOCKER_DIR)/certs/internal/$(NC)"; \
 	else \
-		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env 파일이 이미 있습니다 (환경 변경 시: rm $(DOCKER_DIR)/.env && make init-internal)$(NC)"; \
+		echo -e "$(BLUE)ℹ️  $(DOCKER_DIR)/.env.internal 파일이 이미 있습니다 (환경 변경 시: rm $(DOCKER_DIR)/.env.internal && make init-internal)$(NC)"; \
 	fi
 
 # ============================================================
