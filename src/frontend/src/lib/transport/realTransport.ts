@@ -23,7 +23,7 @@ class RealTransport implements HttpTransport {
     }
 
     // REQ-F-A0-API-1: Public API does not include credentials
-    // REQ-F-A0-API-2, REQ-F-A0-API-3: Private APIs include credentials
+    // REQ-F-A0-API-2: Private APIs include credentials
     if (accessLevel !== 'public') {
       fetchConfig.credentials = 'include' // Include HttpOnly cookies
     }
@@ -40,19 +40,27 @@ class RealTransport implements HttpTransport {
         code: null
       }))
 
-      // REQ-F-A0-API-3: Private-Auth + 401 → Auto redirect to /sso
+      // REQ-F-A0-API-3: 401 → Auto redirect to /sso with returnTo
       if ((accessLevel === 'private-auth' || accessLevel === 'private-member') && response.status === 401) {
         console.warn('[Auth] 401 Unauthorized - redirecting to /sso')
-        window.location.href = '/sso'
+        const returnTo = encodeURIComponent(window.location.pathname)
+        window.location.href = `/sso?returnTo=${returnTo}`
         // Return never-resolving promise (page will redirect anyway)
         return new Promise(() => {}) as Promise<T>
       }
 
-      // REQ-F-A0-API-4: Private-Member + 403 + code=NEED_SIGNUP → Auto redirect to /signup
+      // REQ-F-A0-API-4: 403 + NEED_SIGNUP → Auto redirect to /signup with returnTo
       if (accessLevel === 'private-member' && response.status === 403 && error.code === 'NEED_SIGNUP') {
         console.warn('[Auth] 403 Signup Required - redirecting to /signup')
-        window.location.href = '/signup'
+        const returnTo = encodeURIComponent(window.location.pathname)
+        window.location.href = `/signup?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
+      }
+
+      // REQ-F-A0-API-5: 403 other → Forbidden
+      if (response.status === 403) {
+        const errorMessage = error.detail || 'Forbidden'
+        throw new Error(errorMessage)
       }
 
       // Other errors - throw for page to handle
