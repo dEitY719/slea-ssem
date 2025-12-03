@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageLayout } from '../components'
 import { authService } from '../services/authService'
+import { setMockAuthState } from '../lib/transport/mockTransport'
 import { detectRedirectLoop, resetRedirectDetection } from '../utils/redirectDetection'
 import './LoginPage.css'
 
@@ -52,14 +53,9 @@ const LoginPage: React.FC = () => {
         if (mockSSO) {
           console.log('[MOCK SSO] Simulating SSO authentication success')
 
-          // REQ-F-A0-Landing: Simulate SSO login to update mock auth state
-          await authService.login({
-            knox_id: 'mock_user',
-            name: 'Mock User',
-            dept: 'Engineering',
-            business_unit: 'DX',
-            email: 'mock_user@samsung.com'
-          })
+          // REQ-F-A0-Landing: Simulate SSO authentication (set isAuthenticated = true)
+          // Note: This does NOT set nickname - user may still need to sign up
+          setMockAuthState(true, null)
 
           console.log(`[MOCK SSO] Authentication successful, redirecting to ${returnTo}`)
           navigate(returnTo, { replace: true })
