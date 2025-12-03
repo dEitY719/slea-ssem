@@ -45,11 +45,8 @@ services:
       - HOST=${HOST:-0.0.0.0}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ENVIRONMENT=${ENVIRONMENT:-development}
+      # LLM Configuration (loaded from env_file, not environment section)
       - USE_LITE_LLM=${USE_LITE_LLM:-false}
-      - LITELLM_BASE_URL=${LITELLM_BASE_URL:-http://10.255.255.254:4444/v1}
-      - LITELLM_API_KEY=${LITELLM_API_KEY:-sk-4444}
-      - LITELLM_MODEL=${LITELLM_MODEL:-gemini-2.0-flash}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - TZ=Asia/Seoul
     env_file:
       - ${ENV_FILE:-.env}
