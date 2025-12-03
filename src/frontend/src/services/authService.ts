@@ -53,12 +53,15 @@ export const authService = {
 
   /**
    * Login with Samsung AD credentials
+   * REQ-B-A0-API: Public API (no auth required to login)
    *
    * @param userData - User data from Samsung AD
    * @returns Login response with JWT token
    */
   async login(userData: LoginRequest): Promise<LoginResponse> {
-    return transport.post<LoginResponse>('/api/auth/login', userData)
+    return transport.post<LoginResponse>('/api/auth/login', userData, {
+      accessLevel: 'public'
+    })
   },
 
   /**
