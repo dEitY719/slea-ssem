@@ -6,15 +6,17 @@ services:
       POSTGRES_DB: ${DB_NAME:-sleassem_dev}
       POSTGRES_USER: ${DB_USER:-slea_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_dev_password}
+      TZ: Asia/Seoul
     ports:
       - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-slea_user}"]
-      interval: 10s
+      interval: 300s
       timeout: 5s
       retries: 5
+      start_period: 30s
     networks:
       - slea-network
 
@@ -47,14 +49,26 @@ services:
       - LITELLM_API_KEY=${LITELLM_API_KEY}
       - LITELLM_MODEL=${LITELLM_MODEL}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - TZ=Asia/Seoul
     env_file:
       - ${ENV_FILE:-.env}
     ports:
       - "${PORT:-8000}:8000"
     volumes:
       - ../logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 300s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - slea-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
 
 volumes:
