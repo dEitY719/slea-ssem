@@ -1,7 +1,24 @@
 // Mock HTTP transport for development without backend
+// REQ-B-A0-API: Simulates API access levels and authentication
 
 import { HttpTransport, RequestConfig } from './types'
 import { debugLog } from '../../utils/logger'
+
+// REQ-B-A0-API: Mock authentication state
+// Set these to test different authentication scenarios
+let mockAuthState = {
+  isAuthenticated: false, // SSO 인증 여부 (Private-Auth)
+  hasNickname: false,     // 회원가입 완료 여부 (Private-Member)
+  nickname: null as string | null,
+}
+
+// Helper to simulate authentication for testing
+export function setMockAuthState(authenticated: boolean, nickname: string | null = null) {
+  mockAuthState.isAuthenticated = authenticated
+  mockAuthState.hasNickname = nickname !== null
+  mockAuthState.nickname = nickname
+  debugLog(`[Mock Auth] Set auth state: authenticated=${authenticated}, nickname=${nickname}`)
+}
 
 const API_AUTH_LOGIN = '/api/auth/login'
 const API_AUTH_STATUS = '/api/auth/status'
@@ -402,6 +419,30 @@ class MockTransport implements HttpTransport {
     // REQ-F-A0-API: Get access level (default: 'private-member')
     const accessLevel = config?.accessLevel ?? 'private-member'
 
+    // REQ-B-A0-API: Authentication checks based on access level
+    if (accessLevel === 'private-auth') {
+      // Private-Auth: SSO 인증만 필요
+      if (!mockAuthState.isAuthenticated) {
+        debugLog(`[Mock Transport] 401 Unauthorized - Private-Auth requires authentication`)
+        const returnTo = encodeURIComponent(window.location.pathname)
+        throw new Error(`401 Unauthorized (mock: redirect to /sso?returnTo=${returnTo})`)
+      }
+    } else if (accessLevel === 'private-member') {
+      // Private-Member: 회원 인증 필요 (nickname 필수)
+      if (!mockAuthState.isAuthenticated) {
+        // 인증 안됨 → 401
+        debugLog(`[Mock Transport] 401 Unauthorized - Private-Member requires authentication`)
+        const returnTo = encodeURIComponent(window.location.pathname)
+        throw new Error(`401 Unauthorized (mock: redirect to /sso?returnTo=${returnTo})`)
+      } else if (!mockAuthState.hasNickname) {
+        // 인증됨 but 비회원 → 403 NEED_SIGNUP
+        debugLog(`[Mock Transport] 403 NEED_SIGNUP - Private-Member requires nickname`)
+        const returnTo = encodeURIComponent(window.location.pathname)
+        throw new Error(`403 NEED_SIGNUP (mock: redirect to /signup?returnTo=${returnTo})`)
+      }
+    }
+    // Public: 인증 체크 안 함
+
     // Simulate network delay
     const delay = mockConfig.slowNetwork ? 3000 : mockConfig.delay
     await new Promise(resolve => setTimeout(resolve, delay))
@@ -440,12 +481,15 @@ class MockTransport implements HttpTransport {
       throw new Error('Mock Transport: Simulated API error')
     }
 
-    // Handle auth login endpoint
+    // Handle auth login endpoint (Public API)
       if (normalizedUrl === API_AUTH_LOGIN && method === 'POST') {
         const response = mockData[API_AUTH_LOGIN]
         if (!response) {
           throw new Error('Mock login response not configured')
         }
+        // REQ-B-A0-API: Login grants SSO authentication
+        mockAuthState.isAuthenticated = true
+        debugLog('[Mock Transport] Login successful - authenticated=true')
         debugLog('[Mock Transport] Response:', response)
         return response as T
       }
@@ -475,7 +519,7 @@ class MockTransport implements HttpTransport {
       return response as T
     }
 
-      // Handle nickname register endpoint
+      // Handle nickname register endpoint (Private-Auth API)
     if (normalizedUrl === API_PROFILE_REGISTER && method === 'POST' && requestData?.nickname) {
       const nickname: string = requestData.nickname
 
@@ -490,6 +534,12 @@ class MockTransport implements HttpTransport {
       }
 
       takenNicknames.add(nickname.toLowerCase())
+
+      // REQ-B-A0-API: Nickname registration makes user a member
+      mockAuthState.hasNickname = true
+      mockAuthState.nickname = nickname
+      debugLog(`[Mock Transport] Nickname registered - now a member: ${nickname}`)
+
       mockData[API_PROFILE_NICKNAME] = {
         ...mockData[API_PROFILE_NICKNAME],
         nickname,
@@ -1060,6 +1110,12 @@ class MockTransport implements HttpTransport {
 }
 
 export const mockTransport = new MockTransport()
+
+// REQ-B-A0-API: Initialize mock auth state for development
+// Default: not authenticated (user needs to click "로그인" button)
+// After clicking login button, SSO authentication will succeed
+// Initial state: unauthenticated user viewing landing page
+// (No automatic authentication - user must click login button)
 
 // Helper to update mock data at runtime
 export function setMockData(endpoint: string, data: any) {
