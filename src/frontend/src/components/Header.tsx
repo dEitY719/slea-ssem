@@ -8,7 +8,6 @@ import {
   ChevronDownIcon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline'
-import { authService } from '../services/authService'
 import './Header.css'
 import './ProfileMenu.css'
 
@@ -51,21 +50,14 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const handleLoginClick = async () => {
-    try {
-      // REQ-F-A0-Landing: Call login API
-      // Backend checks: SSO authentication → membership status
-      // - If no SSO (401) → transport redirects to /sso
-      // - If not member (403) → transport redirects to /signup
-      // - If success → navigate to home
-      await authService.login({} as any)
-
-      // Success: user is authenticated and member
-      navigate('/home')
-    } catch (err) {
-      // Unexpected errors only (401/403 are handled by transport)
-      console.error('Login failed:', err)
-    }
+  const handleLoginClick = () => {
+    // REQ-F-A0-Landing: Navigate to /login page
+    // LoginPage will handle the login flow:
+    // - Call /api/auth/login API
+    // - Auto-redirect to /sso if not authenticated
+    // - Auto-redirect to /signup if not member
+    // - Navigate to /home if success
+    navigate('/login')
   }
 
   const handleSignupClick = () => {

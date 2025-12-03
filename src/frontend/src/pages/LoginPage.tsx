@@ -1,87 +1,61 @@
 // @ts-nocheck
-// REQ: REQ-F-A0-Landing, REQ-F-A1-1, REQ-F-A1-2, REQ-F-A1-Error-1
+// REQ: REQ-F-A0-Landing
 /// <reference types="vite/client" />
 // @ts-ignore
 import React, { useEffect, useState } from 'react'
- // @ts-ignore
-import { useNavigate, useSearchParams } from 'react-router-dom'
+// @ts-ignore
+import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '../components'
 import { authService } from '../services/authService'
-import { setMockAuthState } from '../lib/transport/mockTransport'
-import { detectRedirectLoop, resetRedirectDetection } from '../utils/redirectDetection'
-import './LoginPage.css'
+import './SSOPage.css'
 
 /**
- * LoginPage (SSO Page) - Handle SSO authentication
+ * LoginPage - Handle login button flow
  *
- * REQ-F-A0-Landing: SSO authentication page at /sso
- * REQ-F-A1-1: Check cookie, redirect to IDP if not authenticated
- * REQ-F-A1-2: Redirect to returnTo or / if already authenticated
+ * Flow:
+ * 1. Call POST /api/auth/login (Private-Auth API)
+ * 2. If 401 (no SSO) → transport redirects to /sso?returnTo=/login
+ * 3. SSO success → redirects back to /login
+ * 4. Auto-retry login API
+ * 5. If 403 NEED_SIGNUP → transport redirects to /signup
+ * 6. If success → navigate to /home
  */
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const handleAutoRedirect = async () => {
+    const performLogin = async () => {
       try {
-        // REQ-F-A0-Landing: Get returnTo parameter
-        const returnTo = searchParams.get('returnTo') || '/'
+        // Call login API (Private-Auth)
+        // Backend checks: SSO authentication → membership status
+        // - If no SSO (401) → transport redirects to /sso?returnTo=/login
+        // - If not member (403) → transport redirects to /signup?returnTo=/login
+        // - If success → proceed to home
+        await authService.login({} as any)
 
-        // REQ-F-A1-2: Check if already authenticated
-        const authStatus = await authService.getAuthStatus()
-
-        if (authStatus.authenticated) {
-          // Already logged in, reset redirect counter and go to returnTo
-          resetRedirectDetection()
-          console.log(`[SSO] Already authenticated, redirecting to ${returnTo}`)
-          navigate(returnTo, { replace: true })
-          return
-        }
-
-        // REQ-F-A1-Error-1: Detect redirect loop before redirecting
-        const detection = detectRedirectLoop()
-        if (detection.shouldShowError) {
-          console.warn(`[Auth Error] Redirect loop detected (${detection.count} attempts)`)
-          navigate('/auth-error', { replace: true })
-          return
-        }
-
-        // MOCK MODE: Simulate SSO success
-        const mockSSO = import.meta.env.VITE_MOCK_SSO === 'true'
-        if (mockSSO) {
-          console.log('[MOCK SSO] Simulating SSO authentication success')
-
-          // REQ-F-A0-Landing: Simulate SSO authentication (set isAuthenticated = true)
-          // Note: This does NOT set nickname - user may still need to sign up
-          setMockAuthState(true, null)
-
-          console.log(`[MOCK SSO] Authentication successful, redirecting to ${returnTo}`)
-          navigate(returnTo, { replace: true })
-          return
-        }
-
-        // REQ-F-A1-1: Redirect to IDP authorize URL
-        const authUrl = buildIDPAuthUrl(returnTo)
-
-        // Redirect to IDP
-        window.location.href = authUrl
-      } catch (error) {
-        console.error('Auto-redirect failed:', error)
+        // Success: user is authenticated and member
+        console.log('[Login] Login successful, navigating to /home')
+        navigate('/home', { replace: true })
+      } catch (err) {
+        // Unexpected errors only (401/403 are handled by transport)
+        console.error('[Login] Login failed:', err)
+        setError(err instanceof Error ? err.message : 'Login failed')
         setIsLoading(false)
       }
     }
 
-    handleAutoRedirect()
-  }, [navigate, searchParams])
+    performLogin()
+  }, [navigate])
 
-  if (isLoading) {
+  if (error) {
     return (
       <PageLayout mainClassName="login-page" containerClassName="login-container">
         <div data-testid="login-container">
           <h1 className="login-title">SLEA-SSEM</h1>
-          <p>인증 중...</p>
+          <p>로그인 처리 중 오류가 발생했습니다.</p>
+          <p>{error}</p>
         </div>
       </PageLayout>
     )
@@ -91,24 +65,10 @@ const LoginPage: React.FC = () => {
     <PageLayout mainClassName="login-page" containerClassName="login-container">
       <div data-testid="login-container">
         <h1 className="login-title">SLEA-SSEM</h1>
-        <p>로그인 처리 중 오류가 발생했습니다.</p>
+        <p>로그인 중...</p>
       </div>
     </PageLayout>
   )
-}
-
-/**
- * Build IDP authorization URL
- * REQ-F-A0-Landing: Include returnTo in state parameter
- *
- * @param returnTo - Path to return to after authentication
- * @returns Authorization URL
- */
-function buildIDPAuthUrl(returnTo: string): string {
-  // TODO: Implement IDP authorization URL construction
-  // Should include returnTo in state parameter for SSO callback
-  // Example: https://idp.example.com/authorize?client_id=...&state={returnTo: '/consent'}
-  return ''
 }
 
 export default LoginPage
