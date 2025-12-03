@@ -481,6 +481,18 @@ class MockTransport implements HttpTransport {
       throw new Error('Mock Transport: Simulated API error')
     }
 
+    // Handle auth status endpoint (Public API)
+    // REQ-B-A0-API: Return current auth state, no error if unauthenticated
+    if (normalizedUrl === API_AUTH_STATUS && method === 'GET') {
+      const response = {
+        authenticated: mockAuthState.isAuthenticated,
+        nickname: mockAuthState.nickname,
+        user_id: mockAuthState.isAuthenticated ? 'mock_user@samsung.com' : null,
+      }
+      debugLog('[Mock Transport] Auth status check:', response)
+      return response as T
+    }
+
     // Handle auth login endpoint (Public API)
       if (normalizedUrl === API_AUTH_LOGIN && method === 'POST') {
         const response = mockData[API_AUTH_LOGIN]

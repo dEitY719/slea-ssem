@@ -25,10 +25,32 @@ export interface LoginResponse {
 }
 
 /**
+ * Auth status response
+ * REQ-B-A0-API: Public API that returns auth state without throwing errors
+ */
+export interface AuthStatusResponse {
+  authenticated: boolean
+  nickname: string | null
+  user_id: string | null
+}
+
+/**
  * Authentication service
  * Handles all authentication-related API calls
  */
 export const authService = {
+  /**
+   * Check authentication status
+   * REQ-B-A0-API: Public API that checks auth state without throwing errors
+   *
+   * @returns Auth status including authentication state and nickname
+   */
+  async getAuthStatus(): Promise<AuthStatusResponse> {
+    return transport.get<AuthStatusResponse>('/auth/status', {
+      accessLevel: 'public'
+    })
+  },
+
   /**
    * Login with Samsung AD credentials
    *
