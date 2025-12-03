@@ -227,7 +227,7 @@ def user_fixture(db_session: Session) -> User:
     user = User(
         knox_id="test_user_001",
         name="Test User",
-        dept="Test Dept",
+        dept="Engineering",
         business_unit="Test BU",
         email="test@samsung.com",
         nickname="alice_test",

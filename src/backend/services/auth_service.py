@@ -72,7 +72,12 @@ class AuthService:
         existing_user = self.session.query(User).filter_by(knox_id=knox_id).first()
 
         if existing_user:
-            # REQ-B-A1-4: Existing user - update last_login and generate new JWT
+            # REQ-B-A1-4: Existing user - sync user info and generate new JWT
+            # REQ-B-A2-Auth-3-2: Keep user attributes synchronized with latest info
+            existing_user.name = user_data["name"]
+            existing_user.dept = user_data["dept"]
+            existing_user.business_unit = user_data["business_unit"]
+            existing_user.email = user_data["email"]
             existing_user.last_login = datetime.now(UTC)
             self.session.commit()
             jwt_token = self._generate_jwt(knox_id)

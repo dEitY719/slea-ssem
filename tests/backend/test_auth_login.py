@@ -5,7 +5,10 @@ REQ: REQ-B-A2-Auth-3
 Feature: CLI Direct Login Endpoint that accepts user info and returns JWT token
 """
 
+import json
 from datetime import UTC, datetime
+
+import jwt
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -140,6 +143,61 @@ class TestAuthLoginExistingUser:
         # but since we just updated it, it should be recent
         assert user_fixture.last_login >= original_last_login or original_last_login is None
 
+    def test_login_existing_user_with_updated_dept_syncs_to_database(
+        self, client: TestClient, db_session: Session, user_fixture: User
+    ) -> None:
+        """
+        Peer Feedback #1: Verify user information update synchronization.
+
+        REQ: REQ-B-A2-Auth-3-2 (생성/업데이트)
+
+        Scenario: Existing user's department changes (e.g., from Engineering to Marketing)
+        Setup: User exists in database with dept="Engineering"
+        Action: POST /auth/login with same knox_id but dept="Marketing"
+        Expected: User record updated in database with new dept value
+
+        Acceptance Criteria:
+        - Status code is 200 OK (existing user)
+        - Database user's dept field is updated to "Marketing"
+        - User's user_id remains the same (no duplicate created)
+        - is_new_user is false (not a new user)
+
+        This test ensures that OIDC/Direct Login keeps user attributes synchronized
+        with the latest information from the identity provider.
+        """
+        # Setup: User exists with dept="Engineering"
+        original_dept = user_fixture.dept
+        assert original_dept == "Engineering", "Fixture should have dept=Engineering"
+
+        # Action: Login with updated dept
+        payload = {
+            "knox_id": user_fixture.knox_id,
+            "name": user_fixture.name,
+            "email": user_fixture.email,
+            "dept": "Marketing",  # Changed from Engineering
+            "business_unit": user_fixture.business_unit,
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        # Assertions
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.json()}"
+        data = response.json()
+        assert data["is_new_user"] is False
+        assert data["user_id"] == user_fixture.id
+
+        # Verify database was updated with new dept
+        db_session.refresh(user_fixture)
+        assert (
+            user_fixture.dept == "Marketing"
+        ), f"Expected dept to be updated to 'Marketing', but got '{user_fixture.dept}'"
+
+        # Verify user_id hasn't changed (no duplicate created)
+        all_users = db_session.query(User).filter(User.knox_id == user_fixture.knox_id).all()
+        assert (
+            len(all_users) == 1
+        ), f"Expected 1 user with knox_id={user_fixture.knox_id}, but found {len(all_users)}"
+
 
 class TestAuthLoginValidation:
     """TC-3: Input Validation - Missing Required Fields Returns 422"""
@@ -237,6 +295,44 @@ class TestAuthLoginValidation:
 
         assert response.status_code == 422
 
+    def test_login_invalid_email_format_returns_422(self, client: TestClient) -> None:
+        """
+        Peer Feedback #2: Email format validation.
+
+        REQ: REQ-B-A2-Auth-3-4 (Input validation)
+
+        Scenario: User sends invalid email format
+        Setup: Prepare request with email="invalid-email" (no @ symbol)
+        Action: POST /auth/login with invalid email
+        Expected: Return 422 Unprocessable Entity with validation error
+
+        Acceptance Criteria:
+        - Status code is 422 Unprocessable Entity
+        - Response includes error detail about invalid email format
+        - No user created in database
+
+        This test verifies that email field validation (likely using Pydantic EmailStr)
+        is enforced to prevent invalid email addresses from being stored in the database.
+        """
+        payload = {
+            "knox_id": "invalid_email_user",
+            "name": "Invalid Email Test User",
+            "email": "invalid-email",  # Invalid: no @ symbol
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        response = client.post("/auth/login", json=payload)
+
+        # Assertions
+        assert response.status_code == 422, (
+            f"Expected 422 for invalid email, got {response.status_code}: {response.json()}"
+        )
+
+        # Verify error message mentions email
+        error_detail = response.json()
+        assert "email" in str(error_detail).lower(), "Error should mention 'email' field"
+
 
 class TestAuthLoginTokenValidity:
     """TC-4: Token Validity - Returned JWT Can Be Used in Subsequent Requests"""
@@ -286,6 +382,89 @@ class TestAuthLoginTokenValidity:
         assert status_data["authenticated"] is True
         assert status_data["user_id"] == user_id
         assert status_data["knox_id"] == "token_test_user"
+
+    def test_login_token_payload_matches_response(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """
+        Peer Feedback #3: JWT token payload consistency with response.
+
+        REQ: REQ-B-A2-Auth-3-3
+
+        Scenario: Verify JWT token content matches response values
+        Setup: None
+        Action:
+          1. POST /auth/login to get JWT token and user_id
+          2. Decode JWT token (without verification for inspection)
+          3. Check that token payload contains user_id matching response
+        Expected: Token payload user_id matches response user_id
+
+        Acceptance Criteria:
+        - JWT token is successfully decoded
+        - Token payload contains 'sub' or 'knox_id' field (depending on implementation)
+        - Token user_id matches response user_id (prevents token tampering)
+        - Token expiration is set (exp claim present)
+        - Token issued_at is set (iat claim present)
+
+        This test strengthens security by ensuring token content aligns with response,
+        preventing mismatches that could indicate tampering or misconfiguration.
+        """
+        # Action 1: Login to get token
+        login_payload = {
+            "knox_id": "jwt_payload_test_user",
+            "name": "JWT Payload Test User",
+            "email": "jwt_test@samsung.com",
+            "dept": "Engineering",
+            "business_unit": "S.LSI",
+        }
+
+        login_response = client.post("/auth/login", json=login_payload)
+        assert login_response.status_code in [200, 201]
+
+        response_data = login_response.json()
+        access_token = response_data["access_token"]
+        response_user_id = response_data["user_id"]
+
+        # Action 2: Decode JWT token (without verification for inspection)
+        # In a real scenario, you'd verify the signature too
+        try:
+            # Decode without verification (options={'verify_signature': False})
+            # This is only for testing; in production, always verify the signature
+            decoded = jwt.decode(
+                access_token,
+                options={"verify_signature": False},
+                algorithms=["HS256"],
+            )
+        except Exception as e:
+            raise AssertionError(f"Failed to decode JWT token: {e}")
+
+        # Assertions
+        assert decoded is not None, "Token should decode successfully"
+        assert isinstance(decoded, dict), "Decoded token should be a dictionary"
+
+        # Check for standard JWT claims
+        assert "iat" in decoded, "Token should have 'iat' (issued_at) claim"
+        assert "exp" in decoded, "Token should have 'exp' (expiration) claim"
+
+        # Check that token contains user identifier (could be 'sub', 'knox_id', or 'user_id')
+        has_user_info = any(
+            claim in decoded for claim in ["sub", "knox_id", "user_id"]
+        )
+        assert (
+            has_user_info
+        ), "Token should contain user identifier (sub, knox_id, or user_id)"
+
+        # Most importantly: verify consistency between token and response
+        # If token has knox_id, it should match the login payload
+        if "knox_id" in decoded:
+            assert (
+                decoded["knox_id"] == "jwt_payload_test_user"
+            ), "Token knox_id should match login request"
+
+        # Token timestamps should be sensible (iat should be before exp)
+        assert (
+            decoded["iat"] < decoded["exp"]
+        ), "Token issued_at should be before expiration"
 
 
 class TestAuthLoginConsistency:

@@ -10,7 +10,7 @@ import os
 import jwt as pyjwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm import Session
 
@@ -49,6 +49,44 @@ def auth_redirect() -> RedirectResponse:
             detail="AUTH_REDIRECTION_URL environment variable is not set",
         )
     return RedirectResponse(url=redirect_url, status_code=302)
+
+
+class LoginRequest(BaseModel):
+    """
+    Request model for SSO login.
+
+    Attributes:
+        knox_id: User's Knox ID
+        name: User's full name
+        dept: Department
+        business_unit: Business unit
+        email: Email address (must be valid email format)
+
+    """
+
+    knox_id: str = Field(..., description="User's Knox ID")
+    name: str = Field(..., description="User's full name")
+    dept: str = Field(..., description="Department")
+    business_unit: str = Field(..., description="Business unit")
+    email: EmailStr = Field(..., description="Email address (validated format)")
+
+
+class LoginResponse(BaseModel):
+    """
+    Response model for authentication.
+
+    Attributes:
+        access_token: Signed JWT token
+        token_type: Token type (bearer)
+        user_id: User's database primary key (integer)
+        is_new_user: True if new user account was created
+
+    """
+
+    access_token: str = Field(..., description="JWT token")
+    token_type: str = Field(default="bearer", description="Token type")
+    user_id: int = Field(..., description="User's database ID (integer primary key)")
+    is_new_user: bool = Field(..., description="True if new user created")
 
 
 class StatusResponse(BaseModel):
