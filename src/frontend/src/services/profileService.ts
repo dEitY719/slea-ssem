@@ -124,15 +124,19 @@ export interface ProfileHistoryResponse {
 export const profileService = {
   /**
    * Get current user's nickname information
+   * REQ-B-A0-API: Private-Auth API (SSO required, but signup not required)
    *
    * @returns User profile with nickname info
    */
   async getNickname(): Promise<UserProfileResponse> {
-    return transport.get<UserProfileResponse>('/api/profile/nickname')
+    return transport.get<UserProfileResponse>('/api/profile/nickname', {
+      accessLevel: 'private-auth'
+    })
   },
 
   /**
    * Check if nickname is available
+   * REQ-B-A0-API: Private-Auth API (SSO required, but signup not required)
    *
    * @param nickname - Nickname to check
    * @returns Availability status and suggestions
@@ -140,11 +144,14 @@ export const profileService = {
   async checkNickname(nickname: string): Promise<NicknameCheckResponse> {
     return transport.post<NicknameCheckResponse>('/api/profile/nickname/check', {
       nickname,
+    }, {
+      accessLevel: 'private-auth'
     })
   },
 
   /**
    * Register nickname for current user
+   * REQ-B-A0-API: Private-Auth API (SSO required, but signup not required)
    *
    * @param nickname - Nickname to register
    * @returns Registration response
@@ -152,41 +159,53 @@ export const profileService = {
   async registerNickname(nickname: string): Promise<NicknameRegisterResponse> {
     return transport.post<NicknameRegisterResponse>('/api/profile/register', {
       nickname,
+    }, {
+      accessLevel: 'private-auth'
     })
   },
 
   /**
    * Get user profile survey data
+   * REQ-B-A0-API: Private-Auth API (SSO required, but signup not required)
    *
    * @returns Survey data with level, career, job_role, duty, interests
    */
   async getSurvey(): Promise<SurveyDataResponse> {
-    return transport.get<SurveyDataResponse>('/api/profile/survey')
+    return transport.get<SurveyDataResponse>('/api/profile/survey', {
+      accessLevel: 'private-auth'
+    })
   },
 
   /**
    * Update user profile survey
+   * REQ-B-A0-API: Private-Auth API (SSO required, but signup not required)
    *
    * @param surveyData - Survey data (level, career, interests)
    * @returns Survey update response with survey_id
    */
   async updateSurvey(surveyData: SurveyUpdateRequest): Promise<SurveyUpdateResponse> {
-    return transport.put<SurveyUpdateResponse>('/api/profile/survey', surveyData)
+    return transport.put<SurveyUpdateResponse>('/api/profile/survey', surveyData, {
+      accessLevel: 'private-auth'
+    })
   },
 
   /**
    * Get current user's privacy consent status
+   * REQ-B-A0-API: Private-Auth API (SSO required, but signup not required)
    *
    * REQ: REQ-F-A3-5
    *
    * @returns Consent status with timestamp
    */
   async getConsentStatus(): Promise<ConsentStatusResponse> {
-    return transport.get<ConsentStatusResponse>('/api/profile/consent')
+    return transport.get<ConsentStatusResponse>('/api/profile/consent', {
+      accessLevel: 'private-auth'
+    })
   },
 
   /**
    * Update current user's privacy consent status
+   * REQ-B-A0-API: Private-Auth API (SSO required, but signup not required)
    *
    * REQ: REQ-F-A3-5
    *
@@ -194,7 +213,9 @@ export const profileService = {
    * @returns Consent update response
    */
   async updateConsent(consent: boolean): Promise<ConsentUpdateResponse> {
-    return transport.post<ConsentUpdateResponse>('/api/profile/consent', { consent })
+    return transport.post<ConsentUpdateResponse>('/api/profile/consent', { consent }, {
+      accessLevel: 'private-auth'
+    })
   },
 
   /**
