@@ -184,7 +184,7 @@ up-internal:
 	@$(MAKE) up ENV=internal
 
 down:
-	@echo -e "$(YELLOW)🛑 서비스 정지 중 ($(ENV_NAME))...$(NC)"
+	@echo -e "$(YELLOW)🛑 서비스 정지 중...$(NC)"
 	cd $(DOCKER_DIR)
 	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) down
 	@echo -e "$(GREEN)✅ 정지 완료$(NC)"
