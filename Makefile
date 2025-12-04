@@ -168,6 +168,7 @@ build: validate
 	else \
 		$(DC) $(COMPOSE_FILES) build; \
 	fi
+	@echo -e "$(BLUE)   (로드된 환경: $(ENV_NAME))$(NC)"
 	@echo -e "$(GREEN)✅ 빌드 완료$(NC)"
 
 build-internal:
