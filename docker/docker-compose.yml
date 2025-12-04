@@ -45,12 +45,9 @@ services:
       - HOST=${HOST:-0.0.0.0}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ENVIRONMENT=${ENVIRONMENT:-development}
-      # LLM Configuration (loaded from env_file, with defaults)
-      - USE_LITE_LLM=${USE_LITE_LLM:-false}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - LITELLM_BASE_URL=${LITELLM_BASE_URL:-http://localhost:4444/v1}
-      - LITELLM_API_KEY=${LITELLM_API_KEY:-sk-test}
-      - LITELLM_MODEL=${LITELLM_MODEL:-gpt-4}
+      # LLM Configuration: loaded from env_file only (not from environment section)
+      # This prevents docker/.env values from overriding env_file settings
+      # See: docker/.env.example and docker/.env.internal for configuration
       - TZ=Asia/Seoul
     env_file:
       - ${ENV_FILE:-.env}
