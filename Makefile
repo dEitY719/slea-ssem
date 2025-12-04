@@ -153,12 +153,16 @@ validate:
 
 build: validate
 	@echo -e "$(YELLOW)🔨 이미지 빌드 중 ($(ENV_NAME))...$(NC)"
-	@if [ -f $(DOCKER_DIR)/.env ]; then \
-		echo -e "$(BLUE)   - HTTP_PROXY: $$(grep HTTP_PROXY $(DOCKER_DIR)/.env | cut -d= -f2 || echo [미설정])$(NC)"; \
-		echo -e "$(BLUE)   - PIP_INDEX_URL: $$(grep PIP_INDEX_URL $(DOCKER_DIR)/.env | cut -d= -f2 || echo [기본])$(NC)"; \
+	@if [ -f $(DOCKER_DIR)/$(ENV_FILE) ]; then \
+		echo -e "$(BLUE)   - HTTP_PROXY: $$(grep -h '^HTTP_PROXY=' $(DOCKER_DIR)/$(ENV_FILE) | cut -d= -f2 || echo [미설정])$(NC)"; \
+		echo -e "$(BLUE)   - PIP_INDEX_URL: $$(grep -h '^PIP_INDEX_URL=' $(DOCKER_DIR)/$(ENV_FILE) | cut -d= -f2 || echo [기본])$(NC)"; \
 	fi
 	cd $(DOCKER_DIR)
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) build
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) build; \
+	else \
+		$(DC) $(COMPOSE_FILES) build; \
+	fi
 	@echo -e "$(GREEN)✅ 빌드 완료$(NC)"
 
 build-internal:
@@ -171,9 +175,17 @@ build-internal:
 up:
 	@echo -e "$(YELLOW)🚀 서비스 시작 중 ($(ENV_NAME))...$(NC)"
 	cd $(DOCKER_DIR)
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) up -d
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) up -d; \
+	else \
+		$(DC) $(COMPOSE_FILES) up -d; \
+	fi
 	@sleep 2
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) ps
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) ps; \
+	else \
+		$(DC) $(COMPOSE_FILES) ps; \
+	fi
 	@echo ""
 	@echo -e "$(GREEN)✅ 시작 완료!$(NC)"
 	@echo -e "$(BLUE)포트:$(NC)"
@@ -186,13 +198,21 @@ up-internal:
 down:
 	@echo -e "$(YELLOW)🛑 서비스 정지 중...$(NC)"
 	cd $(DOCKER_DIR)
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) down
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) down; \
+	else \
+		$(DC) $(COMPOSE_FILES) down; \
+	fi
 	@echo -e "$(GREEN)✅ 정지 완료$(NC)"
 
 restart:
 	@echo -e "$(YELLOW)🔄 서비스 재시작 중 ($(ENV_NAME))...$(NC)"
 	cd $(DOCKER_DIR)
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) restart
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) restart; \
+	else \
+		$(DC) $(COMPOSE_FILES) restart; \
+	fi
 	@echo -e "$(GREEN)✅ 재시작 완료$(NC)"
 
 rebuild: down build up
@@ -205,14 +225,22 @@ rebuild: down build up
 logs:
 	@echo -e "$(YELLOW)📊 Backend 로그 (실시간)$(NC)"
 	cd $(DOCKER_DIR)
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) logs -f $(BACKEND)
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) logs -f $(BACKEND); \
+	else \
+		$(DC) $(COMPOSE_FILES) logs -f $(BACKEND); \
+	fi
 
 ps:
 	@echo -e "$(BLUE)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
 	@echo -e "$(BLUE)실행 중인 서비스 ($(ENV_NAME))$(NC)"
 	@echo -e "$(BLUE)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
 	cd $(DOCKER_DIR)
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) ps
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) ps; \
+	else \
+		$(DC) $(COMPOSE_FILES) ps; \
+	fi
 
 # ============================================================
 # 5. 컨테이너 접속
@@ -221,12 +249,20 @@ ps:
 shell:
 	@echo -e "$(YELLOW)💻 Backend 셸 접속$(NC)"
 	cd $(DOCKER_DIR)
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) exec $(BACKEND) sh
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) exec $(BACKEND) sh; \
+	else \
+		$(DC) $(COMPOSE_FILES) exec $(BACKEND) sh; \
+	fi
 
 shell-db:
 	@echo -e "$(YELLOW)💻 Database 접속$(NC)"
 	cd $(DOCKER_DIR)
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) exec $(DB) psql -U slea_user -d sleassem_dev
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) exec $(DB) psql -U slea_user -d sleassem_dev; \
+	else \
+		$(DC) $(COMPOSE_FILES) exec $(DB) psql -U slea_user -d sleassem_dev; \
+	fi
 
 # ============================================================
 # 6. 개발 (TDD)
@@ -235,17 +271,29 @@ shell-db:
 test:
 	@echo -e "$(YELLOW)🧪 테스트 실행 중...$(NC)"
 	cd $(DOCKER_DIR)
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) exec $(BACKEND) pytest tests/backend/ -v --tb=short
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) exec $(BACKEND) pytest tests/backend/ -v --tb=short; \
+	else \
+		$(DC) $(COMPOSE_FILES) exec $(BACKEND) pytest tests/backend/ -v --tb=short; \
+	fi
 
 lint:
 	@echo -e "$(YELLOW)🔎 코드 검사 중 (Ruff)...$(NC)"
 	cd $(DOCKER_DIR)
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) exec $(BACKEND) ruff check src tests
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) exec $(BACKEND) ruff check src tests; \
+	else \
+		$(DC) $(COMPOSE_FILES) exec $(BACKEND) ruff check src tests; \
+	fi
 
 type-check:
 	@echo -e "$(YELLOW)✅ 타입 검사 중 (mypy strict)...$(NC)"
 	cd $(DOCKER_DIR)
-	ENV_FILE=$(ENV_FILE) $(DC) $(COMPOSE_FILES) exec $(BACKEND) mypy src --strict
+	@if [ "$(ENV)" = "internal" ]; then \
+		$(DC) --env-file $(ENV_FILE) $(COMPOSE_FILES) exec $(BACKEND) mypy src --strict; \
+	else \
+		$(DC) $(COMPOSE_FILES) exec $(BACKEND) mypy src --strict; \
+	fi
 
 quality: lint type-check test
 	@echo -e "$(GREEN)✅ 품질 검사 완료$(NC)"
