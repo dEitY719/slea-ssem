@@ -49,6 +49,31 @@ PORT=8100 ./tools/dev.sh down  # Stop port 8100 server
 - `down` automatically finds and kills the server on specified port
 - `down` works with or without `lsof` command available
 
+### Docker Build Environments (외부/사내)
+
+Project supports both **external (공개망)** and **internal (폐쇄망)** environments.
+
+**External Environment (집 PC / 공개망)**:
+```bash
+make init              # Create docker/.env
+make build             # Build image (공식 PyPI + npm)
+make up                # Start services
+```
+
+**Internal Environment (회사 PC / 폐쇄망)**:
+```bash
+make init-internal     # Create docker/.env.internal
+cp *.crt docker/certs/internal/  # Copy company certificates
+make build-internal    # Build image (사내 Artifactory + 프록시)
+make up-internal       # Start services
+```
+
+**⚠️ Important**:
+- External PC: Use `make build` (NOT `make build-internal`)
+- If must use internal: `ENV=internal HTTP_PROXY= HTTPS_PROXY= NO_PROXY= make build`
+- GEMINI_API_KEY warning in internal build is normal (empty by default)
+- See README.md for detailed setup
+
 ### Package Management
 
 **When installing new packages during development**:

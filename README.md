@@ -92,20 +92,25 @@ curl http://localhost:8000/health
 - ✅ 공식 npm (`https://registry.npmjs.org/`)
 - ✅ 프록시 없음
 
+**⚠️ 주의**: 외부 PC에서 `make build-internal` 사용하지 마세요!
+- 사내 프록시(`http://12.26.204.100:8080/`)에 접근할 수 없어 빌드가 실패합니다.
+- 대신 `make build`를 사용하세요.
+- 또는 프록시를 비워서: `ENV=internal HTTP_PROXY= HTTPS_PROXY= NO_PROXY= make build`
+
 ---
 
 ### 사내 환경 (회사 PC / 폐쇄망)
 
 ```bash
 # 1. 환경 설정 초기화
-make init-internal             # docker/.env 파일 생성 (from .env.internal.example)
+make init-internal             # docker/.env.internal 파일 생성 (from .env.internal.example)
 
 # 2. 인증서 복사 (필수)
 # 회사 인증서를 docker/certs/internal/ 폴더에 복사
 cp /path/to/certificates/*.crt docker/certs/internal/
 
 # 3. 빌드 & 실행
-make build-internal            # 사내 환경 이미지 빌드
+make build-internal            # 사내 환경 이미지 빌드 (프록시 자동 적용)
 make up-internal               # 사내 환경 서비스 시작
 
 # 4. 확인
@@ -113,12 +118,18 @@ make ps
 curl http://localhost:8000/health
 ```
 
-**환경 파일**: `docker/.env.internal.example` → `docker/.env`
+**환경 파일**: `docker/.env.internal.example` → `docker/.env.internal`
 - ✅ 사내 Artifactory (`http://repo.samsungds.net/...`)
 - ✅ 사내 프록시 (`http://12.26.204.100:8080/`)
 - ✅ NO_PROXY 설정 (사내 IP/도메인 제외)
+- ⚠️ GEMINI_API_KEY는 빈값 (필요시 개발자에게 문의)
 
-**⚠️ 주의**: `.env` 파일의 `NO_PROXY` 값은 회사 환경에 맞게 수정하세요.
+**⚠️ 환경 변수 경고 무시해도 됨**:
+```
+WARN[0000] The "GEMINI_API_KEY" variable is not set. Defaulting to a blank string.
+```
+- GEMINI_API_KEY는 `.env.internal.example`에서 빈값으로 정의되어 경고가 정상입니다.
+- 해당 키가 필요하면 개발 리드에게 문의하세요.
 
 ---
 
