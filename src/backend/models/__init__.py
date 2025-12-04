@@ -4,7 +4,9 @@ from src.backend.models.answer_explanation import AnswerExplanation
 from src.backend.models.attempt import Attempt
 from src.backend.models.attempt_answer import AttemptAnswer
 from src.backend.models.attempt_round import AttemptRound
+from src.backend.models.difficulty_keyword import DifficultyKeyword
 from src.backend.models.question import Question
+from src.backend.models.question_template import QuestionTemplate
 from src.backend.models.test_result import TestResult
 from src.backend.models.test_session import TestSession
 from src.backend.models.user import User
@@ -22,4 +24,6 @@ __all__ = [
     "UserBadge",
     "Attempt",
     "AttemptRound",
+    "DifficultyKeyword",
+    "QuestionTemplate",
 ]
