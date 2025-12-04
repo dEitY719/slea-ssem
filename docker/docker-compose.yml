@@ -47,10 +47,10 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-development}
       # LLM Configuration (loaded from env_file, not environment section)
       - USE_LITE_LLM=${USE_LITE_LLM:-false}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}  # Required if USE_LITE_LLM=false
       - LITELLM_BASE_URL=${LITELLM_BASE_URL}
       - LITELLM_API_KEY=${LITELLM_API_KEY}
       - LITELLM_MODEL=${LITELLM_MODEL}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - TZ=Asia/Seoul
     env_file:
       - ${ENV_FILE:-.env}
