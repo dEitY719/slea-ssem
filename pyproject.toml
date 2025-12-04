@@ -41,6 +41,7 @@ dependencies = [
     "pytest>=8.4.2",
     "anthropic>=0.73.0",
     "langchain-openai>=1.0.3",
+    "email-validator>=2.3.0",
 ]
 
 
