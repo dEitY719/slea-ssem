@@ -12,9 +12,48 @@ Design Patterns:
 
 from abc import ABC, abstractmethod
 from os import getenv
+from typing import Any
 
+from langchain_core.messages import AIMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
+
+
+# ============================================================================
+# Helper: LiteLLM Message Wrapper (OpenAI 호환성)
+# ============================================================================
+
+
+class LiteLLMCompatibleOpenAI(ChatOpenAI):
+    """
+    ChatOpenAI wrapper that ensures OpenAI API compatibility with LiteLLM.
+
+    OpenAI API requires 'content' field in assistant messages, even when
+    tool_calls are present. This wrapper ensures content field is never null.
+
+    REQ: REQ-A-ItemGen (LiteLLM message format fix for gpt-oss-120b)
+    """
+
+    def _process_message_for_api(self, message: AIMessage) -> dict[str, Any]:
+        """
+        Ensure content field is always present for OpenAI API compatibility.
+
+        Args:
+            message: LangChain AIMessage
+
+        Returns:
+            Processed message dict for OpenAI API
+        """
+        msg_dict = {
+            "role": "assistant",
+            "content": getattr(message, "content", "") or "",  # Ensure content is never None
+        }
+
+        # Add tool_calls if present
+        if hasattr(message, "tool_calls") and message.tool_calls:
+            msg_dict["tool_calls"] = message.tool_calls
+
+        return msg_dict
 
 
 class LLMProvider(ABC):
@@ -109,13 +148,16 @@ class LiteLLMProvider(LLMProvider):
         api_key = getenv("LITELLM_API_KEY", "sk-dummy-key")
         model = getenv("LITELLM_MODEL", "gpt-4")
 
-        return ChatOpenAI(
+        return LiteLLMCompatibleOpenAI(
             model=model,
             api_key=api_key,
             base_url=base_url,
             temperature=0.3,  # 결정적 도구 호출 (0.7 → 0.3으로 감소: ReAct 형식 일관성 향상)
             max_tokens=8192,  # LiteLLM 프록시 호환성 (보수적 설정)
             timeout=30,  # API 타임아웃 (초)
+            default_headers={
+                "Accept": "application/json",
+            },
         )
 
 
