@@ -1234,40 +1234,32 @@ async def update_profile(
 **401 + NEED_SSO** (SSO 인증 필요)
 ```json
 {
-  "detail": {
-    "message": "SSO authentication required",
-    "code": "NEED_SSO"
-  }
+  "detail": "SSO authentication required",
+  "code": "NEED_SSO"
 }
 ```
 
 **401 + NEED_LOGIN** (서비스 로그인 필요, 재인증)
 ```json
 {
-  "detail": {
-    "message": "Service login required",
-    "code": "NEED_LOGIN"
-  }
+  "detail": "Service login required",
+  "code": "NEED_LOGIN"
 }
 ```
 
 **403 + NEED_SIGNUP** (회원가입 필요)
 ```json
 {
-  "detail": {
-    "message": "Signup required",
-    "code": "NEED_SIGNUP"
-  }
+  "detail": "Signup required",
+  "code": "NEED_SIGNUP"
 }
 ```
 
 **403 + FORBIDDEN** (권한 없음)
 ```json
 {
-  "detail": {
-    "message": "Forbidden",
-    "code": "FORBIDDEN"
-  }
+  "detail": "Forbidden",
+  "code": "FORBIDDEN"
 }
 ```
 
