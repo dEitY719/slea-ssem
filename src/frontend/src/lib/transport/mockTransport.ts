@@ -276,6 +276,15 @@ const determineTestDate = (attemptIndex: number): string => {
   return TEST_DATE_SEQUENCE[templateIndex] ?? new Date().toISOString()
 }
 
+const buildReturnToParam = (): string => {
+  if (typeof window === 'undefined' || !window.location) {
+    return encodeURIComponent('/')
+  }
+  const { pathname, search } = window.location
+  const combined = `${pathname || '/'}${search ?? ''}`
+  return encodeURIComponent(combined || '/')
+}
+
 const preparePreviousResultForAttempt = (attemptIndex: number) => {
   const previousAttemptIndex = attemptIndex - 1
   if (previousAttemptIndex <= 0) {
@@ -431,7 +440,7 @@ class MockTransport implements HttpTransport {
       if (!mockAuthState.isAuthenticated) {
         // REQ-F-A0-API-3: 401 + NEED_SSO
         console.warn('[Mock Auth] 401 NEED_SSO - redirecting to /sso')
-        const returnTo = encodeURIComponent(window.location.pathname)
+        const returnTo = buildReturnToParam()
         window.location.href = `/sso?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
       }
@@ -440,13 +449,13 @@ class MockTransport implements HttpTransport {
       if (!mockAuthState.isAuthenticated) {
         // REQ-F-A0-API-3: 401 + NEED_SSO (인증 안됨)
         console.warn('[Mock Auth] 401 NEED_SSO - redirecting to /sso')
-        const returnTo = encodeURIComponent(window.location.pathname)
+        const returnTo = buildReturnToParam()
         window.location.href = `/sso?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
       } else if (!mockAuthState.hasNickname) {
         // REQ-F-A0-API-5: 403 + NEED_SIGNUP (인증됨 but 비회원)
         console.warn('[Mock Auth] 403 NEED_SIGNUP - redirecting to /signup')
-        const returnTo = encodeURIComponent(window.location.pathname)
+        const returnTo = buildReturnToParam()
         window.location.href = `/signup?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
       }
@@ -463,7 +472,7 @@ class MockTransport implements HttpTransport {
       // REQ-F-A0-API: Handle authentication errors with redirect simulation
       if (endpointError.includes('401') || endpointError.includes('Unauthorized')) {
         if (accessLevel === 'private-auth' || accessLevel === 'private-member') {
-          const returnTo = encodeURIComponent(window.location.pathname)
+          const returnTo = buildReturnToParam()
           debugLog(`[Mock Transport] 401 Unauthorized - would redirect to /sso?returnTo=${returnTo}`)
           // In real app, realTransport will handle actual redirect
           throw new Error(`401 Unauthorized (mock: redirect to /sso?returnTo=${returnTo})`)
@@ -472,7 +481,7 @@ class MockTransport implements HttpTransport {
 
       if (endpointError.includes('403') && endpointError.includes('NEED_SIGNUP')) {
         if (accessLevel === 'private-member') {
-          const returnTo = encodeURIComponent(window.location.pathname)
+          const returnTo = buildReturnToParam()
           debugLog(`[Mock Transport] 403 Signup Required - would redirect to /signup?returnTo=${returnTo}`)
           throw new Error(`403 NEED_SIGNUP (mock: redirect to /signup?returnTo=${returnTo})`)
         }
@@ -525,7 +534,7 @@ class MockTransport implements HttpTransport {
       if (!mockAuthState.hasNickname) {
         // REQ-F-A0-API-5: SSO authenticated but not a member → 403 + NEED_SIGNUP
         console.warn('[Mock Auth] 403 NEED_SIGNUP - redirecting to /signup')
-        const returnTo = encodeURIComponent(window.location.pathname)
+        const returnTo = buildReturnToParam()
         window.location.href = `/signup?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
       }
