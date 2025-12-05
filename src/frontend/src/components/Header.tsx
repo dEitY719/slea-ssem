@@ -51,13 +51,13 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const handleLoginClick = () => {
-    // REQ-F-A0-Landing: Navigate to /login page
-    // LoginPage will handle the login flow:
+    // Navigate to /continue with intent=service_login
+    // ContinuePage will delegate to handleServiceLogin:
     // - Call /api/auth/login API
     // - Auto-redirect to /sso if not authenticated
     // - Auto-redirect to /signup if not member
     // - Navigate to /home if success
-    navigate('/login')
+    navigate('/continue?intent=service_login')
   }
 
   const handleSignupClick = () => {
