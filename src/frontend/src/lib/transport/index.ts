@@ -52,6 +52,7 @@ export type { HttpTransport, RequestConfig } from './types'
 export {
   setMockScenario,
   setMockData,
+  setMockAuthState,
   mockConfig,
   getMockData,
   getMockRequests,

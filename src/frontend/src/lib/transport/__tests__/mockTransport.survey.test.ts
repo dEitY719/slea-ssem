@@ -1,12 +1,14 @@
 // Mock Transport Survey Endpoint Tests
 import { describe, test, expect, beforeEach } from 'vitest'
-import { mockTransport, setMockScenario, mockConfig } from '../mockTransport'
+import { mockTransport, setMockScenario, mockConfig, setMockAuthState } from '../mockTransport'
 
 describe('Mock Transport - /profile/survey endpoint', () => {
   beforeEach(() => {
     mockConfig.simulateError = false
     mockConfig.delay = 0
     setMockScenario('no-survey')
+    // Set mock auth state to authenticated (Private-Auth API requires SSO)
+    setMockAuthState(true, null)
   })
 
   test('PUT /profile/survey with valid level (beginner)', async () => {

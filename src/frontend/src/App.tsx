@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import LoginPage from './pages/LoginPage'
+import ContinuePage from './pages/ContinuePage'
 import SSOPage from './pages/SSOPage'
 import AuthErrorPage from './pages/AuthErrorPage'
 import HomePage from './pages/HomePage'
@@ -20,7 +20,8 @@ function App() {
       <Routes>
         {/* REQ-F-A0-Landing: Landing page accessible without authentication */}
         <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/continue" element={<ContinuePage />} />
+        <Route path="/login" element={<Navigate to="/continue?intent=service_login" replace />} />
         <Route path="/sso" element={<SSOPage />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/auth-error" element={<AuthErrorPage />} />

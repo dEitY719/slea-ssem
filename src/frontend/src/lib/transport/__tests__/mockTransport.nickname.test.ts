@@ -2,13 +2,15 @@
 // REQ: REQ-F-A2-3, REQ-F-A2-5
 
 import { describe, test, expect, beforeEach } from 'vitest'
-import { mockTransport, mockConfig } from '../mockTransport'
+import { mockTransport, mockConfig, setMockAuthState } from '../mockTransport'
 import type { NicknameCheckResponse, NicknameRegisterResponse } from '../../../services/profileService'
 
 describe('Mock Transport - Nickname Validation (REQ-F-A2-5)', () => {
   beforeEach(() => {
     mockConfig.simulateError = false
     mockConfig.delay = 0
+    // Set mock auth state to authenticated (Private-Auth API requires SSO)
+    setMockAuthState(true, null)
   })
 
   describe('1. Length Validation Tests', () => {
