@@ -1,6 +1,7 @@
 // REQ: REQ-F-A2-1, REQ-B-A0-API
 import { useState, useCallback } from 'react'
 import { authService } from '../services/authService'
+import { transport } from '../lib/transport'
 import { clearCachedNickname, getCachedNickname, setCachedNickname } from '../utils/nicknameCache'
 
 /**
@@ -37,18 +38,32 @@ export function useUserProfile() {
     setError(null)
 
     try {
-      // REQ-B-A0-API: Use public /auth/status API instead of private /api/profile/nickname
-      // This allows unauthenticated users to check their auth status without errors
-      const data = await authService.getAuthStatus()
+      // Step 1: Check SSO authentication status (Public API)
+      const authStatus = await authService.getAuthStatus()
 
-      setNickname(data.nickname)
-      if (data.nickname) {
-        setCachedNickname(data.nickname)
+      if (!authStatus.authenticated) {
+        // Not authenticated - no nickname
+        setNickname(null)
+        clearCachedNickname()
+        setLoading(false)
+        return null
+      }
+
+      // Step 2: Get nickname (Private-Auth API)
+      // Only called if authenticated
+      const nicknameData = await transport.get<{ nickname: string | null }>(
+        '/api/profile/nickname',
+        { accessLevel: 'private-auth' }
+      )
+
+      setNickname(nicknameData.nickname)
+      if (nicknameData.nickname) {
+        setCachedNickname(nicknameData.nickname)
       } else {
         clearCachedNickname()
       }
       setLoading(false)
-      return data.nickname
+      return nicknameData.nickname
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
       setError(errorMessage)
