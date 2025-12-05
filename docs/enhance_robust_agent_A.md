@@ -1,5 +1,25 @@
 # Agent 강건성 개선 계획 (enhance_robust_agent_A)
 
+> **Version**: 1.1 (Updated with G, CX feedback)
+> **Last Updated**: 2025-12-05
+
+## 0. 동료 피드백 반영 요약
+
+### 반영된 핵심 인사이트
+
+| 출처 | 핵심 제안 | 반영 위치 |
+|------|-----------|-----------|
+| **G 문서** | `with_structured_output` 활용으로 수동 파싱 제거 | Phase 0 (신규) |
+| **G 문서** | Two-Step "Gather-Then-Generate" 단순화 | Phase 0 (신규) |
+| **G 문서** | 프롬프트 대폭 단순화 | Phase 3.2 강화 |
+| **CX 문서** | `StructuredTool` with `args_schema` | Phase 2 (신규 Task) |
+| **CX 문서** | `ActionSanitizer` 전처리 단계 | Phase 2 (신규 Task) |
+| **CX 문서** | `parse_json_robust()` 전역 활용 | Phase 2 강화 |
+| **CX 문서** | `src/agent/tests` 비어있음 | Phase 4 강화 |
+| **CX 문서** | 구조화된 로깅 필요 | Phase 4 (신규 Task) |
+
+---
+
 ## 1. 문제 요약
 
 ### 1.1 현상
@@ -106,19 +126,129 @@ class LiteLLMProvider(LLMProvider):
 ### 3.1 전략 개요
 
 ```
-개선된 아키텍처 (Multi-Model 지원):
+개선된 아키텍처 (Multi-Model 지원) - v1.1:
 ┌─────────────────────────────────────────────────────────────┐
 │  AgentRunner (새로운 Facade)                                │
-│  ├── ModelCapabilityDetector: 모델 능력 자동 감지           │
+│  ├── ModelCapabilityProfile: 모델 능력 프로파일             │
+│  │   ├── supports_tool_calls: bool                         │
+│  │   ├── supports_json_mode: bool                          │
+│  │   └── needs_react_text: bool                            │
 │  ├── AgentFactory: 모델에 맞는 Agent 생성                    │
+│  │   ├── StructuredOutputAgent (Gemini, GPT-4) ← NEW       │
 │  │   ├── ToolCallingAgent (Gemini, GPT-4)                  │
 │  │   └── TextReActAgent (DeepSeek, 기타)                   │
+│  ├── ActionSanitizer: XML/YAML → JSON 전처리 ← NEW         │
 │  ├── OutputNormalizer: 다양한 출력 형식 정규화               │
-│  └── RetryStrategy: 형식 실패 시 재시도                      │
+│  └── StructuredLogging: 디버깅용 구조화 로그 ← NEW          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 Phase 1: 즉시 적용 가능한 개선 (Low Risk)
+### 3.2 Phase 0: 근본적 해결책 - Structured Output (G 문서 반영) ⭐ NEW
+
+> **핵심 아이디어**: 수동 Final Answer 파싱을 제거하고, LangChain의 `with_structured_output`을 활용하여 모델에 관계없이 일관된 출력 보장
+
+#### Task 0.1: `with_structured_output` 도입
+- 목적: 수동 JSON 파싱 제거, 모델별 차이 추상화
+- 파일: `src/agent/llm_agent.py` (수정)
+
+```python
+# 현재: 수동 Final Answer 파싱
+def _parse_agent_output_generate(self, result, round_id):
+    # 복잡한 JSON 추출 로직...
+    json_str = AgentOutputConverter.parse_final_answer_json(content)
+    # ...
+
+# 개선: with_structured_output 사용
+async def generate_questions(self, request) -> GenerateQuestionsResponse:
+    # 1단계: 정보 수집 (기존 도구 호출)
+    context = await self._gather_context(request)
+
+    # 2단계: Structured Output으로 생성
+    structured_llm = self.llm.with_structured_output(GenerateQuestionsResponse)
+    response = await structured_llm.ainvoke(
+        f"Generate {request.question_count} questions based on: {context}"
+    )
+
+    # 파싱 불필요 - 이미 Pydantic 객체
+    return response
+```
+
+**장점:**
+- LangChain이 모델별 차이를 내부적으로 처리 (JSON mode, function calling 등)
+- `_parse_agent_output_generate`, `parse_json_robust` 등 복잡한 파싱 로직 제거 가능
+- 타입 안전성 보장
+
+#### Task 0.2: Two-Step "Gather-Then-Generate" 아키텍처
+- 목적: 복잡한 ReAct 루프 단순화, LLM 호출 횟수 감소
+- 파일: `src/agent/llm_agent.py` (수정)
+
+```python
+class SimplifiedItemGenAgent:
+    """
+    Two-Step 아키텍처:
+    1. Gather: 도구로 컨텍스트 수집 (user_profile, keywords 등)
+    2. Generate: with_structured_output으로 최종 결과 생성
+    """
+
+    async def generate_questions(self, request):
+        # Step 1: Gather - 정보 수집 (도구 직접 호출)
+        profile = get_user_profile(request.user_id)
+        keywords = get_difficulty_keywords(profile["self_level"], request.domain)
+
+        context = {
+            "profile": profile,
+            "keywords": keywords,
+            "domain": request.domain,
+            "count": request.question_count,
+        }
+
+        # Step 2: Generate - 구조화된 출력으로 생성
+        structured_llm = self.llm.with_structured_output(GenerateQuestionsResponse)
+        response = await structured_llm.ainvoke(
+            self._build_generation_prompt(context)
+        )
+
+        # Step 3: 검증 및 저장 (Python 코드로 처리, LLM 루프 밖)
+        validated_items = []
+        for item in response.items:
+            validation = validate_question_quality(item.stem, item.type, ...)
+            if validation["is_valid"]:
+                save_result = save_generated_question(...)
+                validated_items.append(item)
+
+        return GenerateQuestionsResponse(items=validated_items, ...)
+```
+
+**장점:**
+- LLM 호출 횟수 감소 (10+ → 2-3)
+- 검증/저장 로직이 Python 코드로 이동하여 예측 가능
+- ReAct 형식 준수 필요 없음
+
+#### Task 0.3: Pydantic 응답 모델 강화
+- 목적: 도구 응답도 구조화
+- 파일: `src/agent/tools/*.py` (수정)
+
+```python
+# 현재: dict 반환
+@tool
+def score_and_explain(...) -> dict[str, Any]:
+    return {"is_correct": True, "score": 85, ...}
+
+# 개선: Pydantic 모델 반환 + with_structured_output 내부 사용
+class ScoreResult(BaseModel):
+    is_correct: bool
+    score: int = Field(ge=0, le=100)
+    explanation: str
+    keyword_matches: list[str] = []
+    graded_at: str
+
+def _call_llm_score_short_answer(...) -> ScoreResult:
+    """LLM 호출 시 with_structured_output 사용"""
+    structured_llm = llm.with_structured_output(ScoreResult)
+    return structured_llm.invoke(prompt)
+```
+
+### 3.3 Phase 1: 즉시 적용 가능한 개선 (Low Risk)
 
 #### Task 1.1: ModelCapabilityDetector 구현
 - 목적: 모델별 지원 기능 자동 감지
@@ -261,9 +391,158 @@ class AgentFactory:
             return TextReActAgent(llm=llm, tools=tools, prompt=prompt)
 ```
 
-### 3.3 Phase 2: Output Parser 강화 (Medium Risk)
+### 3.4 Phase 2: Output Parser 강화 + StructuredTool (CX 문서 반영) ⭐ ENHANCED
 
-#### Task 2.1: MultiFormatOutputParser 구현
+#### Task 2.0: StructuredTool with args_schema (CX 문서) ⭐ NEW
+- 목적: 도구 입력 자동 검증 및 coercion
+- 파일: `src/agent/tools/*.py` (수정)
+
+```python
+# 현재: @tool 데코레이터만 사용 (스키마 없음)
+@tool
+def save_generated_question(
+    item_type: str,
+    stem: str,
+    choices: list[str] | None = None,
+    ...
+) -> dict[str, Any]:
+    ...
+
+# 개선: StructuredTool with Pydantic args_schema
+class SaveQuestionArgs(BaseModel):
+    """Tool 5 입력 스키마 - LangGraph가 자동 검증"""
+    item_type: Literal["multiple_choice", "true_false", "short_answer"]
+    stem: str = Field(min_length=1, max_length=2000)
+    choices: list[str] | None = None
+    correct_key: str | None = None
+    correct_keywords: list[str] | None = None
+    difficulty: int = Field(ge=1, le=10, default=5)
+    categories: list[str] = Field(default_factory=lambda: ["general"])
+    round_id: str
+    session_id: str = "unknown"
+    validation_score: float | None = None
+
+    @model_validator(mode="after")
+    def validate_answer_fields(self):
+        if self.item_type == "multiple_choice":
+            if not self.correct_key or not self.choices:
+                raise ValueError("MC requires correct_key and choices")
+        elif self.item_type == "short_answer":
+            if not self.correct_keywords:
+                raise ValueError("SA requires correct_keywords")
+        return self
+
+# StructuredTool 생성
+save_generated_question = StructuredTool.from_function(
+    func=_save_generated_question_impl,
+    name="save_generated_question",
+    description="Save a validated question to the question bank",
+    args_schema=SaveQuestionArgs,
+)
+```
+
+**장점:**
+- LangGraph가 자동으로 입력 검증
+- 잘못된 타입 자동 coercion (string → int 등)
+- 누락된 필수 필드 즉시 감지
+
+#### Task 2.1: ActionSanitizer 전처리 단계 (CX 문서) ⭐ NEW
+- 목적: LangGraph 실행 전 XML/YAML → JSON 변환
+- 파일: `src/agent/action_sanitizer.py` (신규)
+
+```python
+from langchain_core.runnables import RunnableLambda
+from langchain_core.messages import AIMessage
+import re
+import json
+
+class ActionSanitizer:
+    """
+    LangGraph state machine에 삽입되는 전처리 단계.
+    DeepSeek의 XML tool call을 JSON으로 변환.
+    """
+
+    XML_PATTERNS = [
+        # <tool_call><name>...</name><arguments>...</arguments></tool_call>
+        (r"<tool_call>\s*<name>(.+?)</name>\s*<arguments>(.+?)</arguments>\s*</tool_call>",
+         lambda m: {"name": m.group(1).strip(), "args": m.group(2).strip()}),
+
+        # <function name="..."><parameter>...</parameter></function>
+        (r'<function\s+name="(.+?)"[^>]*>(.+?)</function>',
+         lambda m: {"name": m.group(1), "args": m.group(2)}),
+    ]
+
+    @classmethod
+    def sanitize(cls, state: dict) -> dict:
+        """LangGraph state에서 마지막 AIMessage를 검사하고 정규화"""
+        messages = state.get("messages", [])
+        if not messages:
+            return state
+
+        last_message = messages[-1]
+        if not isinstance(last_message, AIMessage):
+            return state
+
+        content = last_message.content
+        sanitized = False
+
+        for pattern, extractor in cls.XML_PATTERNS:
+            matches = list(re.finditer(pattern, content, re.DOTALL))
+            if matches:
+                # XML을 JSON Action Input으로 변환
+                for match in matches:
+                    tool_info = extractor(match)
+                    json_replacement = f"Action: {tool_info['name']}\nAction Input: {tool_info['args']}"
+                    content = content.replace(match.group(0), json_replacement)
+                sanitized = True
+
+        if sanitized:
+            logger.info(f"ActionSanitizer: Converted XML to JSON format")
+            # 새 메시지로 교체
+            messages[-1] = AIMessage(content=content)
+            return {**state, "messages": messages}
+
+        return state
+
+# LangGraph에 삽입
+def create_sanitized_react_agent(llm, tools, prompt):
+    """ActionSanitizer가 포함된 ReAct Agent"""
+    base_agent = create_react_agent(llm, tools, prompt)
+
+    # 에이전트 노드 앞에 sanitizer 삽입
+    return base_agent.pipe(RunnableLambda(ActionSanitizer.sanitize))
+```
+
+#### Task 2.2: parse_json_robust() 전역 활용 (CX 문서) ⭐ ENHANCED
+- 목적: 기존 robust 파서가 사용되지 않는 곳에 적용
+- 파일: `src/agent/tools/score_and_explain_tool.py` (수정)
+
+```python
+# 현재: 단순 json.loads 사용 (src/agent/tools/score_and_explain_tool.py:231)
+try:
+    result = json.loads(response_text)  # ❌ 실패 가능
+except json.JSONDecodeError as e:
+    logger.warning(f"Could not parse...")
+    return DEFAULT_LLM_SCORE, "Unable to parse"
+
+# 개선: parse_json_robust 또는 AgentOutputConverter 사용
+from src.agent.llm_agent import parse_json_robust
+# 또는
+from src.agent.output_converter import AgentOutputConverter
+
+try:
+    result = parse_json_robust(response_text)  # ✅ 5가지 cleanup 전략
+except json.JSONDecodeError:
+    # 여전히 실패하면 기본값
+    return DEFAULT_LLM_SCORE, "Unable to parse after robust attempts"
+```
+
+**적용 대상 파일:**
+- `src/agent/tools/score_and_explain_tool.py:231` (_call_llm_score_short_answer)
+- `src/agent/tools/score_and_explain_tool.py:391` (_generate_explanation)
+- `src/agent/llm_agent.py:1253` (_parse_agent_output_score)
+
+#### Task 2.3: MultiFormatOutputParser 구현
 - 목적: JSON, XML, Key-Value 등 다양한 출력 형식 처리
 - 파일: `src/agent/output_parser.py` (신규)
 
@@ -431,7 +710,69 @@ CORRECT (DO THIS):
 """
 ```
 
-### 3.5 Phase 4: 통합 테스트 및 검증 (High Priority)
+### 3.6 Phase 4: 통합 테스트 및 검증 (CX 문서 반영) ⭐ ENHANCED
+
+> **CX 문서 지적**: `src/agent/tests` 디렉토리가 비어있음 - 테스트 필수
+
+#### Task 4.0: 테스트 인프라 구축 (CX 문서) ⭐ NEW
+- 목적: `src/agent/tests/` 디렉토리에 테스트 기반 구축
+- 파일: `tests/agent/` (신규 디렉토리)
+
+```
+tests/agent/
+├── __init__.py
+├── conftest.py                      # 공통 fixtures
+├── fixtures/
+│   ├── mock_llm_responses.py        # 다양한 LLM 응답 mocks
+│   ├── xml_tool_calls.py            # DeepSeek XML 형식 샘플
+│   └── json_tool_calls.py           # Gemini JSON 형식 샘플
+├── test_model_capability.py         # ModelCapabilityProfile 테스트
+├── test_action_sanitizer.py         # XML → JSON 변환 테스트
+├── test_structured_tools.py         # StructuredTool 검증 테스트
+├── test_text_react_agent.py         # TextReActAgent 테스트
+├── test_output_parser.py            # MultiFormatOutputParser 테스트
+└── test_multi_model_compatibility.py # 통합 테스트
+```
+
+```python
+# tests/agent/conftest.py
+import pytest
+from unittest.mock import MagicMock, AsyncMock
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+
+@pytest.fixture
+def mock_gemini_response():
+    """Gemini 스타일 JSON tool call 응답"""
+    return AIMessage(
+        content="",
+        tool_calls=[{
+            "name": "get_user_profile",
+            "args": {"user_id": "test-123"},
+            "id": "call_abc123"
+        }]
+    )
+
+@pytest.fixture
+def mock_deepseek_xml_response():
+    """DeepSeek 스타일 XML 응답 - 실제 사내 로그에서 추출"""
+    return AIMessage(
+        content='''Thought: I need to get user profile
+<tool_call>
+<name>get_user_profile</name>
+<arguments>{"user_id": "test-123"}</arguments>
+</tool_call>'''
+    )
+
+@pytest.fixture
+def mock_deepseek_malformed_response():
+    """DeepSeek 스타일 잘못된 형식"""
+    return AIMessage(
+        content='''Thought: Getting profile
+Action: get_user_profile
+Action Input: user_id="test-123"  # JSON 아닌 key=value
+'''
+    )
+```
 
 #### Task 4.1: Multi-Model 테스트 스위트
 - 목적: 다양한 모델에서 동작 검증
@@ -490,40 +831,198 @@ class TestMultiFormatOutputParser:
         assert result[0].name == "save_question"
 ```
 
+#### Task 4.3: 구조화된 로깅 (CX 문서) ⭐ NEW
+- 목적: 사내/사외 환경 간 디버깅 용이성 향상
+- 파일: `src/agent/structured_logging.py` (신규)
+
+```python
+import json
+import logging
+from dataclasses import dataclass, asdict
+from datetime import datetime
+from typing import Any
+
+@dataclass
+class AgentExecutionLog:
+    """구조화된 Agent 실행 로그"""
+    timestamp: str
+    model_name: str
+    capability_profile: dict
+    iteration: int
+    step_type: str  # "tool_call" | "observation" | "final_answer"
+
+    # 원본 vs 정규화된 데이터
+    raw_content: str
+    sanitized_content: str | None
+    sanitization_applied: bool
+
+    # 도구 호출 정보
+    tool_name: str | None
+    tool_args: dict | None
+    tool_result: Any | None
+
+    # 에러 정보
+    error: str | None = None
+
+class StructuredAgentLogger:
+    """사내/사외 환경 모두에서 일관된 JSON 로그 출력"""
+
+    def __init__(self, model_name: str, capability_profile: dict):
+        self.model_name = model_name
+        self.capability_profile = capability_profile
+        self.iteration = 0
+        self.logs: list[AgentExecutionLog] = []
+
+    def log_tool_call(
+        self,
+        raw_content: str,
+        sanitized_content: str | None,
+        tool_name: str,
+        tool_args: dict
+    ):
+        """도구 호출 로그"""
+        log = AgentExecutionLog(
+            timestamp=datetime.now().isoformat(),
+            model_name=self.model_name,
+            capability_profile=self.capability_profile,
+            iteration=self.iteration,
+            step_type="tool_call",
+            raw_content=raw_content[:500],  # 너무 길면 잘라냄
+            sanitized_content=sanitized_content[:500] if sanitized_content else None,
+            sanitization_applied=sanitized_content is not None,
+            tool_name=tool_name,
+            tool_args=tool_args,
+            tool_result=None,
+        )
+        self._emit(log)
+
+    def log_observation(self, tool_name: str, result: Any):
+        """도구 실행 결과 로그"""
+        log = AgentExecutionLog(
+            timestamp=datetime.now().isoformat(),
+            model_name=self.model_name,
+            capability_profile=self.capability_profile,
+            iteration=self.iteration,
+            step_type="observation",
+            raw_content="",
+            sanitized_content=None,
+            sanitization_applied=False,
+            tool_name=tool_name,
+            tool_args=None,
+            tool_result=result,
+        )
+        self._emit(log)
+        self.iteration += 1
+
+    def _emit(self, log: AgentExecutionLog):
+        """JSON 형식으로 로그 출력 - 파일 또는 stdout"""
+        self.logs.append(log)
+        # 구조화된 JSON 로그 출력
+        logging.info(f"AGENT_LOG: {json.dumps(asdict(log), ensure_ascii=False)}")
+
+    def export_session(self) -> str:
+        """전체 세션 로그를 JSON 파일로 내보내기 (디버깅용)"""
+        return json.dumps([asdict(log) for log in self.logs], indent=2, ensure_ascii=False)
+```
+
+**사용 예:**
+```python
+# ItemGenAgent에서 사용
+class ItemGenAgent:
+    def __init__(self, ...):
+        self.logger = StructuredAgentLogger(
+            model_name=self.llm.model,
+            capability_profile=asdict(self.capability)
+        )
+
+    async def _execute_tool(self, raw_content: str, tool_call: ToolCall):
+        # 로그 기록
+        self.logger.log_tool_call(
+            raw_content=raw_content,
+            sanitized_content=sanitized if was_sanitized else None,
+            tool_name=tool_call.name,
+            tool_args=tool_call.args
+        )
+
+        result = self.tools[tool_call.name].invoke(tool_call.args)
+
+        self.logger.log_observation(tool_call.name, result)
+```
+
+**장점:**
+- 사내 DeepSeek 실행 로그를 JSON 파일로 내보내기 가능
+- 사외에서 동일 형식으로 로드하여 비교 분석
+- grep/jq로 쉽게 필터링 가능
+
 ---
 
 ## 4. 구현 우선순위 및 일정
 
-### 4.1 우선순위 매트릭스
+### 4.1 우선순위 매트릭스 (Updated with G, CX feedback)
 
-| Phase | Task | 영향도 | 위험도 | 우선순위 |
-|-------|------|--------|--------|----------|
-| 1 | ModelCapabilityDetector | High | Low | P0 |
-| 1 | TextReActAgent | High | Medium | P0 |
-| 1 | AgentFactory | High | Low | P0 |
-| 2 | MultiFormatOutputParser | High | Medium | P1 |
-| 2 | FinalAnswerExtractor 강화 | Medium | Low | P1 |
-| 3 | DeepSeekProvider | Medium | Low | P2 |
-| 3 | 프롬프트 강화 | Medium | Low | P2 |
-| 4 | Multi-Model 테스트 | High | Low | P1 |
+| Phase | Task | 영향도 | 위험도 | 우선순위 | 출처 |
+|-------|------|--------|--------|----------|------|
+| **0** | with_structured_output 도입 | **Critical** | Medium | **P0** | G 문서 |
+| **0** | Two-Step Gather-Generate | **Critical** | Medium | **P0** | G 문서 |
+| **0** | Pydantic 응답 모델 강화 | High | Low | P0 | G 문서 |
+| 1 | ModelCapabilityProfile | High | Low | P0 | A+CX |
+| 1 | TextReActAgent | High | Medium | P1 | A |
+| 1 | AgentFactory | High | Low | P1 | A |
+| **2** | StructuredTool args_schema | **High** | Low | **P0** | CX 문서 |
+| **2** | ActionSanitizer | **High** | Medium | **P0** | CX 문서 |
+| **2** | parse_json_robust 전역 활용 | High | Low | P1 | CX 문서 |
+| 2 | MultiFormatOutputParser | High | Medium | P1 | A |
+| 3 | DeepSeekProvider | Medium | Low | P2 | A |
+| 3 | 프롬프트 단순화 | Medium | Low | P2 | G 문서 |
+| **4** | 테스트 인프라 구축 | **High** | Low | **P0** | CX 문서 |
+| 4 | Multi-Model 테스트 | High | Low | P1 | A |
+| **4** | 구조화된 로깅 | **High** | Low | **P1** | CX 문서 |
 
-### 4.2 구현 순서
+### 4.2 전략적 접근 방식
 
 ```
-Week 1: Phase 1 (핵심 인프라)
-├── Day 1-2: ModelCapabilityDetector + 테스트
-├── Day 3-4: TextReActAgent 기본 구현
-└── Day 5: AgentFactory 통합
+┌─────────────────────────────────────────────────────────────┐
+│  Option A: "근본적 해결" (G 문서 권장)                        │
+│  ───────────────────────────────────────                    │
+│  Phase 0 집중 → with_structured_output으로 파싱 문제 제거    │
+│  장점: 깔끔한 해결, 유지보수 용이                             │
+│  단점: 큰 리팩토링 필요, 기존 ReAct 로직 대폭 수정            │
+└─────────────────────────────────────────────────────────────┘
+                           vs
+┌─────────────────────────────────────────────────────────────┐
+│  Option B: "점진적 개선" (A 문서 + CX 문서 조합)              │
+│  ───────────────────────────────────────                    │
+│  Phase 1-2 집중 → 기존 구조 유지하면서 호환성 레이어 추가     │
+│  장점: 낮은 위험, 단계적 검증 가능                            │
+│  단점: 복잡도 증가, 임시방편 느낌                             │
+└─────────────────────────────────────────────────────────────┘
+```
 
-Week 2: Phase 2 (Output 처리)
-├── Day 1-2: MultiFormatOutputParser (XML 지원)
-├── Day 3: FinalAnswerExtractor 강화
-└── Day 4-5: 통합 테스트
+**권장: Option A + 필수 B 요소 조합**
+- Phase 0 (G 문서)의 `with_structured_output`을 먼저 시도
+- 실패 시 Phase 2 (CX 문서)의 `ActionSanitizer`로 fallback
+- 테스트/로깅은 어느 옵션이든 필수
 
-Week 3: Phase 3-4 (최적화 및 검증)
-├── Day 1-2: DeepSeekProvider + 프롬프트 최적화
-├── Day 3-4: Multi-Model 테스트 스위트
-└── Day 5: 문서화 및 릴리스
+### 4.3 구현 순서 (Updated)
+
+```
+Week 1: Phase 0 + 테스트 인프라 (핵심)
+├── Day 1: 테스트 인프라 구축 (tests/agent/)
+├── Day 2: ModelCapabilityProfile 구현 + 테스트
+├── Day 3-4: with_structured_output 도입 (llm_agent.py)
+└── Day 5: Two-Step 아키텍처 프로토타입
+
+Week 2: Phase 2 (호환성 레이어)
+├── Day 1: StructuredTool args_schema 마이그레이션
+├── Day 2-3: ActionSanitizer 구현 + 테스트
+├── Day 4: parse_json_robust 전역 적용
+└── Day 5: 구조화된 로깅 구현
+
+Week 3: Phase 1 + 검증
+├── Day 1-2: TextReActAgent (fallback용)
+├── Day 3: AgentFactory 통합
+├── Day 4: Multi-Model 테스트 스위트
+└── Day 5: 사내 환경 검증 + 문서화
 ```
 
 ---
@@ -583,36 +1082,64 @@ class TextReActAgent:
 
 ## 7. 결론
 
-### 7.1 핵심 개선점 요약
+### 7.1 핵심 개선점 요약 (Updated with G, CX feedback)
 
-1. **모델 능력 자동 감지**: Tool Calling 지원 여부에 따라 적절한 Agent 선택
-2. **텍스트 기반 ReAct 대안**: Tool Calling 미지원 모델용 fallback
-3. **다형 출력 파서**: JSON, XML, Text 등 다양한 형식 처리
-4. **모델별 최적화**: Provider Strategy 패턴 강화
+| 카테고리 | 개선점 | 출처 |
+|----------|--------|------|
+| **근본적 해결** | `with_structured_output`으로 수동 파싱 제거 | G 문서 |
+| **아키텍처** | Two-Step "Gather-Then-Generate" 단순화 | G 문서 |
+| **호환성** | `ActionSanitizer`로 XML → JSON 전처리 | CX 문서 |
+| **타입 안전성** | `StructuredTool` with `args_schema` | CX 문서 |
+| **파싱 강화** | `parse_json_robust` 전역 활용 | CX 문서 |
+| **테스트** | `tests/agent/` 테스트 인프라 구축 | CX 문서 |
+| **디버깅** | 구조화된 JSON 로깅 | CX 문서 |
+| **Fallback** | `TextReActAgent` (Tool Calling 미지원 시) | A 문서 |
+| **프로파일** | `ModelCapabilityProfile` 모델별 능력 감지 | A+CX |
 
 ### 7.2 기대 효과
 
 ```
 Before (현재):
-- Gemini: ✅ 정상
-- DeepSeek: ❌ 실패
+┌─────────────────────────────────────────────┐
+│ Gemini:    ✅ 정상 (native tool calling)    │
+│ DeepSeek:  ❌ 실패 (XML 출력, 파싱 에러)     │
+│ GPT-4:     ⚠️ 미테스트                       │
+│ Claude:    ⚠️ 미테스트                       │
+│ 디버깅:    😰 수동 로그 복사 필요             │
+└─────────────────────────────────────────────┘
 
 After (개선 후):
-- Gemini: ✅ 정상 (Tool Calling)
-- DeepSeek: ✅ 정상 (Text ReAct)
-- GPT-4: ✅ 정상 (Tool Calling)
-- Claude: ✅ 정상 (Tool Calling)
-- 기타: ⚠️ Text ReAct fallback
+┌─────────────────────────────────────────────┐
+│ Gemini:    ✅ 정상 (with_structured_output) │
+│ DeepSeek:  ✅ 정상 (Sanitizer + TextReAct)  │
+│ GPT-4:     ✅ 정상 (with_structured_output) │
+│ Claude:    ✅ 정상 (with_structured_output) │
+│ 기타:      ⚠️ TextReActAgent fallback       │
+│ 디버깅:    😊 JSON 로그 자동 내보내기        │
+└─────────────────────────────────────────────┘
 ```
 
 ### 7.3 다음 단계
 
-Phase 1 구현 완료 후:
-1. 사내 환경에서 DeepSeek 테스트
-2. 로그 수집 및 분석
-3. 필요시 Phase 2-4 진행
+1. **팀 논의**: Option A (근본적 해결) vs Option B (점진적 개선) 선택
+2. **Phase 0 PoC**: `with_structured_output` 먼저 사내 DeepSeek에서 테스트
+   - 성공 시: Phase 0 중심으로 진행
+   - 실패 시: Phase 1-2 중심으로 진행 (ActionSanitizer 등)
+3. **테스트 인프라**: 어느 옵션이든 `tests/agent/` 먼저 구축
+4. **구조화된 로깅**: 사내/사외 디버깅 용이성을 위해 조기 적용
+
+### 7.4 피드백 반영 완료
+
+- [x] G 문서: `with_structured_output` 활용 → Phase 0 추가
+- [x] G 문서: Two-Step 아키텍처 → Task 0.2 추가
+- [x] G 문서: 프롬프트 단순화 → Phase 3.2 언급
+- [x] CX 문서: `StructuredTool` args_schema → Task 2.0 추가
+- [x] CX 문서: `ActionSanitizer` → Task 2.1 추가
+- [x] CX 문서: `parse_json_robust` 전역 활용 → Task 2.2 추가
+- [x] CX 문서: 테스트 부재 → Task 4.0 추가
+- [x] CX 문서: 구조화된 로깅 → Task 4.3 추가
 
 ---
 
 *문서 작성: 2025-12-05*
-*마지막 업데이트: 2025-12-05*
+*마지막 업데이트: 2025-12-05 (v1.1 - G, CX 피드백 반영)*
