@@ -2,7 +2,7 @@
 // Purpose: Thin router that delegates to intent handlers
 
 import React, { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageLayout } from '../components'
 import { handleServiceLogin } from '../features/continue/handleServiceLogin'
 import { handleLeveltest } from '../features/continue/handleLeveltest'
@@ -23,19 +23,18 @@ const GENERIC_ERROR_MESSAGE = '알 수 없는 오류가 발생했습니다. 잠�
 
 const ContinuePage: React.FC = () => {
   const navigate = useNavigate()
-  const location = useLocation()
   const [searchParams] = useSearchParams()
   const [error, setError] = useState<string | null>(null)
   const lastProcessedSearch = useRef<string | null>(null)
 
   useEffect(() => {
-    const currentSearch = location.search
+    const searchSignature = searchParams.toString()
 
     // Avoid duplicate processing when StrictMode re-runs effects or search params repeat
-    if (lastProcessedSearch.current === currentSearch) {
+    if (lastProcessedSearch.current === searchSignature) {
       return
     }
-    lastProcessedSearch.current = currentSearch
+    lastProcessedSearch.current = searchSignature
 
     const processIntent = async () => {
       const intent = searchParams.get('intent') as ContinueIntent | null
@@ -68,7 +67,7 @@ const ContinuePage: React.FC = () => {
     }
 
     processIntent()
-  }, [location.search, navigate, searchParams])
+  }, [navigate, searchParams])
 
   if (error) {
     return (
