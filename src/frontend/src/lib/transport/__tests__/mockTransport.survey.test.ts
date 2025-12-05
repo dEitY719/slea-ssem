@@ -2,6 +2,10 @@
 import { describe, test, expect, beforeEach } from 'vitest'
 import { mockTransport, setMockScenario, mockConfig, setMockAuthState } from '../mockTransport'
 
+const PRIVATE_AUTH_CONFIG = { accessLevel: 'private-auth' } as const
+const putPrivateAuth = <T>(url: string, data?: any) =>
+  mockTransport.put<T>(url, data, PRIVATE_AUTH_CONFIG)
+
 describe('Mock Transport - /profile/survey endpoint', () => {
   beforeEach(() => {
     mockConfig.simulateError = false
@@ -12,7 +16,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
   })
 
   test('PUT /profile/survey with valid level (beginner)', async () => {
-    const response = await mockTransport.put<any>('/profile/survey', {
+    const response = await putPrivateAuth<any>('/profile/survey', {
       level: 'beginner',
     })
 
@@ -26,7 +30,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
   })
 
   test('PUT /profile/survey with valid level (intermediate)', async () => {
-    const response = await mockTransport.put('/profile/survey', {
+    const response = await putPrivateAuth('/profile/survey', {
       level: 'intermediate',
     })
 
@@ -37,7 +41,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
   })
 
   test('PUT /profile/survey with valid level (advanced)', async () => {
-    const response = await mockTransport.put('/profile/survey', {
+    const response = await putPrivateAuth('/profile/survey', {
       level: 'advanced',
     })
 
@@ -49,14 +53,14 @@ describe('Mock Transport - /profile/survey endpoint', () => {
 
   test('PUT /profile/survey with invalid level throws error', async () => {
     await expect(
-      mockTransport.put('/profile/survey', {
+      putPrivateAuth('/profile/survey', {
         level: 'expert',
       })
     ).rejects.toThrow('Invalid level. Must be one of: beginner, intermediate, inter-advanced, advanced, elite')
   })
 
   test('PUT /profile/survey with valid career (0-60)', async () => {
-    const response = await mockTransport.put('/profile/survey', {
+    const response = await putPrivateAuth('/profile/survey', {
       career: 5,
     })
 
@@ -67,7 +71,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
 
   test('PUT /profile/survey with career < 0 throws error', async () => {
     await expect(
-      mockTransport.put('/profile/survey', {
+      putPrivateAuth('/profile/survey', {
         career: -1,
       })
     ).rejects.toThrow('career must be a number between 0 and 60')
@@ -75,14 +79,14 @@ describe('Mock Transport - /profile/survey endpoint', () => {
 
   test('PUT /profile/survey with career > 60 throws error', async () => {
     await expect(
-      mockTransport.put('/profile/survey', {
+      putPrivateAuth('/profile/survey', {
         career: 61,
       })
     ).rejects.toThrow('career must be a number between 0 and 60')
   })
 
   test('PUT /profile/survey with valid job_role', async () => {
-    const response = await mockTransport.put('/profile/survey', {
+    const response = await putPrivateAuth('/profile/survey', {
       job_role: 'SW',
     })
 
@@ -94,14 +98,14 @@ describe('Mock Transport - /profile/survey endpoint', () => {
   test('PUT /profile/survey with job_role > 100 chars throws error', async () => {
     const longString = 'a'.repeat(101)
     await expect(
-      mockTransport.put('/profile/survey', {
+      putPrivateAuth('/profile/survey', {
         job_role: longString,
       })
     ).rejects.toThrow('job_role must be a string with max 100 characters')
   })
 
   test('PUT /profile/survey with valid duty', async () => {
-    const response = await mockTransport.put('/profile/survey', {
+    const response = await putPrivateAuth('/profile/survey', {
       duty: 'Backend Development',
     })
 
@@ -113,14 +117,14 @@ describe('Mock Transport - /profile/survey endpoint', () => {
   test('PUT /profile/survey with duty > 500 chars throws error', async () => {
     const longString = 'a'.repeat(501)
     await expect(
-      mockTransport.put('/profile/survey', {
+      putPrivateAuth('/profile/survey', {
         duty: longString,
       })
     ).rejects.toThrow('duty must be a string with max 500 characters')
   })
 
   test('PUT /profile/survey with valid interests array', async () => {
-    const response = await mockTransport.put('/profile/survey', {
+    const response = await putPrivateAuth('/profile/survey', {
       interests: ['AI', 'Backend', 'Frontend'],
     })
 
@@ -132,14 +136,14 @@ describe('Mock Transport - /profile/survey endpoint', () => {
   test('PUT /profile/survey with interests > 20 items throws error', async () => {
     const largeArray = Array(21).fill('interest')
     await expect(
-      mockTransport.put('/profile/survey', {
+      putPrivateAuth('/profile/survey', {
         interests: largeArray,
       })
     ).rejects.toThrow('interests must be an array with max 20 items')
   })
 
   test('PUT /profile/survey with all fields', async () => {
-    const response = await mockTransport.put<any>('/profile/survey', {
+    const response = await putPrivateAuth<any>('/profile/survey', {
       level: 'intermediate',
       career: 5,
       job_role: 'SW',
