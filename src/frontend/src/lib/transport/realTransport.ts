@@ -3,6 +3,14 @@
 
 import { HttpTransport, RequestConfig } from './types'
 
+const buildReturnToParam = (): string => {
+  if (typeof window === 'undefined') {
+    return encodeURIComponent('/')
+  }
+  const { pathname, search, hash } = window.location
+  return encodeURIComponent(`${pathname}${search}${hash}`)
+}
+
 class RealTransport implements HttpTransport {
   private async request<T>(
     url: string,
@@ -43,7 +51,7 @@ class RealTransport implements HttpTransport {
       // REQ-F-A0-API-3: 401 + NEED_SSO → Auto redirect to /sso with returnTo
       if (response.status === 401 && error.code === 'NEED_SSO') {
         console.warn('[Auth] 401 NEED_SSO - redirecting to /sso')
-        const returnTo = encodeURIComponent(window.location.pathname)
+        const returnTo = buildReturnToParam()
         window.location.href = `/sso?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
       }
@@ -51,7 +59,7 @@ class RealTransport implements HttpTransport {
       // REQ-F-A0-API-4: 401 + NEED_LOGIN → Auto redirect to /login with returnTo
       if (response.status === 401 && error.code === 'NEED_LOGIN') {
         console.warn('[Auth] 401 NEED_LOGIN - redirecting to /login')
-        const returnTo = encodeURIComponent(window.location.pathname)
+        const returnTo = buildReturnToParam()
         window.location.href = `/login?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
       }
@@ -59,7 +67,7 @@ class RealTransport implements HttpTransport {
       // REQ-F-A0-API-5: 403 + NEED_SIGNUP → Auto redirect to /signup with returnTo
       if (response.status === 403 && error.code === 'NEED_SIGNUP') {
         console.warn('[Auth] 403 NEED_SIGNUP - redirecting to /signup')
-        const returnTo = encodeURIComponent(window.location.pathname)
+        const returnTo = buildReturnToParam()
         window.location.href = `/signup?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
       }
