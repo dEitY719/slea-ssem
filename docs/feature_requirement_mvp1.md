@@ -171,9 +171,10 @@ SLEA-SSEM MVP 1.0.0은 임직원의 **AI 역량 수준을 객관적으로 측정
 |--------|---------|---------|
 | **REQ-F-A0-API-1** | Public API 호출 시 credentials를 포함하지 않아야 한다. | **M** |
 | **REQ-F-A0-API-2** | Private-Auth/Private-Member API 호출 시 credentials: 'include'로 쿠키를 포함해야 한다. | **M** |
-| **REQ-F-A0-API-3** | 401 응답 시 `/sso?returnTo=<현재경로>`로 자동 리다이렉트해야 한다. | **M** |
-| **REQ-F-A0-API-4** | 403 + code=NEED_SIGNUP 응답 시 `/signup?returnTo=<현재경로>`로 자동 리다이렉트해야 한다. | **M** |
-| **REQ-F-A0-API-5** | 403 기타 응답 시 Error를 throw해야 한다. (권한 없음) | **M** |
+| **REQ-F-A0-API-3** | 401 + code=NEED_SSO 응답 시 `/sso?returnTo=<현재경로>`로 자동 리다이렉트해야 한다. | **M** |
+| **REQ-F-A0-API-4** | 401 + code=NEED_LOGIN 응답 시 `/login?returnTo=<현재경로>`로 자동 리다이렉트해야 한다. | **M** |
+| **REQ-F-A0-API-5** | 403 + code=NEED_SIGNUP 응답 시 `/signup?returnTo=<현재경로>`로 자동 리다이렉트해야 한다. | **M** |
+| **REQ-F-A0-API-6** | 403 + code=FORBIDDEN 응답 시 Error를 throw해야 한다. (권한 없음) | **M** |
 
 ### API 분류표 (Frontend)
 
@@ -247,24 +248,32 @@ class RealTransport implements HttpTransport {
         code: null
       }))
 
-      // REQ-F-A0-API-3: 401 → SSO 리다이렉트 (인증 필요)
-      if (response.status === 401) {
-        console.warn('[Auth] 401 Unauthorized - redirecting to /sso')
+      // REQ-F-A0-API-3: 401 + NEED_SSO → SSO 리다이렉트
+      if (response.status === 401 && error.code === 'NEED_SSO') {
+        console.warn('[Auth] 401 NEED_SSO - redirecting to /sso')
         const returnTo = encodeURIComponent(window.location.pathname)
         window.location.href = `/sso?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
       }
 
-      // REQ-F-A0-API-4: 403 + NEED_SIGNUP → 회원가입 리다이렉트 (비회원)
+      // REQ-F-A0-API-4: 401 + NEED_LOGIN → 서비스 로그인 리다이렉트 (재인증)
+      if (response.status === 401 && error.code === 'NEED_LOGIN') {
+        console.warn('[Auth] 401 NEED_LOGIN - redirecting to /login')
+        const returnTo = encodeURIComponent(window.location.pathname)
+        window.location.href = `/login?returnTo=${returnTo}`
+        return new Promise(() => {}) as Promise<T>
+      }
+
+      // REQ-F-A0-API-5: 403 + NEED_SIGNUP → 회원가입 리다이렉트
       if (response.status === 403 && error.code === 'NEED_SIGNUP') {
-        console.warn('[Auth] 403 Signup Required - redirecting to /signup')
+        console.warn('[Auth] 403 NEED_SIGNUP - redirecting to /signup')
         const returnTo = encodeURIComponent(window.location.pathname)
         window.location.href = `/signup?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
       }
 
-      // REQ-F-A0-API-5: 403 기타 → Forbidden (권한 없음)
-      if (response.status === 403) {
+      // REQ-F-A0-API-6: 403 + FORBIDDEN → 권한 없음
+      if (response.status === 403 && error.code === 'FORBIDDEN') {
         const errorMessage = error.detail || 'Forbidden'
         throw new Error(errorMessage)
       }
@@ -326,9 +335,10 @@ const lastTestResult = await transport.get('/api/profile/last-test-result', {
 
 | HTTP Status | Error Code | 상황 | Frontend 동작 |
 |------------|------------|------|--------------|
-| **401** | - | 인증 필요 또는 세션 만료 | `/sso?returnTo=...` |
+| **401** | `NEED_SSO` | SSO 인증 필요 | `/sso?returnTo=...` |
+| **401** | `NEED_LOGIN` | 서비스 로그인 필요 (재인증) | `/login?returnTo=...` |
 | **403** | `NEED_SIGNUP` | 비회원 (회원가입 필요) | `/signup?returnTo=...` |
-| **403** | - | 권한 없음 (기타) | throw Error (Forbidden) |
+| **403** | `FORBIDDEN` | 권한 없음 | throw Error (Forbidden) |
 
 **수용 기준**:
 
@@ -1032,9 +1042,10 @@ REQ-F-B1은 원래 "레벨 테스트 시작 전 자기평가 입력"으로 정�
 | **REQ-B-A0-API-1** | Public API는 인증 미들웨어를 적용하지 않고, 개인정보나 유저 식별 가능한 데이터를 반환하지 않아야 한다. | **M** |
 | **REQ-B-A0-API-2** | Private-Auth API는 SSO 인증만 검증해야 한다. (users 레코드 확인 안 함) | **M** |
 | **REQ-B-A0-API-3** | Private-Member API는 회원 인증을 검증해야 한다. (nickname 필수) | **M** |
-| **REQ-B-A0-API-4** | 인증 토큰이 없거나 유효하지 않으면 401 Unauthorized를 반환해야 한다. | **M** |
-| **REQ-B-A0-API-5** | Private-Member API에서 SSO 인증은 됐지만 비회원(nickname 없음)이면 403 + code=NEED_SIGNUP을 반환해야 한다. | **M** |
-| **REQ-B-A0-API-6** | Private-Member API에서 회원인데 세션이 만료된 경우 401을 반환해야 한다. | **M** |
+| **REQ-B-A0-API-4** | SSO 인증이 없거나 유효하지 않으면 401 + code=NEED_SSO를 반환해야 한다. | **M** |
+| **REQ-B-A0-API-5** | 서비스 로그인(재인증)이 필요한 경우 401 + code=NEED_LOGIN을 반환해야 한다. | **M** |
+| **REQ-B-A0-API-6** | Private-Member API에서 SSO 인증은 됐지만 비회원(nickname 없음)이면 403 + code=NEED_SIGNUP을 반환해야 한다. | **M** |
+| **REQ-B-A0-API-7** | 권한 없음(기타)인 경우 403 + code=FORBIDDEN을 반환해야 한다. | **M** |
 
 ### API 분류 및 Middleware 적용
 
@@ -1218,14 +1229,27 @@ async def update_profile(
 
 ### 에러 응답 형식
 
-**401 Unauthorized** (인증 필요 또는 세션 만료)
+**401 + NEED_SSO** (SSO 인증 필요)
 ```json
 {
-  "detail": "Authentication required"
+  "detail": {
+    "message": "SSO authentication required",
+    "code": "NEED_SSO"
+  }
 }
 ```
 
-**403 Forbidden + NEED_SIGNUP** (비회원)
+**401 + NEED_LOGIN** (서비스 로그인 필요, 재인증)
+```json
+{
+  "detail": {
+    "message": "Service login required",
+    "code": "NEED_LOGIN"
+  }
+}
+```
+
+**403 + NEED_SIGNUP** (회원가입 필요)
 ```json
 {
   "detail": {
@@ -1235,10 +1259,13 @@ async def update_profile(
 }
 ```
 
-**403 Forbidden** (권한 없음, 기타)
+**403 + FORBIDDEN** (권한 없음)
 ```json
 {
-  "detail": "Forbidden"
+  "detail": {
+    "message": "Forbidden",
+    "code": "FORBIDDEN"
+  }
 }
 ```
 
@@ -1256,7 +1283,8 @@ Public API는 다음 데이터만 반환 가능:
 - Public API는 인증 없이 호출 가능하며, 개인정보를 반환하지 않는다.
 - Private-Auth API는 SSO 인증만 검증하고, users 레코드는 확인하지 않는다.
 - Private-Member API는 회원 인증을 검증한다. (nickname 필수)
-- 인증 없으면 401, 비회원이면 403 + NEED_SIGNUP을 반환한다.
+- SSO 인증 없으면 401 + NEED_SSO, 재인증 필요하면 401 + NEED_LOGIN을 반환한다.
+- 비회원이면 403 + NEED_SIGNUP, 권한 없으면 403 + FORBIDDEN을 반환한다.
 - `auth_required`와 `member_required` 미들웨어가 구현된다.
 
 ---
