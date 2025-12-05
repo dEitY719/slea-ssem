@@ -345,7 +345,8 @@ const lastTestResult = await transport.get('/api/profile/last-test-result', {
 
 - Public API는 credentials 없이 호출된다.
 - Private-Auth API는 credentials 포함하여 호출된다.
-- Private-Member API는 credentials 포함하고, 403 응답 시 회원가입 페이지로 이동한다.
+- Private-Member API는 credentials 포함하고, 403 + NEED_SIGNUP 응답 시 회원가입 페이지로 이동한다.
+- Private-Member API는 403 + FORBIDDEN 응답 시 에러를 throw한다.
 - Transport layer에 accessLevel 옵션이 추가된다.
 - homeService.getTotalParticipants()는 accessLevel: 'public'으로 호출된다.
 
