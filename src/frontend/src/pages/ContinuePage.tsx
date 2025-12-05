@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { PageLayout } from '../components'
+import { PageLayout, ErrorMessage } from '../components'
 import { handleServiceLogin } from '../features/continue/handleServiceLogin'
 import { handleLeveltest } from '../features/continue/handleLeveltest'
 import type { ContinueIntent, ContinueContext } from '../features/continue/types'
@@ -73,9 +73,16 @@ const ContinuePage: React.FC = () => {
     return (
       <PageLayout mainClassName="continue-page" containerClassName="continue-container">
         <div data-testid="continue-container">
-          <h1 className="continue-title">SLEA-SSEM</h1>
-          <p>{error}</p>
-          <button onClick={() => navigate('/')}>홈으로 돌아가기</button>
+          <ErrorMessage
+            title="처리 중 오류 발생"
+            message={error}
+            helpLinks={[
+              {
+                text: '홈으로 돌아가기',
+                href: '/',
+              },
+            ]}
+          />
         </div>
       </PageLayout>
     )
