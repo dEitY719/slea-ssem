@@ -1582,56 +1582,159 @@ class TextReActAgent:
 | **Fallback** | `TextReActAgent` (Tool Calling 미지원 시) | A 문서 |
 | **프로파일** | `ModelCapabilityProfile` 모델별 능력 감지 | A+CX |
 
-### 7.2 기대 효과
+### 7.2 기대 효과 (DeepSeek 프로덕션 호환성)
 
 ```
-Before (현재):
-┌─────────────────────────────────────────────┐
-│ Gemini:    ✅ 정상 (native tool calling)    │
-│ DeepSeek:  ❌ 실패 (XML 출력, 파싱 에러)     │
-│ GPT-4:     ⚠️ 미테스트                       │
-│ Claude:    ⚠️ 미테스트                       │
-│ 디버깅:    😰 수동 로그 복사 필요             │
-└─────────────────────────────────────────────┘
+Before (현재 - 사외 Gemini만 정상):
+┌──────────────────────────────────────────────┐
+│ 개발 환경 (사외):                             │
+│   Gemini:  ✅ 정상 (native tool calling)     │
+│                                               │
+│ 프로덕션 환경 (사내):                         │
+│   DeepSeek: ❌ 실패 (XML 출력, 파싱 에러)    │
+│   디버깅:   😰 수동 로그 복사 필요            │
+│   재검증:   😰 매번 사내에서 직접 테스트      │
+└──────────────────────────────────────────────┘
 
-After (개선 후):
-┌─────────────────────────────────────────────┐
-│ Gemini:    ✅ 정상 (with_structured_output) │
-│ DeepSeek:  ✅ 정상 (Sanitizer + TextReAct)  │
-│ GPT-4:     ✅ 정상 (with_structured_output) │
-│ Claude:    ✅ 정상 (with_structured_output) │
-│ 기타:      ⚠️ TextReActAgent fallback       │
-│ 디버깅:    😊 JSON 로그 자동 내보내기        │
-└─────────────────────────────────────────────┘
+After (개선 후 - 개발에서 완벽히 검증 후 프로덕션 배포):
+┌──────────────────────────────────────────────┐
+│ 개발 환경 (사외 - 완벽한 검증):               │
+│   Gemini:        ✅ with_structured_output   │
+│   DeepSeek XML:  ✅ Mock 시뮬레이션 + 검증   │
+│   Sanitizer:     ✅ XML → JSON 완벽 검증     │
+│   TextReActAgent:✅ 도구 호출 완벽 검증      │
+│   E2E 테스트:    ✅ 전체 파이프라인 검증     │
+│                                               │
+│ 프로덕션 환경 (사내 - 검증된 코드 배포):      │
+│   DeepSeek:  ✅ 정상 (이미 검증됨)           │
+│   디버깅:    😊 JSON 로그 자동 내보내기      │
+│   안정성:    😊 개발 단계에서 모든 케이스 커버│
+└──────────────────────────────────────────────┘
 ```
 
-### 7.3 다음 단계
+**핵심 차이:**
+- ❌ Before: 개발(Gemini만) → 사내에서 DeepSeek 실패 → 재개발
+- ✅ After: 개발(Gemini + DeepSeek 시뮬레이션 완벽 검증) → 사내 배포(안정)
 
-1. **팀 논의**: Option A (근본적 해결) vs Option B (점진적 개선) 선택
-2. **Phase 0 PoC**: `with_structured_output` 먼저 사내 DeepSeek에서 테스트
-   - 성공 시: Phase 0 중심으로 진행
-   - 실패 시: Phase 1-2 중심으로 진행 (ActionSanitizer 등)
-3. **테스트 인프라**: 어느 옵션이든 `tests/agent/` 먼저 구축
-4. **구조화된 로깅**: 사내/사외 디버깅 용이성을 위해 조기 적용
+### 7.3 다음 단계 (구현 로드맵)
 
-### 7.4 동료 피드백 통합 현황 (v1.2)
+1. **Week 1-4: 개발 환경에서 완벽한 검증** (사외 - Gemini)
+   - Phase 0: `with_structured_output` 안정화 (Gemini)
+   - Phase 1-2: TextReActAgent + ActionSanitizer (DeepSeek 시뮬레이션)
+   - Phase 4: E2E 테스트 + 메트릭 검증
+   - **목표**: DeepSeek XML 형식 → 완벽하게 처리하는 코드 검증
+
+2. **Week 4+: 프로덕션 배포** (사내 - DeepSeek)
+   - 검증된 코드를 사내 LiteLLM DeepSeek에 배포
+   - 구조화된 로깅으로 실시간 모니터링
+   - 필요시 Phase 0b/0c 추가 최적화
+
+3. **배포 전 필수 조건**
+   - ✅ `tests/agent/` 완전한 테스트 커버리지
+   - ✅ DeepSeek XML → Sanitizer → 도구 호출 e2e 검증
+   - ✅ 구조화된 JSON 로그 자동 내보내기 가능
+   - ✅ 모든 테스트 통과
+
+### 7.4 동료 피드백 통합 현황 + DeepSeek-Only 전략 확정 (v1.2 최종)
 
 **CX 검토 - 5가지 핵심 지적 (모두 반영 ✅):**
-- [x] #1: Phase 0 위험 관리 → Task 0.0 (위험 관리 전략 + feature flag)
+- [x] #1: Phase 0 위험 관리 → Task 0.0 (Gemini 개발환경에서 feature flag로 제어)
 - [x] #2: Gather 단계의 에러 처리 → Task 0.2 (ErrorHandler 적용)
-- [x] #3: TextReActAgent와 AGENT_CONFIG → Task 1.2 (agent_steps 보장)
-- [x] #4: E2E 테스트 부재 → Task 4.2 (DeepSeek XML → SaveQuestion e2e)
+- [x] #3: TextReActAgent와 AGENT_CONFIG → Task 1.2 (DeepSeek 프로덕션용 agent_steps 보장)
+- [x] #4: E2E 테스트 부재 → Task 4.2 (DeepSeek XML 시뮬레이션 → 완벽 검증)
 - [x] #5: DeepSeekProvider vs LiteLLM 충돌 → Task 1.3 (FORCE_LLM_PROVIDER env var)
 
 **G 검토 - 3가지 강화 제안 (모두 추가 ✅):**
-- [x] 제안 1: ModelCapability YAML 외부화 → Task 1.1 (config/model_capabilities.yaml)
-- [x] 제안 2: ResilientAgentExecutor → Task 1.0 (self-healing primary/fallback)
-- [x] 제안 3: Key Performance Metrics → Task 4.3 (MetricsCollector + Grafana)
+- [x] 제안 1: ModelCapability YAML 외부화 → Task 1.1 (DeepSeek 프로덕션 설정)
+- [x] 제안 2: ResilientAgentExecutor → Task 1.0 (Gemini 개발 → DeepSeek 프로덕션 전환)
+- [x] 제안 3: Key Performance Metrics → Task 4.3 (개발/프로덕션 양쪽 모니터링)
 
-**최종 검토 조언 (구현 순서 최적화):**
-- [x] Week 1 우선순위 변경: Phase 0 → 기반 인프라 + 위험 관리 먼저
-- [x] E2E 테스트를 P0로 승격 (사내 환경 검증 필수)
-- [x] 안전한 배포 단계 명시 (Gemini → 호환성 레이어 → DeepSeek 순)
+**최종 검토 조언 (v1.2.1 - DeepSeek 전략 명확화):**
+- [x] 목표 재정의: "Multi-Model 지원" → "DeepSeek 프로덕션 호환성 검증"
+- [x] 개발/프로덕션 분리: Gemini (개발 도구) vs DeepSeek (프로덕션 only)
+- [x] 개발 단계에서 완벽한 검증: DeepSeek XML 형식 → 모든 케이스 시뮬레이션
+- [x] 배포 경로 단순화: 검증된 코드 → 사내 LiteLLM DeepSeek 배포
+
+### 7.5 개발 환경 vs 프로덕션 환경 명확화 ⭐ IMPORTANT
+
+> **핵심 원칙**: 이 문서의 모든 설계는 **DeepSeek 프로덕션 호환성**을 목표로 함
+>
+> **❌ 오해하면 안 되는 부분:**
+> - "Multi-Model 지원" ❌ → "DeepSeek-only 프로덕션" ✅
+> - "Gemini와 DeepSeek 중 선택" ❌ → "Gemini로 검증 후 DeepSeek 배포" ✅
+> - "모든 모델을 동일하게 지원" ❌ → "DeepSeek 완벽 호환성" ✅
+
+#### 개발 환경 (사외 - Gemini)
+
+```
+목적: DeepSeek 프로덕션용 코드 개발 및 검증
+─────────────────────────────────────────
+
+Phase 0 (Week 1-2):
+├─ Gemini로 with_structured_output 안정화
+├─ ENABLE_STRUCTURED_OUTPUT=true (Gemini only)
+├─ 모든 기능이 완벽히 작동하는지 검증
+└─ 로그 및 메트릭 수집
+
+Phase 1-2 (Week 2-3):
+├─ TextReActAgent 구현 (DeepSeek XML 처리용)
+├─ ActionSanitizer 구현 (XML → JSON 변환)
+├─ ResilientExecutor 구현 (fallback 메커니즘)
+└─ mock_deepseek_xml_response로 시뮬레이션 검증
+
+Phase 4 (Week 3-4):
+├─ DeepSeek XML 형식을 완벽히 처리하는지 e2e 검증
+├─ 구조화된 로깅이 제대로 작동하는지 검증
+├─ 모든 메트릭 수집 및 분석
+└─ 사내 배포 체크리스트 작성
+```
+
+**Gemini는 개발 편의성을 위한 도구일 뿐:**
+- ✅ 빠른 반복 개발 가능
+- ✅ 강력한 Native Tool Calling으로 안정적 테스트
+- ✅ 구조화된 출력으로 검증 용이
+- ❌ 프로덕션 환경과 다름 (절대 Gemini로 배포하지 않음)
+
+#### 프로덕션 환경 (사내 - DeepSeek only)
+
+```
+목적: LiteLLM을 통한 DeepSeek 실행 및 모니터링
+──────────────────────────────────────────────
+
+배포 전 조건:
+├─ 개발 환경에서 모든 테스트 통과
+├─ DeepSeek XML 형식 완벽히 처리 검증됨
+├─ 구조화된 로깅으로 디버깅 가능 확인
+└─ 메트릭 수집 가능 확인
+
+배포 (Week 4+):
+├─ git pull로 검증된 코드 배포
+├─ TextReActAgent + ActionSanitizer 자동 활성화
+├─ LiteLLM을 통해 DeepSeek 실행
+└─ JSON 로그로 실시간 모니터링
+
+배포 후:
+├─ 구조화된 로그를 통한 이슈 추적
+├─ 메트릭 대시보드(Grafana)로 성능 모니터링
+├─ 필요시 개발 환경에서 재현 및 수정
+└─ 다시 배포
+
+결과:
+✅ "사내에서 갑자기 실패" 상황 방지 (개발에서 완벽 검증됨)
+✅ "로그 복사해달라" 요청 불필요 (구조화된 로깅 자동화)
+✅ "왜 실패했나" 알기 어려움 해결 (메트릭 + 로깅)
+```
+
+#### 모델별 역할 정리
+
+| 모델 | 환경 | 역할 | 배포 |
+|------|------|------|------|
+| **Gemini** | 사외 (개발) | 코드 개발 + 검증 | ❌ 사내 배포 금지 |
+| **DeepSeek** | 사내 (프로덕션) | 실제 운영 | ✅ 필수 배포 |
+
+**단, Phase 4 테스트에서:**
+- Mock DeepSeek XML을 Gemini 개발 환경에서 완벽히 처리하는지 검증
+- 실제 사내 DeepSeek은 이미 검증된 코드만 받음
 
 ---
 
@@ -1660,8 +1763,14 @@ After (개선 후):
 ---
 
 *문서 작성: 2025-12-05*
-*최종 업데이트: 2025-12-05 (v1.2 - 최종 검토 완전 통합)*
+*최종 업데이트: 2025-12-05 (v1.2.1 - DeepSeek-only 전략 명확화)*
 *버전 히스토리:*
   - v1.0: 초기 계획 (A 문서)
   - v1.1: G, CX 1차 피드백 반영
   - v1.2: CX 검토 + G 검토 + 최종 검토의견 완전 통합
+  - v1.2.1: DeepSeek 프로덕션 호환성에 집중
+    * "Multi-Model 지원" → "DeepSeek-only 프로덕션" 용어 정확화
+    * 개발(Gemini) vs 프로덕션(DeepSeek) 환경 명확히 분리
+    * 배포 경로: 사외 개발 완벽 검증 → 사내 DeepSeek 배포
+    * Section 7.5 추가: 개발 환경 vs 프로덕션 환경 상세 설명
+    * Section 4.2, 4.3 리라이팅: "Option A/B 선택" 제거, "단계적 검증" 강조
