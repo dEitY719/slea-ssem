@@ -169,7 +169,7 @@ class LiteLLMProvider(LLMProvider):
 > - **Phase 0b-0c**: TextReActAgent + ActionSanitizer로 DeepSeek 호환성 확보
 > - **Feature Flag**: `ENABLE_STRUCTURED_OUTPUT` 환경 변수로 Gemini 개발환경에서 제어
 
-#### Task 0.0: 위험 관리 전략 (CX 검토 반영) ⭐ CRITICAL
+#### Task 0.0 (REQ-AGENT-0-0): 위험 관리 전략 (CX 검토 반영) ⭐ CRITICAL
 
 ```python
 # src/agent/config.py - 새로운 설정
@@ -204,7 +204,7 @@ def should_use_structured_output(model_name: str) -> bool:
    - ActionSanitizer 동시 활성화
 3. **Phase 0c** (Week 5+): 프로덕션 롤아웃
 
-#### Task 0.1: `with_structured_output` 도입 (Gemini용)
+#### Task 0.1 (REQ-AGENT-0-1): `with_structured_output` 도입 (Gemini용)
 - 목적: 수동 JSON 파싱 제거, 모델별 차이 추상화
 - 파일: `src/agent/llm_agent.py` (수정)
 - **주의**: `should_use_structured_output()`로 감싸서 안전하게 실행
@@ -236,7 +236,7 @@ async def generate_questions(self, request) -> GenerateQuestionsResponse:
 - `_parse_agent_output_generate`, `parse_json_robust` 등 복잡한 파싱 로직 제거 가능
 - 타입 안전성 보장
 
-#### Task 0.2: Two-Step "Gather-Then-Generate" 아키텍처 (CX 에러 처리 강화) ⭐ NEW
+#### Task 0.2 (REQ-AGENT-0-2): Two-Step "Gather-Then-Generate" 아키텍처 (CX 에러 처리 강화) ⭐ NEW
 - 목적: 복잡한 ReAct 루프 단순화, LLM 호출 횟수 감소
 - 파일: `src/agent/llm_agent.py` (수정)
 - **⚠️ CX 지적 반영**: Gather 단계도 ErrorHandler/retry 정책 적용
@@ -316,7 +316,7 @@ class SimplifiedItemGenAgent:
 - 기존 ErrorHandler/retry/queuing 모두 적용
 - 구조화된 로깅으로 전 단계 추적 가능
 
-#### Task 0.3: Pydantic 응답 모델 강화
+#### Task 0.3 (REQ-AGENT-0-3): Pydantic 응답 모델 강화
 - 목적: 도구 응답도 구조화
 - 파일: `src/agent/tools/*.py` (수정)
 
@@ -342,7 +342,7 @@ def _call_llm_score_short_answer(...) -> ScoreResult:
 
 ### 3.3 Phase 1: Resilient Agent Executor + 기본 인프라 (G 제안 추가) ⭐ ENHANCED
 
-#### Task 1.0: ResilientAgentExecutor (개발 환경 검증용) ⭐ P0 PRIORITY
+#### Task 1.0 (REQ-AGENT-1-0): ResilientAgentExecutor (개발 환경 검증용) ⭐ P0 PRIORITY
 - **목적**: 개발 환경(Gemini)에서 두 가지 경로를 모두 검증
   - 경로 A: StructuredOutputAgent (Gemini 개발 시 사용)
   - 경로 B: TextReActAgent (DeepSeek 프로덕션에서 사용될 경로)
@@ -418,7 +418,7 @@ def create_resilient_agent(llm, tools, prompt):
     return ResilientAgentExecutor(llm, tools, prompt, capability)
 ```
 
-#### Task 1.1: ModelCapabilityDetector 구현 (YAML 외부화, G 제안)
+#### Task 1.1 (REQ-AGENT-1-1): ModelCapabilityDetector 구현 (YAML 외부화, G 제안)
 - 목적: 모델별 지원 기능 자동 감지
 - 파일: `src/agent/model_capability.py` (신규) + `config/model_capabilities.yaml` (신규)
 
@@ -451,7 +451,7 @@ def detect_capability(model_name: str) -> ModelCapability:
     return ModelCapability()  # 기본값 (Tool Calling 시도)
 ```
 
-#### Task 1.2: TextReActAgent 구현 (Text-based ReAct)
+#### Task 1.2 (REQ-AGENT-1-2): TextReActAgent 구현 (Text-based ReAct)
 - 목적: Tool Calling 없이 순수 텍스트 기반 ReAct 실행
 - 파일: `src/agent/text_react_agent.py` (신규)
 
@@ -539,7 +539,7 @@ class TextReActAgent:
         return self._parse_kv_input(raw)
 ```
 
-#### Task 1.2: TextReActAgent와 AGENT_CONFIG 통합 (CX 지적) ⭐ CRITICAL
+#### Task 1.2 (REQ-AGENT-1-2, continued): TextReActAgent와 AGENT_CONFIG 통합 (CX 지적) ⭐ CRITICAL
 - 목적: TextReActAgent가 기존 agent_steps, partial_result 등 계약 보장
 - 파일: `src/agent/text_react_agent.py` (신규, AGENT_CONFIG 통합)
 
@@ -634,7 +634,7 @@ class TextReActAgent:
         }
 ```
 
-#### Task 1.3: LiteLLM 설정 충돌 해결 (CX 지적) ⭐ CRITICAL
+#### Task 1.3 (REQ-AGENT-1-3): LiteLLM 설정 충돌 해결 (CX 지적) ⭐ CRITICAL
 - 목적: DeepSeekProvider와 LiteLLM 간 명확한 precedence
 - 파일: `src/agent/config.py` (수정)
 
@@ -677,7 +677,7 @@ def create_llm():
 
 ### 3.4 Phase 2: Output Parser 강화 + StructuredTool (CX 문서 반영) ⭐ ENHANCED
 
-#### Task 2.0: StructuredTool with args_schema (CX 문서) ⭐ NEW
+#### Task 2.0 (REQ-AGENT-2-0): StructuredTool with args_schema (CX 문서) ⭐ NEW
 - 목적: 도구 입력 자동 검증 및 coercion
 - 파일: `src/agent/tools/*.py` (수정)
 
@@ -730,7 +730,7 @@ save_generated_question = StructuredTool.from_function(
 - 잘못된 타입 자동 coercion (string → int 등)
 - 누락된 필수 필드 즉시 감지
 
-#### Task 2.1: ActionSanitizer 전처리 단계 (CX 문서) ⭐ NEW
+#### Task 2.1 (REQ-AGENT-2-1): ActionSanitizer 전처리 단계 (CX 문서) ⭐ NEW
 - 목적: LangGraph 실행 전 XML/YAML → JSON 변환
 - 파일: `src/agent/action_sanitizer.py` (신규)
 
@@ -797,7 +797,7 @@ def create_sanitized_react_agent(llm, tools, prompt):
     return base_agent.pipe(RunnableLambda(ActionSanitizer.sanitize))
 ```
 
-#### Task 2.2: parse_json_robust() 전역 활용 (CX 문서) ⭐ ENHANCED
+#### Task 2.2 (REQ-AGENT-2-2): parse_json_robust() 전역 활용 (CX 문서) ⭐ ENHANCED
 - 목적: 기존 robust 파서가 사용되지 않는 곳에 적용
 - 파일: `src/agent/tools/score_and_explain_tool.py` (수정)
 
@@ -826,9 +826,15 @@ except json.JSONDecodeError:
 - `src/agent/tools/score_and_explain_tool.py:391` (_generate_explanation)
 - `src/agent/llm_agent.py:1253` (_parse_agent_output_score)
 
-#### Task 2.3: MultiFormatOutputParser 구현
-- 목적: JSON, XML, Key-Value 등 다양한 출력 형식 처리
-- 파일: `src/agent/output_parser.py` (신규)
+#### Task 2.3 (REQ-AGENT-2-3, REMOVED): MultiFormatOutputParser 구현 ⚠️ DEPRECATED
+
+> **⚠️ G3 피드백: 이 Task는 제거되었습니다**
+> - **이유**: ActionSanitizer (REQ-AGENT-2-1)와 중복
+> - **권장**: ActionSanitizer를 단일 메커니즘으로 사용
+> - **상태**: 구현하지 마세요
+
+- 목적: JSON, XML, Key-Value 등 다양한 출력 형식 처리 (더 이상 필요 없음)
+- 파일: `src/agent/output_parser.py` (신규 예정 → 취소됨)
 
 ```python
 class MultiFormatOutputParser:
@@ -881,7 +887,7 @@ class XMLToolCallParser:
         return None
 ```
 
-#### Task 2.2: FinalAnswerExtractor 강화
+#### Task 2.2 (REQ-AGENT-2-2, continued): FinalAnswerExtractor 강화
 - 목적: 다양한 Final Answer 형식 처리
 - 파일: `src/agent/output_converter.py` (수정)
 
@@ -917,7 +923,7 @@ def extract_final_answer(content: str) -> dict | list | None:
 
 ### 3.4 Phase 3: Provider 전략 개선 (Medium Risk)
 
-#### Task 3.1: DeepSeekProvider 전용 구현
+#### Task 3.1 (REQ-AGENT-3-1): DeepSeekProvider 전용 구현
 - 목적: DeepSeek 모델의 특성에 맞는 설정
 - 파일: `src/agent/config.py` (수정)
 
@@ -959,7 +965,7 @@ class LLMFactory:
             return GoogleGenerativeAIProvider()
 ```
 
-#### Task 3.2: 프롬프트 강화 (DeepSeek 최적화)
+#### Task 3.2 (REQ-AGENT-3-2): 프롬프트 강화 (DeepSeek 최적화)
 - 목적: DeepSeek이 더 잘 따르는 프롬프트 형식
 - 파일: `src/agent/prompts/prompt_content.py` (수정)
 
@@ -998,7 +1004,7 @@ CORRECT (DO THIS):
 
 > **CX 문서 지적**: `src/agent/tests` 디렉토리가 비어있음 - 테스트 필수
 
-#### Task 4.0: 테스트 인프라 구축 (CX 문서) ⭐ NEW
+#### Task 4.0 (REQ-AGENT-4-0): 테스트 인프라 구축 (CX 문서) ⭐ NEW
 - 목적: `src/agent/tests/` 디렉토리에 테스트 기반 구축
 - 파일: `tests/agent/` (신규 디렉토리)
 
@@ -1058,7 +1064,7 @@ Action Input: user_id="test-123"  # JSON 아닌 key=value
     )
 ```
 
-#### Task 4.1: Multi-Model 테스트 스위트
+#### Task 4.1 (REQ-AGENT-4-1): Multi-Model 테스트 스위트
 - 목적: 다양한 모델에서 동작 검증
 - 파일: `tests/agent/test_multi_model_compatibility.py` (신규)
 
@@ -1093,7 +1099,7 @@ async def test_text_react_agent_basic():
     assert "Final Answer" in result["messages"][-1].content
 ```
 
-#### Task 4.2: Output Parser 테스트
+#### Task 4.2 (related to deprecated REQ-AGENT-2-3): Output Parser 테스트 ⚠️ DEPRECATED
 - 목적: 다양한 출력 형식 파싱 검증
 - 파일: `tests/agent/test_output_parser.py` (신규)
 
@@ -1115,7 +1121,7 @@ class TestMultiFormatOutputParser:
         assert result[0].name == "save_question"
 ```
 
-#### Task 4.2: E2E 테스트 시나리오 (CX 지적) ⭐ P0
+#### Task 4.2 (REQ-AGENT-4-2): E2E 테스트 시나리오 (CX 지적) ⭐ P0
 - 목적: FastMCP + DB 상호작용 검증
 - 파일: `tests/agent/test_e2e_scenarios.py` (신규)
 
@@ -1203,7 +1209,7 @@ test)
   ;;
 ```
 
-#### Task 4.3: Key Performance Metrics (G 제안) ⭐ P1
+#### Task 4.3 (REQ-AGENT-4-3): Key Performance Metrics (G 제안) ⭐ P1
 - 목적: 성과 측정 및 모델 간 비교
 - 파일: `src/agent/metrics.py` (신규)
 
@@ -1281,7 +1287,7 @@ FROM agent_metrics
 GROUP BY model_name;
 ```
 
-#### Task 4.4: 구조화된 로깅 (CX 문서) ⭐ NEW
+#### Task 4.4 (REQ-AGENT-4-4): 구조화된 로깅 (CX 문서) ⭐ NEW
 - 목적: 사내/사외 환경 간 디버깅 용이성 향상
 - 파일: `src/agent/structured_logging.py` (신규)
 
