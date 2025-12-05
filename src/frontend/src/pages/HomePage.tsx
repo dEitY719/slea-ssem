@@ -1,40 +1,19 @@
 // REQ: REQ-F-A1-2, REQ-F-A2-1, REQ-F-A3, REQ-F-A2-Signup-1, REQ-F-A1-Home, REQ-F-A1-Error-1
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PlayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { PlayIcon } from '@heroicons/react/24/outline'
 import { TrophyIcon } from '@heroicons/react/24/solid'
 import { isAuthenticated } from '../utils/auth'
 import { detectRedirectLoop, resetRedirectDetection } from '../utils/redirectDetection'
 import { useUserProfile } from '../hooks/useUserProfile'
-import { profileService } from '../services/profileService'
 import { homeService, type LastTestResult } from '../services/homeService'
 import { PageLayout } from '../components'
 import { getLevelClass, getLevelKorean, getLevelGradeString } from '../utils/gradeHelpers'
 import './HomePage.css'
 
-type SurveyProgress = {
-  surveyId: string | null
-  level: number | null
-}
-
-const getSurveyProgress = (): SurveyProgress => {
-  if (typeof window === 'undefined') {
-    return { surveyId: null, level: null }
-  }
-
-  const surveyId = localStorage.getItem('lastSurveyId')
-  const levelRaw = localStorage.getItem('lastSurveyLevel')
-
-  return {
-    surveyId,
-    level: levelRaw ? Number(levelRaw) : null,
-  }
-}
-
 const HomePage: React.FC = () => {
   const navigate = useNavigate()
   const { nickname, loading: nicknameLoading, checkNickname } = useUserProfile()
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // REQ: REQ-F-A1-Home - Last test result state
   const [lastTestResult, setLastTestResult] = useState<LastTestResult | null>(null)
@@ -123,44 +102,13 @@ const HomePage: React.FC = () => {
     fetchTotalParticipants()
   }, [nickname, nicknameLoading])
 
-    const handleStart = async () => {
-      try {
-        // REQ-F-A3-5: Check consent status first
-        const consentStatus = await profileService.getConsentStatus()
-
-        if (!consentStatus.consented) {
-          // User hasn't consented yet, redirect to consent page
-          navigate('/consent')
-          return
-        }
-
-        // REQ-F-A2-1: Check if user has set nickname before proceeding
-        const currentNickname = await checkNickname()
-        const { surveyId, level } = getSurveyProgress()
-
-        if (currentNickname === null) {
-          // User hasn't set nickname yet, redirect to nickname setup
-          navigate('/nickname-setup')
-        } else if (surveyId) {
-          // User completed profile, show review page for final confirmation/test entry
-          navigate('/profile-review', {
-            state: {
-              surveyId,
-              level: level ?? undefined,
-            },
-          })
-        } else {
-          // User has nickname but no profile yet, proceed to career info
-          navigate('/career-info')
-        }
-      } catch (err) {
-        // Log detailed error for debugging
-        console.error('Failed to check user profile:', err)
-
-        // Show user-friendly error message with hint
-        const errorMsg = err instanceof Error ? err.message : 'Unknown error'
-        setErrorMessage(`프로필 정보를 불러오는데 실패했습니다: ${errorMsg}`)
-      }
+    const handleStart = () => {
+      // Navigate to /continue with intent=leveltest
+      // ContinuePage will delegate to handleLeveltest:
+      // - Check consent status
+      // - Check nickname status
+      // - Navigate to appropriate page based on status
+      navigate('/continue?intent=leveltest')
     }
 
   return (
@@ -182,13 +130,6 @@ const HomePage: React.FC = () => {
             <p className="home-description">
               슬아샘과 함께 개인 맞춤형 테스트로 당신의 실력을 객관적으로 측정해보세요.
             </p>
-
-            {errorMessage && (
-              <div className="error-message">
-                <ExclamationTriangleIcon className="error-icon" />
-                <span>{errorMessage}</span>
-              </div>
-            )}
 
             <div className="level-button-group">
               <button className="level-start-button" onClick={handleStart}>
