@@ -19,6 +19,8 @@ import type { ContinueContext } from './types'
  */
 export async function handleLeveltest(ctx: ContinueContext): Promise<void> {
   console.log('[Continue] Handling leveltest intent')
+  const defaultReturnTo = '/continue?intent=leveltest'
+  const returnTo = ctx.returnTo ?? defaultReturnTo
 
   try {
     // Step 1: Check consent (Private-Auth API)
@@ -26,7 +28,7 @@ export async function handleLeveltest(ctx: ContinueContext): Promise<void> {
 
     if (!consentData.consented) {
       console.log('[Continue] User has not consented, navigating to /consent')
-      ctx.navigate('/consent', { replace: true })
+      ctx.navigate(`/consent?returnTo=${encodeURIComponent(returnTo)}`, { replace: true })
       return
     }
 
@@ -35,7 +37,7 @@ export async function handleLeveltest(ctx: ContinueContext): Promise<void> {
 
     if (!nicknameData.nickname) {
       console.log('[Continue] User has no nickname, navigating to /signup')
-      ctx.navigate('/signup', { replace: true })
+      ctx.navigate(`/signup?returnTo=${encodeURIComponent(returnTo)}`, { replace: true })
       return
     }
 
