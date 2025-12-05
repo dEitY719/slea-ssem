@@ -143,6 +143,58 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ-CLI-Agent-3 | score-answer 명령 구현 | 4 | ✅ Done | 15 tests (100%), Commit: [pending], Progress: docs/progress/REQ-CLI-Agent-3.md |
 | REQ-CLI-Agent-4 | batch-score 명령 구현 | 4 | ✅ Done | 15 tests (100%), Commit: 719d5c4, Progress: docs/progress/REQ-CLI-Agent-4.md |
 | REQ-CLI-Agent-5 | tools (t1-t6) 명령 구현 | 4 | ✅ Done | 21 tests (100%), Commit: 2535036, Progress: docs/progress/REQ-CLI-Agent-5.md |
+
+### Agent 강건성 개선 (Agent Robustness Enhancement)
+
+> **목표**: DeepSeek 프로덕션 환경 호환성 확보
+> **전략**: 개발 환경(Gemini)에서 완벽 검증 → 프로덕션(DeepSeek) 배포
+> **기반 문서**: `docs/enhance_robust_agent_A.md` v1.2.2
+> **요구사항**: `docs/AGENT-REQUIREMENTS.md`
+
+#### Phase 0: Structured Output (근본적 해결책)
+
+| REQ ID | Feature | Phase | Status | Notes |
+|--------|---------|-------|--------|-------|
+| **REQ-AGENT-0-0** | **위험 관리 전략** | 0 | ⏳ Backlog | P0 CRITICAL - Feature flag로 Gemini만 적용 |
+| **REQ-AGENT-0-1** | **with_structured_output 도입** | 0 | ⏳ Backlog | P0 - 수동 파싱 제거 |
+| **REQ-AGENT-0-2** | **Two-Step Gather-Then-Generate** | 0 | ⏳ Backlog | P0 - ErrorHandler 통합 |
+| REQ-AGENT-0-3 | Pydantic 응답 모델 강화 | 0 | ⏳ Backlog | P1 - 도구 응답 구조화 |
+
+#### Phase 1: Resilient Executor + 기본 인프라
+
+| REQ ID | Feature | Phase | Status | Notes |
+|--------|---------|-------|--------|-------|
+| **REQ-AGENT-1-0** | **ResilientAgentExecutor** | 0 | ⏳ Backlog | P0 - 개발 환경에서 두 경로 검증 |
+| **REQ-AGENT-1-1** | **ModelCapability YAML** | 0 | ⏳ Backlog | P0 - 모델 프로파일 외부화 |
+| **REQ-AGENT-1-2** | **TextReActAgent** | 0 | ⏳ Backlog | P0 CRITICAL - DeepSeek 프로덕션용 |
+| **REQ-AGENT-1-3** | **LiteLLM 설정 충돌 해결** | 0 | ⏳ Backlog | P0 CRITICAL - FORCE_LLM_PROVIDER |
+
+#### Phase 2: Output Parser 강화
+
+| REQ ID | Feature | Phase | Status | Notes |
+|--------|---------|-------|--------|-------|
+| **REQ-AGENT-2-0** | **StructuredTool args_schema** | 0 | ⏳ Backlog | P0 - 입력 자동 검증 |
+| **REQ-AGENT-2-1** | **ActionSanitizer** | 0 | ⏳ Backlog | P0 - XML → JSON 전처리 |
+| REQ-AGENT-2-2 | parse_json_robust 전역 활용 | 0 | ⏳ Backlog | P1 - 기존 파서 확장 |
+| REQ-AGENT-2-3 | MultiFormatOutputParser | 0 | ⏳ Backlog | P1 - 다양한 형식 지원 |
+
+#### Phase 3: Provider 전략 개선
+
+| REQ ID | Feature | Phase | Status | Notes |
+|--------|---------|-------|--------|-------|
+| REQ-AGENT-3-1 | DeepSeekProvider 전용 구현 | 0 | ⏳ Backlog | P1 - DeepSeek 특성 반영 |
+| REQ-AGENT-3-2 | 프롬프트 강화 (DeepSeek) | 0 | ⏳ Backlog | P1 - XML 사용 금지 명시 |
+
+#### Phase 4: 통합 테스트 및 검증
+
+| REQ ID | Feature | Phase | Status | Notes |
+|--------|---------|-------|--------|-------|
+| **REQ-AGENT-4-0** | **테스트 인프라 구축** | 0 | ⏳ Backlog | P0 - tests/agent/ 디렉토리 |
+| REQ-AGENT-4-1 | Multi-Model 호환성 테스트 | 0 | ⏳ Backlog | P1 - Gemini, DeepSeek 검증 |
+| **REQ-AGENT-4-2** | **E2E 테스트 시나리오** | 0 | ⏳ Backlog | P0 CRITICAL - DeepSeek XML → SaveQuestion |
+| REQ-AGENT-4-3 | Key Performance Metrics | 0 | ⏳ Backlog | P1 - Grafana/Datadog 연동 |
+| REQ-AGENT-4-4 | 구조화된 로깅 | 0 | ⏳ Backlog | P1 - JSON 로그 내보내기 |
+
 | REQ-CLI-SESSION-1 | Save session to file | 0 | ⏳ Backlog | JSON 저장 |
 | REQ-CLI-SESSION-2 | Load session from file | 0 | ⏳ Backlog | JSON 복구 |
 | REQ-CLI-EXPORT-1 | Export results as JSON | 0 | ⏳ Backlog | 결과 내보내기 |

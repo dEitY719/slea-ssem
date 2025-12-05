@@ -32,7 +32,7 @@
 | # | 제안 | 효과 | 우선순위 |
 |---|------|------|----------|
 | 1 | ModelCapability를 YAML 외부화 | 배포 없이 설정 변경 | P1 (추가) |
-| 2 | ResilientAgentExecutor 자동 fallback | Self-healing agent | P0 (추가) |
+| 2 | ResilientAgentExecutor (개발 환경 검증용) | 개발 단계에서 두 경로 모두 검증 | P0 (추가) |
 | 3 | Key Performance Metrics 정의 | 성과 측정 및 비교 | P1 (추가) |
 
 ---
@@ -342,17 +342,25 @@ def _call_llm_score_short_answer(...) -> ScoreResult:
 
 ### 3.3 Phase 1: Resilient Agent Executor + 기본 인프라 (G 제안 추가) ⭐ ENHANCED
 
-#### Task 1.0: ResilientAgentExecutor (G 제안, CX 안전성) ⭐ P0 PRIORITY
-- 목적: primary (structured) → fallback (text) 자동 전환
+#### Task 1.0: ResilientAgentExecutor (개발 환경 검증용) ⭐ P0 PRIORITY
+- **목적**: 개발 환경(Gemini)에서 두 가지 경로를 모두 검증
+  - 경로 A: StructuredOutputAgent (Gemini 개발 시 사용)
+  - 경로 B: TextReActAgent (DeepSeek 프로덕션에서 사용될 경로)
+- **중요**: DeepSeek은 "fallback"이 아님. 프로덕션에서는 TextReActAgent가 **기본 경로**
 - 파일: `src/agent/resilient_executor.py` (신규)
 
 ```python
 class ResilientAgentExecutor:
     """
-    G의 제안: primary → fallback으로 자동 전환하는 self-healing agent
+    개발 환경(Gemini)에서 두 경로를 모두 검증하는 Executor.
 
-    1차 시도: StructuredOutputAgent (빠르고 효율적)
-    실패 시: TextReActAgent + ActionSanitizer (느리지만 견고)
+    ⚠️ 중요 개념:
+    - 개발(Gemini): StructuredOutputAgent로 빠른 개발 + TextReActAgent 검증
+    - 프로덕션(DeepSeek): TextReActAgent가 유일한 경로 (fallback 아님!)
+
+    개발 환경에서의 동작:
+    1차 시도: StructuredOutputAgent (개발 편의성)
+    실패 시: TextReActAgent (프로덕션 경로 검증)
     """
 
     def __init__(self, llm, tools, prompt, capability_profile):
@@ -361,42 +369,46 @@ class ResilientAgentExecutor:
         self.prompt = prompt
         self.capability = capability_profile
 
-        # Primary agent
+        # 개발 환경용: StructuredOutputAgent (Gemini에서 빠른 개발)
         if capability_profile.supports_structured_output:
-            self.primary_agent = StructuredOutputAgent(llm, tools, prompt)
+            self.structured_agent = StructuredOutputAgent(llm, tools, prompt)
         else:
-            self.primary_agent = None
+            self.structured_agent = None
 
-        # Fallback agent (항상 준비)
-        self.fallback_agent = TextReActAgent(llm, tools, prompt)
-        self.fallback_agent = self.fallback_agent.pipe(RunnableLambda(ActionSanitizer.sanitize))
+        # 프로덕션 경로: TextReActAgent (DeepSeek에서 사용될 유일한 경로)
+        # ⚠️ 이것은 "fallback"이 아님 - DeepSeek 프로덕션의 기본 경로!
+        self.text_react_agent = TextReActAgent(llm, tools, prompt)
+        self.text_react_agent = self.text_react_agent.pipe(RunnableLambda(ActionSanitizer.sanitize))
 
         # Logger
         self.logger = StructuredAgentLogger(llm.model, asdict(capability_profile))
 
     async def ainvoke(self, request):
-        """Primary 시도 → 실패 시 fallback"""
+        """
+        개발 환경: StructuredOutput 시도 → TextReAct로 프로덕션 경로 검증
+        프로덕션 환경: TextReActAgent만 사용 (DeepSeek)
+        """
 
-        # Primary 시도
-        if self.primary_agent:
+        # 개발 환경에서만: StructuredOutput 먼저 시도 (빠른 개발)
+        if self.structured_agent:
             try:
-                logger.info(f"[Resilient] Attempting primary agent (structured output)")
-                result = await self.primary_agent.ainvoke(request)
-                self.logger.log_execution("primary_success")
+                logger.info(f"[Resilient] 개발 환경: Structured output 시도")
+                result = await self.structured_agent.ainvoke(request)
+                self.logger.log_execution("structured_success")
                 return result
             except (OutputParserException, ValidationError, json.JSONDecodeError) as e:
-                logger.warning(f"[Resilient] Primary agent failed: {e}. Retrying with fallback.")
-                self.logger.log_execution("primary_failed", error=str(e))
+                logger.warning(f"[Resilient] Structured 실패: {e}. TextReAct 경로로 검증")
+                self.logger.log_execution("structured_failed", error=str(e))
 
-        # Fallback 시도
+        # TextReActAgent 실행 (프로덕션에서는 이것이 유일한 경로)
         try:
-            logger.info(f"[Resilient] Attempting fallback agent (text react)")
-            result = await self.fallback_agent.ainvoke(request)
-            self.logger.log_execution("fallback_success")
+            logger.info(f"[Resilient] TextReActAgent 실행 (프로덕션 경로)")
+            result = await self.text_react_agent.ainvoke(request)
+            self.logger.log_execution("text_react_success")
             return result
         except Exception as e:
-            logger.error(f"[Resilient] Both agents failed: {e}")
-            self.logger.log_execution("fallback_failed", error=str(e))
+            logger.error(f"[Resilient] TextReActAgent 실패: {e}")
+            self.logger.log_execution("text_react_failed", error=str(e))
             raise
 
 def create_resilient_agent(llm, tools, prompt):
@@ -1579,7 +1591,7 @@ class TextReActAgent:
 | **파싱 강화** | `parse_json_robust` 전역 활용 | CX 문서 |
 | **테스트** | `tests/agent/` 테스트 인프라 구축 | CX 문서 |
 | **디버깅** | 구조화된 JSON 로깅 | CX 문서 |
-| **Fallback** | `TextReActAgent` (Tool Calling 미지원 시) | A 문서 |
+| **DeepSeek 전용** | `TextReActAgent` (DeepSeek 프로덕션의 기본 경로) | A 문서 |
 | **프로파일** | `ModelCapabilityProfile` 모델별 능력 감지 | A+CX |
 
 ### 7.2 기대 효과 (DeepSeek 프로덕션 호환성)
@@ -1654,6 +1666,33 @@ After (개선 후 - 개발에서 완벽히 검증 후 프로덕션 배포):
 - [x] 개발/프로덕션 분리: Gemini (개발 도구) vs DeepSeek (프로덕션 only)
 - [x] 개발 단계에서 완벽한 검증: DeepSeek XML 형식 → 모든 케이스 시뮬레이션
 - [x] 배포 경로 단순화: 검증된 코드 → 사내 LiteLLM DeepSeek 배포
+
+**CX2 + G2 2차 피드백 통합 (v1.2.2):**
+
+*CX2 피드백 5가지 검증:*
+- [x] #1: Phase 0에서 DeepSeek에 with_structured_output 바로 적용 금지 → **이미 반영됨**: Gemini만 적용, DeepSeek은 TextReActAgent 경로
+- [x] #2: Gather→Generate에서 ErrorHandler 재사용 명시 → **이미 반영됨**: Task 0.2에서 ErrorHandler.retry_with_backoff 적용
+- [x] #3: TextReActAgent가 AGENT_CONFIG 계약 준수 → **이미 반영됨**: Task 1.2에서 max_iterations, agent_steps 보장
+- [x] #4: E2E 테스트 시나리오 → **이미 반영됨**: Task 4.2에서 DeepSeek XML → Sanitizer → SaveQuestion 검증
+- [x] #5: DeepSeekProvider vs LiteLLM 우선순위 → **이미 반영됨**: FORCE_LLM_PROVIDER 환경 변수
+
+*G2 피드백 (minor - 추가 반영):*
+- [x] output_converter.py 역할 명확화 → `TextReActAgent` 전용 Final Answer 파서로 역할 한정 (삭제 아님)
+- [x] "DeepSeek fallback" 용어 오해 방지 → **DeepSeek은 프로덕션의 유일한 모델** (fallback 아님!)
+
+**⚠️ 핵심 개념 재확인 (v1.2.2):**
+```
+❌ 잘못된 이해:
+   "Gemini가 primary, DeepSeek이 fallback"
+   → DeepSeek은 fallback이 아님!
+
+✅ 올바른 이해:
+   - 개발 환경 (Gemini): 빠른 개발 + DeepSeek 경로 검증
+   - 프로덕션 환경 (DeepSeek): TextReActAgent가 유일한 경로
+
+   DeepSeek = 프로덕션의 유일한 모델
+   Gemini = 개발 편의성을 위한 도구
+```
 
 ### 7.5 개발 환경 vs 프로덕션 환경 명확화 ⭐ IMPORTANT
 
@@ -1763,7 +1802,7 @@ Phase 4 (Week 3-4):
 ---
 
 *문서 작성: 2025-12-05*
-*최종 업데이트: 2025-12-05 (v1.2.1 - DeepSeek-only 전략 명확화)*
+*최종 업데이트: 2025-12-05 (v1.2.2 - CX2/G2 2차 피드백 통합)*
 *버전 히스토리:*
   - v1.0: 초기 계획 (A 문서)
   - v1.1: G, CX 1차 피드백 반영
@@ -1774,3 +1813,9 @@ Phase 4 (Week 3-4):
     * 배포 경로: 사외 개발 완벽 검증 → 사내 DeepSeek 배포
     * Section 7.5 추가: 개발 환경 vs 프로덕션 환경 상세 설명
     * Section 4.2, 4.3 리라이팅: "Option A/B 선택" 제거, "단계적 검증" 강조
+  - v1.2.2: CX2 + G2 2차 피드백 통합 (최종)
+    * ⚠️ "DeepSeek fallback" 개념 완전 제거 - DeepSeek은 프로덕션의 **유일한** 모델
+    * ResilientAgentExecutor: "primary/fallback" → "개발 환경 검증용"으로 재정의
+    * output_converter.py: TextReActAgent 전용 Final Answer 파서로 역할 명확화
+    * CX2 피드백 5가지 모두 반영 확인 (이미 v1.2에서 반영됨)
+    * 핵심 개념 재확인: Gemini=개발도구, DeepSeek=유일한 프로덕션 모델
