@@ -65,6 +65,21 @@ export const authService = {
   },
 
   /**
+   * Check signup eligibility (SSO authentication required)
+   * REQ-B-A0-API: Private-Auth API (checks SSO only)
+   *
+   * This triggers SSO authentication flow if not authenticated.
+   * Backend returns auth status if SSO is valid.
+   *
+   * @returns Auth status after SSO check
+   */
+  async checkSignupEligibility(): Promise<AuthStatusResponse> {
+    return transport.get<AuthStatusResponse>('/api/auth/signup-check', {
+      accessLevel: 'private-auth'
+    })
+  },
+
+  /**
    * Logout (HttpOnly cookie-based)
    * TODO: Call backend /auth/logout to clear cookie
    */

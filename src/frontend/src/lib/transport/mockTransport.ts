@@ -22,6 +22,7 @@ export function setMockAuthState(authenticated: boolean, nickname: string | null
 
 const API_AUTH_LOGIN = '/api/auth/login'
 const API_AUTH_STATUS = '/api/auth/status'
+const API_AUTH_SIGNUP_CHECK = '/api/auth/signup-check'
 const API_PROFILE_NICKNAME = '/api/profile/nickname'
 const API_PROFILE_NICKNAME_CHECK = '/api/profile/nickname/check'
 const API_PROFILE_REGISTER = '/api/profile/register'
@@ -67,6 +68,11 @@ const mockData: Record<string, any> = {
   },
   [API_AUTH_STATUS]: {
     authenticated: true,
+    user_id: 'mock_user@samsung.com',
+  },
+  [API_AUTH_SIGNUP_CHECK]: {
+    authenticated: true,
+    nickname: null,
     user_id: 'mock_user@samsung.com',
   },
   [API_PROFILE_NICKNAME]: {
@@ -494,6 +500,20 @@ class MockTransport implements HttpTransport {
         user_id: mockAuthState.isAuthenticated ? 'mock_user@samsung.com' : null,
       }
       debugLog('[Mock Transport] Auth status check:', response)
+      return response as T
+    }
+
+    // Handle signup eligibility check endpoint (Private-Auth API)
+    // REQ-B-A1-SignupCheck: Check SSO authentication only (no membership check)
+    if (normalizedUrl === API_AUTH_SIGNUP_CHECK && method === 'GET') {
+      // This endpoint is Private-Auth, so SSO check already happened above
+      // Just return current auth state (nickname can be null)
+      const response = {
+        authenticated: mockAuthState.isAuthenticated,
+        nickname: mockAuthState.nickname,
+        user_id: 'mock_user@samsung.com',
+      }
+      debugLog('[Mock Transport] Signup eligibility check:', response)
       return response as T
     }
 
