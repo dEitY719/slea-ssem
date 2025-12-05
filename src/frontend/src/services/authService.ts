@@ -4,17 +4,6 @@
 import { transport } from '../lib/transport'
 
 /**
- * Login request data
- */
-export interface LoginRequest {
-  knox_id: string
-  name: string
-  dept: string
-  business_unit: string
-  email: string
-}
-
-/**
  * Login response from backend
  */
 export interface LoginResponse {
@@ -55,11 +44,10 @@ export const authService = {
    * Login with Samsung AD credentials
    * REQ-B-A0-API: Private-Auth API (checks SSO, then membership)
    *
-   * @param userData - User data from Samsung AD
    * @returns Login response with JWT token
    */
-  async login(userData: LoginRequest): Promise<LoginResponse> {
-    return transport.post<LoginResponse>('/api/auth/login', userData, {
+  async login(): Promise<LoginResponse> {
+    return transport.post<LoginResponse>('/api/auth/login', undefined, {
       accessLevel: 'private-auth'
     })
   },
