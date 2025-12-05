@@ -2,7 +2,7 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useNicknameCheck } from '../useNicknameCheck'
-import { mockConfig } from '../../lib/transport'
+import { mockConfig, setMockAuthState } from '../../lib/transport'
 
 describe('useNicknameCheck', () => {
   beforeEach(() => {
@@ -10,6 +10,8 @@ describe('useNicknameCheck', () => {
     localStorage.setItem('slea_ssem_api_mock', 'true')
     mockConfig.delay = 0
     mockConfig.simulateError = false
+    // Set mock auth state to authenticated (Private-Auth API requires SSO)
+    setMockAuthState(true, null)
   })
 
   afterEach(() => {

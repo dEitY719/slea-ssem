@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import ProfileReviewPage from '../ProfileReviewPage'
-import { mockConfig, setMockData } from '../../lib/transport'
+import { mockConfig, setMockData, setMockAuthState } from '../../lib/transport'
 
 const mockNavigate = vi.fn()
 let mockLocationState: any = { level: 3 }
@@ -35,6 +35,8 @@ describe('ProfileReviewPage', () => {
     localStorage.setItem('slea_ssem_api_mock', 'true')
     mockConfig.delay = 0
     mockConfig.simulateError = false
+    // Set mock auth state to authenticated with nickname (Private-Auth API)
+    setMockAuthState(true, 'testuser')
     setMockData('/api/profile/nickname', {
       user_id: 'test@samsung.com',
       nickname: 'testuser',

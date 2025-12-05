@@ -7,6 +7,7 @@ import TestPage from '../TestPage'
 import {
   mockConfig,
   setMockData,
+  setMockAuthState,
   getMockRequests,
   clearMockRequests,
   setMockError,
@@ -74,6 +75,8 @@ const setupMockEnv = (generateResponse = mockGenerateResponse) => {
   mockConfig.simulateError = false
   clearMockRequests()
   clearMockErrors()
+  // Set mock auth state to authenticated with nickname (Private-Member API)
+  setMockAuthState(true, 'testuser')
   setMockData('/api/questions/generate', generateResponse)
 }
 
