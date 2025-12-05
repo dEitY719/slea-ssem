@@ -25,7 +25,7 @@ export async function handleServiceLogin(ctx: ContinueContext): Promise<void> {
     // - If no SSO (401 + NEED_SSO) → transport redirects to /sso
     // - If not member (403 + NEED_SIGNUP) → transport redirects to /signup
     // - If success → authenticated and member
-    await authService.login({} as any)
+    await authService.login()
 
     // Success: user is authenticated and member
     console.log('[Continue] Service login successful, navigating to /home')
