@@ -210,15 +210,15 @@ def check_auth_status(
         db: Database session
 
     Returns:
-        JSONResponse with authentication status
+        JSONResponse with authentication status (always 200 OK)
         - 200 with {authenticated: true, user_id, knox_id} if authenticated
-        - 401 with {authenticated: false} if not authenticated or invalid token
+        - 200 with {authenticated: false, user_id: null, knox_id: null} if not authenticated
 
     """
     if not auth_token:
         return JSONResponse(
-            status_code=401,
-            content={"authenticated": False},
+            status_code=200,
+            content={"authenticated": False, "user_id": None, "knox_id": None},
         )
 
     try:
@@ -229,8 +229,8 @@ def check_auth_status(
         # Get user from database to retrieve user_id
         if not knox_id:
             return JSONResponse(
-                status_code=401,
-                content={"authenticated": False},
+                status_code=200,
+                content={"authenticated": False, "user_id": None, "knox_id": None},
             )
 
         from src.backend.models.user import User
@@ -238,8 +238,8 @@ def check_auth_status(
         user = db.query(User).filter_by(knox_id=knox_id).first()
         if not user:
             return JSONResponse(
-                status_code=401,
-                content={"authenticated": False},
+                status_code=200,
+                content={"authenticated": False, "user_id": None, "knox_id": None},
             )
 
         return JSONResponse(
@@ -254,8 +254,8 @@ def check_auth_status(
     except pyjwt.InvalidTokenError as e:
         logger.warning(f"Invalid token: {str(e)}")
         return JSONResponse(
-            status_code=401,
-            content={"authenticated": False},
+            status_code=200,
+            content={"authenticated": False, "user_id": None, "knox_id": None},
         )
     except Exception as e:
         logger.exception("Authentication status check error")
