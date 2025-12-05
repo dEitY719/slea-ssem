@@ -1814,121 +1814,119 @@ Cookie: __Host-session={JWT}
 
 ---
 
-## REQ-B-A2-Auth-3: CLI Direct Login Endpoint (Backend)
+## REQ-B-A2-Auth-3: Login Check (SSO + Membership Verification)
 
 | REQ ID | 요구사항 | 우선순위 |
 |--------|---------|---------|
-| **REQ-B-A2-Auth-3-1** | CLI 및 개발용으로 사용자 정보를 직접 전송하여 JWT 토큰을 발급하는 엔드포인트를 제공해야 한다. | **H** |
-| **REQ-B-A2-Auth-3-2** | 엔드포인트는 사용자 정보(knox_id, name, email, dept, business_unit)를 받아 사용자를 생성/업데이트한 후 JWT 토큰을 반환해야 한다. | **H** |
-| **REQ-B-A2-Auth-3-3** | 응답에는 access_token, token_type, user_id, is_new_user 필드가 포함되어야 한다. | **H** |
-| **REQ-B-A2-Auth-3-4** | 요청은 JSON 본문을 통해 사용자 정보를 수신해야 한다. | **H** |
-| **REQ-B-A2-Auth-3-5** | 엔드포인트는 authenticate_or_create_user() 서비스를 사용하여 users 테이블과 동기화되어야 한다. | **H** |
+| **REQ-B-A2-Auth-3-1** | SSO 인증 후 JWT 토큰으로 로그인 체크 API를 호출하여 회원가입 여부를 검증해야 한다. | **M** |
+| **REQ-B-A2-Auth-3-2** | 회원가입 완료 사용자(nickname 존재)는 200 OK를 반환해야 한다. | **M** |
+| **REQ-B-A2-Auth-3-3** | 회원가입 미완료 사용자(nickname 없음)는 403 + NEED_SIGNUP을 반환해야 한다. | **M** |
+| **REQ-B-A2-Auth-3-4** | JWT 토큰 없거나 만료된 경우 401 + NEED_SSO를 반환해야 한다. | **M** |
 
 ### API 엔드포인트
 
-#### POST /auth/login (CLI Direct Login)
+#### POST /api/auth/login
+
+**접근 레벨**: Private-Auth (JWT 인증 필요, 회원가입 불필요)
 
 **요청**:
+- Body: 없음 (빈 객체 `{}` 또는 생략)
+- Headers:
+  - `Cookie: auth_token=<JWT>` (HttpOnly cookie)
+
+**응답 (200 OK - 회원가입 완료)**:
 
 ```json
 {
-  "knox_id": "bwyoon",
-  "name": "Beom Won Yoon",
-  "email": "bwyoon@samsung.com",
-  "dept": "Engineering",
-  "business_unit": "S.LSI"
+  "authenticated": true,
+  "has_membership": true,
+  "user_id": "user123@samsung.com",
+  "nickname": "testuser"
 }
 ```
 
-**응답 (성공)**:
+**응답 (403 Forbidden - 회원가입 필요)**:
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer",
-  "user_id": 123,
-  "is_new_user": false
+  "detail": "Signup required. Please complete nickname registration.",
+  "code": "NEED_SIGNUP"
 }
 ```
 
-**응답 (실패)**:
+**응답 (401 Unauthorized - SSO 필요)**:
 
 ```json
 {
-  "detail": "Invalid request body"
+  "detail": "SSO authentication required",
+  "code": "NEED_SSO"
 }
 ```
 
 **상태 코드**:
 
-- `201 Created`: 새 사용자 생성 및 로그인 성공 (is_new_user=true)
-- `200 OK`: 기존 사용자 로그인 성공 (is_new_user=false)
-- `400 Bad Request`: 요청 형식 오류 (비-JSON 본문, Content-Type 누락/오류)
-- `422 Unprocessable Entity`: 검증 실패 (필드 누락, 이메일 형식 오류, 필드 길이 초과)
-- `500 Internal Server Error`: 데이터베이스 오류
-
-**필드 처리 정책**:
-
-- **특수문자 (한글, 이모지)**: 허용 - 그대로 저장
-- **공백 (선행/후행)**: 그대로 저장 (트림 없음)
-- **장문 (500+ 문자)**: 검증 실패 (422) - 데이터베이스 제약 준수
-- **이메일 형식**: 정확한 형식 검증 (EmailStr) - 오류 시 422
-
-**JWT 토큰 요구사항**:
-
-- `access_token`: 유효한 HS256 JWT 문자열
-- `token_type`: 항상 "bearer" 문자열
-- Payload 포함: `knox_id` (사용자 ID), `iat` (발급 시간), `exp` (만료 시간)
-- Payload 불포함: 비밀정보 (비밀번호, 권한 등)
-- 만료 시간: 발급 후 24시간
+- `200 OK`: SSO 인증 완료 + 회원가입 완료 (nickname 존재)
+- `403 Forbidden + NEED_SIGNUP`: SSO 인증 완료 + 회원가입 미완료 (nickname 없음)
+- `401 Unauthorized + NEED_SSO`: JWT 토큰 없거나 만료됨
 
 **수용 기준**:
 
-- "요청에 knox_id, name, email, dept, business_unit이 포함되어야 한다"
-- "새 사용자의 경우 201 Created + is_new_user: true를 반환한다"
-- "기존 사용자의 경우 200 OK + is_new_user: false를 반환한다"
-- "반환된 JWT 토큰으로 다른 API를 호출할 수 있다"
-- "JWT token_type은 항상 'bearer'이어야 한다"
-- "JWT payload에 knox_id, iat, exp가 포함되어야 한다"
-- "응답은 1초 내에 완료되어야 한다 (perf_counter로 측정, CI 환경 고려)"
-- "기존 사용자 로그인 시 사용자 정보(dept 등)가 최신값으로 동기화되어야 한다"
-- "중복 사용자 생성 방지: 같은 knox_id로 로그인 시 user_id가 동일해야 한다"
-- "last_login 타임스탬프는 매번 로그인할 때 갱신되어야 한다"
+- "JWT 토큰이 유효하고 nickname이 존재하면 200 OK를 반환한다"
+- "JWT 토큰이 유효하지만 nickname이 없으면 403 + NEED_SIGNUP을 반환한다"
+- "JWT 토큰이 없거나 만료되면 401 + NEED_SSO를 반환한다"
+- "응답은 1초 내에 완료되어야 한다"
+- "프론트엔드는 NEED_SIGNUP 응답 시 /signup으로 리다이렉트해야 한다"
+- "프론트엔드는 NEED_SSO 응답 시 /sso로 리다이렉트해야 한다"
 
 ### 사용 예
 
-**CLI에서 사용**:
+**Frontend에서 사용** (ContinuePage handleServiceLogin):
 
-```bash
-# CLI에서 직접 로그인
-./tools/dev.sh cli
-> auth login bwyoon
+```typescript
+// After SSO authentication (JWT cookie already set)
+async function handleServiceLogin(ctx: ContinueContext): Promise<void> {
+  try {
+    // POST /api/auth/login with JWT cookie
+    const response = await authService.login({})
 
-# 응답받은 토큰으로 다른 명령어 실행
-> profile update_survey intermediate 5
-> questions generate
+    // 200 OK: User has completed signup → navigate to /home
+    ctx.navigate('/home', { replace: true })
+  } catch (err) {
+    // 403 + NEED_SIGNUP: User needs to complete signup → redirect to /signup
+    // 401 + NEED_SSO: JWT expired → redirect to /sso
+    // Handled by transport layer automatically
+    throw err
+  }
+}
 ```
 
 **curl로 테스트**:
 
 ```bash
-curl -X POST http://localhost:8000/auth/login \
+# With valid JWT cookie (회원가입 완료)
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Cookie: auth_token=<valid_jwt>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "knox_id": "bwyoon",
-    "name": "Beom Won Yoon",
-    "email": "bwyoon@samsung.com",
-    "dept": "Engineering",
-    "business_unit": "S.LSI"
-  }' \
-  -c cookies.txt
+  -d '{}'
 
-# 응답:
+# Response: 200 OK
 # {
-#   "access_token": "eyJ...",
-#   "token_type": "bearer",
-#   "user_id": 123,
-#   "is_new_user": false
+#   "authenticated": true,
+#   "has_membership": true,
+#   "user_id": "user123@samsung.com",
+#   "nickname": "testuser"
+# }
+
+# With valid JWT cookie (회원가입 미완료)
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Cookie: auth_token=<valid_jwt_no_nickname>" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Response: 403 Forbidden
+# {
+#   "detail": "Signup required. Please complete nickname registration.",
+#   "code": "NEED_SIGNUP"
 # }
 ```
 

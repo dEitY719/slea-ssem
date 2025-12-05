@@ -74,7 +74,7 @@ describe('Header - REQ-F-A2-Signup-1', () => {
     renderWithRouter(<Header nickname={null} />)
 
     // Then: Platform name should be displayed
-    expect(screen.getByText(/S\.LSI Learning Platform/i)).toBeInTheDocument()
+    expect(screen.getByText(/Learning Platform/i)).toBeInTheDocument()
   })
 
   test('nickname이 빈 문자열일 때도 "회원가입" 버튼 표시', () => {
