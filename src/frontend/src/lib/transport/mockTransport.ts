@@ -423,7 +423,8 @@ class MockTransport implements HttpTransport {
     if (accessLevel === 'private-auth') {
       // Private-Auth: SSO 인증만 필요
       if (!mockAuthState.isAuthenticated) {
-        console.warn('[Mock Auth] 401 Unauthorized - redirecting to /sso')
+        // REQ-F-A0-API-3: 401 + NEED_SSO
+        console.warn('[Mock Auth] 401 NEED_SSO - redirecting to /sso')
         const returnTo = encodeURIComponent(window.location.pathname)
         window.location.href = `/sso?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
@@ -431,14 +432,14 @@ class MockTransport implements HttpTransport {
     } else if (accessLevel === 'private-member') {
       // Private-Member: 회원 인증 필요 (nickname 필수)
       if (!mockAuthState.isAuthenticated) {
-        // 인증 안됨 → 401
-        console.warn('[Mock Auth] 401 Unauthorized - redirecting to /sso')
+        // REQ-F-A0-API-3: 401 + NEED_SSO (인증 안됨)
+        console.warn('[Mock Auth] 401 NEED_SSO - redirecting to /sso')
         const returnTo = encodeURIComponent(window.location.pathname)
         window.location.href = `/sso?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
       } else if (!mockAuthState.hasNickname) {
-        // 인증됨 but 비회원 → 403 NEED_SIGNUP
-        console.warn('[Mock Auth] 403 Signup Required - redirecting to /signup')
+        // REQ-F-A0-API-5: 403 + NEED_SIGNUP (인증됨 but 비회원)
+        console.warn('[Mock Auth] 403 NEED_SIGNUP - redirecting to /signup')
         const returnTo = encodeURIComponent(window.location.pathname)
         window.location.href = `/signup?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
@@ -502,8 +503,8 @@ class MockTransport implements HttpTransport {
       // This endpoint is Private-Auth, so SSO check already happened above
       // Now check membership status
       if (!mockAuthState.hasNickname) {
-        // SSO authenticated but not a member → 403 NEED_SIGNUP
-        console.warn('[Mock Auth] 403 Signup Required - redirecting to /signup')
+        // REQ-F-A0-API-5: SSO authenticated but not a member → 403 + NEED_SIGNUP
+        console.warn('[Mock Auth] 403 NEED_SIGNUP - redirecting to /signup')
         const returnTo = encodeURIComponent(window.location.pathname)
         window.location.href = `/signup?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>

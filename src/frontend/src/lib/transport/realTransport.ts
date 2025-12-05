@@ -40,25 +40,32 @@ class RealTransport implements HttpTransport {
         code: null
       }))
 
-      // REQ-F-A0-API-3: 401 → Auto redirect to /sso with returnTo
-      if ((accessLevel === 'private-auth' || accessLevel === 'private-member') && response.status === 401) {
-        console.warn('[Auth] 401 Unauthorized - redirecting to /sso')
+      // REQ-F-A0-API-3: 401 + NEED_SSO → Auto redirect to /sso with returnTo
+      if (response.status === 401 && error.code === 'NEED_SSO') {
+        console.warn('[Auth] 401 NEED_SSO - redirecting to /sso')
         const returnTo = encodeURIComponent(window.location.pathname)
         window.location.href = `/sso?returnTo=${returnTo}`
-        // Return never-resolving promise (page will redirect anyway)
         return new Promise(() => {}) as Promise<T>
       }
 
-      // REQ-F-A0-API-4: 403 + NEED_SIGNUP → Auto redirect to /signup with returnTo
-      if (accessLevel === 'private-member' && response.status === 403 && error.code === 'NEED_SIGNUP') {
-        console.warn('[Auth] 403 Signup Required - redirecting to /signup')
+      // REQ-F-A0-API-4: 401 + NEED_LOGIN → Auto redirect to /login with returnTo
+      if (response.status === 401 && error.code === 'NEED_LOGIN') {
+        console.warn('[Auth] 401 NEED_LOGIN - redirecting to /login')
+        const returnTo = encodeURIComponent(window.location.pathname)
+        window.location.href = `/login?returnTo=${returnTo}`
+        return new Promise(() => {}) as Promise<T>
+      }
+
+      // REQ-F-A0-API-5: 403 + NEED_SIGNUP → Auto redirect to /signup with returnTo
+      if (response.status === 403 && error.code === 'NEED_SIGNUP') {
+        console.warn('[Auth] 403 NEED_SIGNUP - redirecting to /signup')
         const returnTo = encodeURIComponent(window.location.pathname)
         window.location.href = `/signup?returnTo=${returnTo}`
         return new Promise(() => {}) as Promise<T>
       }
 
-      // REQ-F-A0-API-5: 403 other → Forbidden
-      if (response.status === 403) {
+      // REQ-F-A0-API-6: 403 + FORBIDDEN → Forbidden
+      if (response.status === 403 && error.code === 'FORBIDDEN') {
         const errorMessage = error.detail || 'Forbidden'
         throw new Error(errorMessage)
       }
