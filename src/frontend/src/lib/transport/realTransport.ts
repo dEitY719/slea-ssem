@@ -1,5 +1,5 @@
 // Real HTTP transport using fetch API
-// REQ: REQ-F-A1-6, REQ-B-A1 (HttpOnly cookie authentication)
+// REQ: REQ-F-A1-6, REQ-B-A1 (HttpOnly cookie authentication), REQ-F-A0-API
 
 import { HttpTransport, RequestConfig } from './types'
 
@@ -9,6 +9,9 @@ class RealTransport implements HttpTransport {
     method: string,
     config?: RequestConfig
   ): Promise<T> {
+    // REQ-F-A0-API: Default access level is 'private-member'
+    const accessLevel = config?.accessLevel ?? 'private-member'
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...config?.headers,
@@ -17,7 +20,12 @@ class RealTransport implements HttpTransport {
     const fetchConfig: RequestInit = {
       method,
       headers,
-      credentials: 'include', // REQ-F-A1-6: Include HttpOnly cookies automatically
+    }
+
+    // REQ-F-A0-API-1: Public API does not include credentials
+    // REQ-F-A0-API-2: Private APIs include credentials
+    if (accessLevel !== 'public') {
+      fetchConfig.credentials = 'include' // Include HttpOnly cookies
     }
 
     if (config?.body) {
@@ -28,9 +36,43 @@ class RealTransport implements HttpTransport {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({
-        detail: `HTTP ${response.status}`
+        detail: `HTTP ${response.status}`,
+        code: null
       }))
-      throw new Error(error.detail || 'Request failed')
+
+      // REQ-F-A0-API-3: 401 + NEED_SSO → Auto redirect to /sso with returnTo
+      if (response.status === 401 && error.code === 'NEED_SSO') {
+        console.warn('[Auth] 401 NEED_SSO - redirecting to /sso')
+        const returnTo = encodeURIComponent(window.location.pathname)
+        window.location.href = `/sso?returnTo=${returnTo}`
+        return new Promise(() => {}) as Promise<T>
+      }
+
+      // REQ-F-A0-API-4: 401 + NEED_LOGIN → Auto redirect to /login with returnTo
+      if (response.status === 401 && error.code === 'NEED_LOGIN') {
+        console.warn('[Auth] 401 NEED_LOGIN - redirecting to /login')
+        const returnTo = encodeURIComponent(window.location.pathname)
+        window.location.href = `/login?returnTo=${returnTo}`
+        return new Promise(() => {}) as Promise<T>
+      }
+
+      // REQ-F-A0-API-5: 403 + NEED_SIGNUP → Auto redirect to /signup with returnTo
+      if (response.status === 403 && error.code === 'NEED_SIGNUP') {
+        console.warn('[Auth] 403 NEED_SIGNUP - redirecting to /signup')
+        const returnTo = encodeURIComponent(window.location.pathname)
+        window.location.href = `/signup?returnTo=${returnTo}`
+        return new Promise(() => {}) as Promise<T>
+      }
+
+      // REQ-F-A0-API-6: 403 + FORBIDDEN → Forbidden
+      if (response.status === 403 && error.code === 'FORBIDDEN') {
+        const errorMessage = error.detail || 'Forbidden'
+        throw new Error(errorMessage)
+      }
+
+      // Other errors - throw for page to handle
+      const errorMessage = error.detail || `HTTP ${response.status}`
+      throw new Error(errorMessage)
     }
 
     return response.json()

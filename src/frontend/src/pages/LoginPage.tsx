@@ -1,74 +1,61 @@
 // @ts-nocheck
-// REQ: REQ-F-A1-1, REQ-F-A1-2, REQ-F-A1-Error-1
+// REQ: REQ-F-A0-Landing
 /// <reference types="vite/client" />
 // @ts-ignore
 import React, { useEffect, useState } from 'react'
- // @ts-ignore
+// @ts-ignore
 import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '../components'
-import { isAuthenticated } from '../utils/auth'
-import { detectRedirectLoop, resetRedirectDetection } from '../utils/redirectDetection'
-import './LoginPage.css'
+import { authService } from '../services/authService'
+import './SSOPage.css'
 
 /**
- * LoginPage - Auto-redirect to IDP or /home
+ * LoginPage - Handle login button flow
  *
- * REQ-F-A1-1: Check cookie, redirect to IDP if not authenticated
- * REQ-F-A1-2: Redirect to /home if already authenticated
+ * Flow:
+ * 1. Call POST /api/auth/login (Private-Auth API)
+ * 2. If 401 (no SSO) → transport redirects to /sso?returnTo=/login
+ * 3. SSO success → redirects back to /login
+ * 4. Auto-retry login API
+ * 5. If 403 NEED_SIGNUP → transport redirects to /signup
+ * 6. If success → navigate to /home
  */
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const handleAutoRedirect = async () => {
+    const performLogin = async () => {
       try {
-        // REQ-F-A1-2: Check if already authenticated
-        const authenticated = await isAuthenticated()
+        // Call login API (Private-Auth)
+        // Backend checks: SSO authentication → membership status
+        // - If no SSO (401) → transport redirects to /sso?returnTo=/login
+        // - If not member (403) → transport redirects to /signup?returnTo=/login
+        // - If success → proceed to home
+        await authService.login({} as any)
 
-        if (authenticated) {
-          // Already logged in, reset redirect counter and go to home
-          resetRedirectDetection()
-          navigate('/home', { replace: true })
-          return
-        }
-
-        // REQ-F-A1-Error-1: Detect redirect loop before redirecting
-        const detection = detectRedirectLoop()
-        if (detection.shouldShowError) {
-          console.warn(`[Auth Error] Redirect loop detected (${detection.count} attempts)`)
-          navigate('/auth-error', { replace: true })
-          return
-        }
-
-        // MOCK MODE: Bypass IDP and go directly to home
-        const mockSSO = import.meta.env.VITE_MOCK_SSO === 'true'
-        if (mockSSO) {
-          console.log('[MOCK SSO] Bypassing IDP, redirecting to home')
-          navigate('/home', { replace: true })
-          return
-        }
-
-        // REQ-F-A1-1: Redirect to IDP authorize URL
-        const authUrl = buildIDPAuthUrl()
-
-        // Redirect to IDP
-        window.location.href = authUrl
-      } catch (error) {
-        console.error('Auto-redirect failed:', error)
+        // Success: user is authenticated and member
+        console.log('[Login] Login successful, navigating to /home')
+        navigate('/home', { replace: true })
+      } catch (err) {
+        // Unexpected errors only (401/403 are handled by transport)
+        console.error('[Login] Login failed:', err)
+        setError(err instanceof Error ? err.message : 'Login failed')
         setIsLoading(false)
       }
     }
 
-    handleAutoRedirect()
+    performLogin()
   }, [navigate])
 
-  if (isLoading) {
+  if (error) {
     return (
       <PageLayout mainClassName="login-page" containerClassName="login-container">
         <div data-testid="login-container">
           <h1 className="login-title">SLEA-SSEM</h1>
-          <p>인증 중...</p>
+          <p>로그인 처리 중 오류가 발생했습니다.</p>
+          <p>{error}</p>
         </div>
       </PageLayout>
     )
@@ -78,19 +65,10 @@ const LoginPage: React.FC = () => {
     <PageLayout mainClassName="login-page" containerClassName="login-container">
       <div data-testid="login-container">
         <h1 className="login-title">SLEA-SSEM</h1>
-        <p>로그인 처리 중 오류가 발생했습니다.</p>
+        <p>로그인 중...</p>
       </div>
     </PageLayout>
   )
-}
-
-/**
- * Build IDP authorization URL
- * @returns Authorization URL
- */
-function buildIDPAuthUrl(): string {
-  // TODO: Implement IDP authorization URL construction
-  return ''
 }
 
 export default LoginPage

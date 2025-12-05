@@ -1,6 +1,6 @@
-// REQ: REQ-F-A2-1
+// REQ: REQ-F-A2-1, REQ-B-A0-API
 import { useState, useCallback } from 'react'
-import { profileService } from '../services'
+import { authService } from '../services/authService'
 import { clearCachedNickname, getCachedNickname, setCachedNickname } from '../utils/nicknameCache'
 
 /**
@@ -27,7 +27,9 @@ import { clearCachedNickname, getCachedNickname, setCachedNickname } from '../ut
  */
 export function useUserProfile() {
   const [nickname, setNickname] = useState<string | null>(() => getCachedNickname())
-  const [loading, setLoading] = useState(false)
+  // REQ-F-A0-Landing: Start with loading=true to prevent HomePage from calling
+  // Private-Member APIs before auth status is checked
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const checkNickname = useCallback(async (): Promise<string | null> => {
@@ -35,15 +37,16 @@ export function useUserProfile() {
     setError(null)
 
     try {
-      // Use service layer for API calls
-      const data = await profileService.getNickname()
+      // REQ-B-A0-API: Use public /auth/status API instead of private /api/profile/nickname
+      // This allows unauthenticated users to check their auth status without errors
+      const data = await authService.getAuthStatus()
 
-        setNickname(data.nickname)
-        if (data.nickname) {
-          setCachedNickname(data.nickname)
-        } else {
-          clearCachedNickname()
-        }
+      setNickname(data.nickname)
+      if (data.nickname) {
+        setCachedNickname(data.nickname)
+      } else {
+        clearCachedNickname()
+      }
       setLoading(false)
       return data.nickname
     } catch (err) {

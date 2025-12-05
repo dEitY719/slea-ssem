@@ -1,9 +1,10 @@
 // REQ: REQ-F-A2-Signup-3, REQ-F-A2-Signup-4, REQ-F-A2-Signup-5, REQ-F-A2-Signup-6
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '../components'
 import { useNicknameCheck } from '../hooks/useNicknameCheck'
 import { completeProfileSignup } from '../features/profile/profileSubmission'
+import { authService } from '../services/authService'
 import NicknameInputSection from '../components/NicknameInputSection'
 import CareerInfoSection from '../components/CareerInfoSection'
 import LevelSelector from '../components/LevelSelector'
@@ -73,13 +74,36 @@ const SignupPage: React.FC = () => {
   // REQ-F-A2-Signup-6: Submit state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const navigate = useNavigate()
 
+  // Check SSO authentication before allowing signup
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // Call checkSignupEligibility (Private-Auth API)
+        // - If no SSO (401 + NEED_SSO) → transport redirects to /sso?returnTo=/signup
+        // - If SSO valid → returns auth status, proceed with signup
+        await authService.checkSignupEligibility()
+
+        console.log('[Signup] SSO authentication verified')
+        setIsCheckingAuth(false)
+      } catch (err) {
+        console.error('[Signup] SSO check failed:', err)
+        // If error is thrown (not redirect), show error
+        setSubmitError(err instanceof Error ? err.message : 'SSO 인증 확인 실패')
+        setIsCheckingAuth(false)
+      }
+    }
+
+    checkAuth()
+  }, [])
+
     // REQ-F-A2-Signup-5: Submit button activation logic
-    // Enable when: nickname is available AND level is selected AND not submitting
+    // Enable when: auth check complete AND nickname is available AND level is selected AND not submitting
     const isSubmitDisabled = useMemo(() => {
-      return checkStatus !== 'available' || level === null || isSubmitting
-    }, [checkStatus, level, isSubmitting])
+      return isCheckingAuth || checkStatus !== 'available' || level === null || isSubmitting
+    }, [isCheckingAuth, checkStatus, level, isSubmitting])
 
     // REQ-F-A2-Signup-6: Submit handler
     const handleSubmit = useCallback(async () => {
@@ -114,6 +138,13 @@ const SignupPage: React.FC = () => {
           닉네임과 자기평가 정보를 입력하여 가입을 완료하세요.
         </p>
 
+        {/* SSO authentication check loading */}
+        {isCheckingAuth && (
+          <div className="auth-check-loading">
+            <p>SSO 인증 확인 중...</p>
+          </div>
+        )}
+
         {/* REQ-F-A2-Signup-3: Nickname Section */}
         <NicknameInputSection
           nickname={nickname}
@@ -122,7 +153,7 @@ const SignupPage: React.FC = () => {
           errorMessage={errorMessage}
           suggestions={suggestions}
           onCheckClick={checkNickname}
-          disabled={isSubmitting}
+          disabled={isCheckingAuth || isSubmitting}
           showInfoBox={true}
         />
 
@@ -136,7 +167,7 @@ const SignupPage: React.FC = () => {
             onCareerChange={setCareer}
             onJobRoleChange={setJobRole}
             onDutyChange={setDuty}
-            disabled={isSubmitting}
+            disabled={isCheckingAuth || isSubmitting}
             showTitle={false}
           />
         </div>
@@ -152,14 +183,14 @@ const SignupPage: React.FC = () => {
             options={INTERESTS_OPTIONS}
             value={interests}
             onChange={setInterests}
-            disabled={isSubmitting}
+            disabled={isCheckingAuth || isSubmitting}
           />
 
           {/* Level */}
           <LevelSelector
             value={level}
             onChange={setLevel}
-            disabled={isSubmitting}
+            disabled={isCheckingAuth || isSubmitting}
             showTitle={true}
           />
         </div>
@@ -175,7 +206,7 @@ const SignupPage: React.FC = () => {
             disabled={isSubmitDisabled}
             onClick={handleSubmit}
           >
-            {isSubmitting ? '가입 중...' : '가입 완료'}
+            {isCheckingAuth ? 'SSO 인증 확인 중...' : isSubmitting ? '가입 중...' : '가입 완료'}
           </button>
         </div>
     </PageLayout>

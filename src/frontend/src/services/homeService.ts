@@ -23,17 +23,23 @@ export interface StatisticsResponse {
 /**
  * Get last test result for current user
  * REQ: REQ-F-A1-Home-1
+ * REQ-B-A0-API: Private-Member API (requires membership)
  */
 export const getLastTestResult = async (): Promise<LastTestResult> => {
-  return await transport.get<LastTestResult>('/api/profile/last-test-result')
+  return await transport.get<LastTestResult>('/api/profile/last-test-result', {
+    accessLevel: 'private-member'
+  })
 }
 
 /**
  * Get total test participants count
- * REQ: REQ-F-A1-Home-4
+ * REQ: REQ-F-A1-Home-4, REQ-F-A0-API-1
  */
 export const getTotalParticipants = async (): Promise<StatisticsResponse> => {
-  return await transport.get<StatisticsResponse>('/api/statistics/total-participants')
+  // REQ-F-A0-API: Public API - no authentication required
+  return await transport.get<StatisticsResponse>('/api/statistics/total-participants', {
+    accessLevel: 'public'
+  })
 }
 
 /**

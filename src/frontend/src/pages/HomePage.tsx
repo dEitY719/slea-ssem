@@ -44,33 +44,16 @@ const HomePage: React.FC = () => {
   const [totalParticipants, setTotalParticipants] = useState<number | null>(null)
   const [isLoadingStats, setIsLoadingStats] = useState(true)
 
-  // REQ-F-A1-3: Check authentication on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      const authenticated = await isAuthenticated()
-      if (!authenticated) {
-        // REQ-F-A1-Error-1: Detect redirect loop before redirecting
-        const detection = detectRedirectLoop()
-        if (detection.shouldShowError) {
-          console.warn(`[Auth Error] Redirect loop detected (${detection.count} attempts)`)
-          navigate('/auth-error', { replace: true })
-          return
-        }
-
-        navigate('/')
-      } else {
-        // Successfully authenticated, reset redirect counter
-        resetRedirectDetection()
-      }
-    }
-
-    checkAuth()
-  }, [navigate])
+  // REQ-F-A0-Landing-2: No authentication check, render for all users
+  // HomePage is now accessible to unauthenticated users as landing page
 
   // REQ-F-A2-Signup-1: Load nickname to determine if user data should be fetched
+  // Note: Nickname is loaded by App.tsx and passed to Header
+  // HomePage uses useUserProfile hook which calls authService.getAuthStatus() (Public API)
   useEffect(() => {
     const loadNickname = async () => {
       try {
+        // Use Public API to get auth status (includes nickname)
         await checkNickname()
       } catch (err) {
         console.error('Failed to load nickname:', err)

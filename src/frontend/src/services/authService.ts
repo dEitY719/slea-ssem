@@ -25,18 +25,58 @@ export interface LoginResponse {
 }
 
 /**
+ * Auth status response
+ * REQ-B-A0-API: Public API that returns auth state without throwing errors
+ */
+export interface AuthStatusResponse {
+  authenticated: boolean
+  nickname: string | null
+  user_id: string | null
+}
+
+/**
  * Authentication service
  * Handles all authentication-related API calls
  */
 export const authService = {
   /**
+   * Check authentication status
+   * REQ-B-A0-API: Public API that checks auth state without throwing errors
+   *
+   * @returns Auth status including authentication state and nickname
+   */
+  async getAuthStatus(): Promise<AuthStatusResponse> {
+    return transport.get<AuthStatusResponse>('/api/auth/status', {
+      accessLevel: 'public'
+    })
+  },
+
+  /**
    * Login with Samsung AD credentials
+   * REQ-B-A0-API: Private-Auth API (checks SSO, then membership)
    *
    * @param userData - User data from Samsung AD
    * @returns Login response with JWT token
    */
   async login(userData: LoginRequest): Promise<LoginResponse> {
-    return transport.post<LoginResponse>('/api/auth/login', userData)
+    return transport.post<LoginResponse>('/api/auth/login', userData, {
+      accessLevel: 'private-auth'
+    })
+  },
+
+  /**
+   * Check signup eligibility (SSO authentication required)
+   * REQ-B-A0-API: Private-Auth API (checks SSO only)
+   *
+   * This triggers SSO authentication flow if not authenticated.
+   * Backend returns auth status if SSO is valid.
+   *
+   * @returns Auth status after SSO check
+   */
+  async checkSignupEligibility(): Promise<AuthStatusResponse> {
+    return transport.get<AuthStatusResponse>('/api/auth/signup-check', {
+      accessLevel: 'private-auth'
+    })
   },
 
   /**

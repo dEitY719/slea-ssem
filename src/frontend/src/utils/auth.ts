@@ -12,7 +12,7 @@ import { transport } from '../lib/transport'
  */
 
 /**
- * Check if user is authenticated via GET /auth/status
+ * Check if user is authenticated via GET /api/auth/status
  * (HttpOnly cookie is automatically included by browser)
  *
  * REQ: REQ-F-A1-3, REQ-B-A1-9
@@ -23,7 +23,7 @@ export const isAuthenticated = async (): Promise<boolean> => {
   try {
     // Use transport layer to respect VITE_MOCK_API setting
     // HttpOnly cookie is automatically included by browser in all requests
-    const response = await transport.get<{ authenticated: boolean }>('/auth/status')
+    const response = await transport.get<{ authenticated: boolean }>('/api/auth/status')
     // Check authenticated field explicitly (handles 200 OK with authenticated: false)
     return response.authenticated === true
   } catch {

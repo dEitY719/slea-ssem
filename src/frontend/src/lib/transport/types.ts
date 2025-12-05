@@ -1,8 +1,12 @@
 // Transport interface for API requests
 
+// REQ-F-A0-API: API Access Levels
+export type ApiAccessLevel = 'public' | 'private-auth' | 'private-member'
+
 export interface RequestConfig {
   headers?: Record<string, string>
   body?: any
+  accessLevel?: ApiAccessLevel // Default: 'private-member'
 }
 
 export interface HttpTransport {

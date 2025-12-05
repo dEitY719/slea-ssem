@@ -6,6 +6,7 @@ import {
   UserCircleIcon,
   PencilSquareIcon,
   ChevronDownIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline'
 import './Header.css'
 import './ProfileMenu.css'
@@ -48,6 +49,16 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
   const navigate = useNavigate()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  const handleLoginClick = () => {
+    // REQ-F-A0-Landing: Navigate to /login page
+    // LoginPage will handle the login flow:
+    // - Call /api/auth/login API
+    // - Auto-redirect to /sso if not authenticated
+    // - Auto-redirect to /signup if not member
+    // - Navigate to /home if success
+    navigate('/login')
+  }
 
   const handleSignupClick = () => {
     // REQ-F-A2-Signup-2: Navigate to /signup page
@@ -95,19 +106,29 @@ export const Header: React.FC<HeaderProps> = ({ nickname, isLoading = false }) =
         <div className="header-right">
           {shouldRenderControls && (
             <>
-              {/* REQ-F-A2-Signup-1: Show "회원가입" button only when nickname is null */}
+              {/* REQ-F-A0-Landing: Show "로그인" and "회원가입" when no nickname */}
               {nickname === null && (
-                <button
-                  className="signup-button"
-                  onClick={handleSignupClick}
-                  aria-label="회원가입 페이지로 이동"
-                >
-                  <UserPlusIcon className="button-icon" />
-                  회원가입
-                </button>
+                <>
+                  <button
+                    className="signup-button"
+                    onClick={handleLoginClick}
+                    aria-label="로그인"
+                  >
+                    <ArrowRightOnRectangleIcon className="button-icon" />
+                    로그인
+                  </button>
+                  <button
+                    className="signup-button"
+                    onClick={handleSignupClick}
+                    aria-label="회원가입"
+                  >
+                    <UserPlusIcon className="button-icon" />
+                    회원가입
+                  </button>
+                </>
               )}
 
-              {/* REQ-F-A2-Profile-Access-3: Show nickname as clickable button with dropdown */}
+              {/* REQ-F-A2-Profile-Access-3: Show profile dropdown when nickname exists */}
               {nickname !== null && (
                 <div className="profile-menu-container" ref={dropdownRef}>
                   <button
