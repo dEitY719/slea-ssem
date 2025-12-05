@@ -168,15 +168,17 @@ class TestAuthStatusEndpoint:
 
         Given: No auth_token cookie provided
         When: GET /auth/status
-        Then: 401 Unauthorized
+        Then: 200 OK with {authenticated: false}
         """
         # GIVEN: No cookie provided
 
         # WHEN: GET /auth/status without cookie
         response = client.get("/auth/status")
 
-        # THEN: 401 Unauthorized
-        assert response.status_code == 401
+        # THEN: 200 OK with authenticated: false
+        assert response.status_code == 200
+        data = response.json()
+        assert data["authenticated"] is False
 
     def test_get_auth_status_invalid_token(self, client: TestClient) -> None:
         """
@@ -186,7 +188,7 @@ class TestAuthStatusEndpoint:
 
         Given: Invalid JWT token
         When: GET /auth/status
-        Then: 401 Unauthorized
+        Then: 200 OK with {authenticated: false}
         """
         # GIVEN: Invalid JWT token
         invalid_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid_payload.invalid_signature"
@@ -194,8 +196,10 @@ class TestAuthStatusEndpoint:
         # WHEN: GET /auth/status with invalid token
         response = client.get("/auth/status", cookies={"auth_token": invalid_token})
 
-        # THEN: 401 Unauthorized
-        assert response.status_code == 401
+        # THEN: 200 OK with authenticated: false
+        assert response.status_code == 200
+        data = response.json()
+        assert data["authenticated"] is False
 
     def test_get_auth_status_expired_token(self, client: TestClient) -> None:
         """
@@ -205,7 +209,7 @@ class TestAuthStatusEndpoint:
 
         Given: Expired JWT token
         When: GET /auth/status
-        Then: 401 Unauthorized
+        Then: 200 OK with {authenticated: false}
         """
         # GIVEN: Create expired token
         from datetime import UTC, datetime, timedelta
@@ -227,8 +231,10 @@ class TestAuthStatusEndpoint:
         # WHEN: GET /auth/status with expired token
         response = client.get("/auth/status", cookies={"auth_token": expired_token})
 
-        # THEN: 401 Unauthorized
-        assert response.status_code == 401
+        # THEN: 200 OK with authenticated: false
+        assert response.status_code == 200
+        data = response.json()
+        assert data["authenticated"] is False
 
     def test_get_auth_status_token_without_knox_id(self, client: TestClient) -> None:
         """
@@ -238,7 +244,7 @@ class TestAuthStatusEndpoint:
 
         Given: JWT token without knox_id in payload
         When: GET /auth/status
-        Then: 401 Unauthorized
+        Then: 200 OK with {authenticated: false}
         """
         # GIVEN: Token without knox_id
         from datetime import UTC, datetime, timedelta
@@ -261,5 +267,7 @@ class TestAuthStatusEndpoint:
         # WHEN: GET /auth/status with token missing knox_id
         response = client.get("/auth/status", cookies={"auth_token": token_without_knox_id})
 
-        # THEN: 401 Unauthorized
-        assert response.status_code == 401
+        # THEN: 200 OK with authenticated: false
+        assert response.status_code == 200
+        data = response.json()
+        assert data["authenticated"] is False

@@ -15,12 +15,12 @@ export interface LoginResponse {
 
 /**
  * Auth status response
- * REQ-B-A0-API: Public API that returns auth state without throwing errors
+ * REQ-B-A1-9: Public API that returns SSO auth state
  */
 export interface AuthStatusResponse {
   authenticated: boolean
-  nickname: string | null
-  user_id: string | null
+  user_id: number | null
+  knox_id: string | null
 }
 
 /**
