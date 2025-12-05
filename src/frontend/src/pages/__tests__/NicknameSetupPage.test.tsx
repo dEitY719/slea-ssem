@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import NicknameSetupPage from '../NicknameSetupPage'
-import { mockConfig } from '../../lib/transport'
+import { mockConfig, setMockAuthState } from '../../lib/transport'
 
 const mockNavigate = vi.fn()
 
@@ -35,6 +35,8 @@ describe('NicknameSetupPage', () => {
       localStorage.removeItem('slea_ssem_cached_nickname')
       mockConfig.delay = 0
       mockConfig.simulateError = false
+      // Set mock auth state to authenticated (Private-Auth API requires SSO)
+      setMockAuthState(true, null)
     })
 
     afterEach(() => {

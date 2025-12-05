@@ -14,7 +14,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
   test('PUT /profile/survey with valid level (beginner)', async () => {
     const response = await mockTransport.put<any>('/profile/survey', {
       level: 'beginner',
-    })
+    }, { accessLevel: 'private-auth' })
 
     expect(response).toMatchObject({
       success: true,
@@ -28,7 +28,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
   test('PUT /profile/survey with valid level (intermediate)', async () => {
     const response = await mockTransport.put('/profile/survey', {
       level: 'intermediate',
-    })
+    }, { accessLevel: 'private-auth' })
 
     expect(response).toMatchObject({
       success: true,
@@ -39,7 +39,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
   test('PUT /profile/survey with valid level (advanced)', async () => {
     const response = await mockTransport.put('/profile/survey', {
       level: 'advanced',
-    })
+    }, { accessLevel: 'private-auth' })
 
     expect(response).toMatchObject({
       success: true,
@@ -51,14 +51,14 @@ describe('Mock Transport - /profile/survey endpoint', () => {
     await expect(
       mockTransport.put('/profile/survey', {
         level: 'expert',
-      })
+      }, { accessLevel: 'private-auth' })
     ).rejects.toThrow('Invalid level. Must be one of: beginner, intermediate, inter-advanced, advanced, elite')
   })
 
   test('PUT /profile/survey with valid career (0-60)', async () => {
     const response = await mockTransport.put('/profile/survey', {
       career: 5,
-    })
+    }, { accessLevel: 'private-auth' })
 
     expect(response).toMatchObject({
       success: true,
@@ -69,7 +69,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
     await expect(
       mockTransport.put('/profile/survey', {
         career: -1,
-      })
+      }, { accessLevel: 'private-auth' })
     ).rejects.toThrow('career must be a number between 0 and 60')
   })
 
@@ -77,14 +77,14 @@ describe('Mock Transport - /profile/survey endpoint', () => {
     await expect(
       mockTransport.put('/profile/survey', {
         career: 61,
-      })
+      }, { accessLevel: 'private-auth' })
     ).rejects.toThrow('career must be a number between 0 and 60')
   })
 
   test('PUT /profile/survey with valid job_role', async () => {
     const response = await mockTransport.put('/profile/survey', {
       job_role: 'SW',
-    })
+    }, { accessLevel: 'private-auth' })
 
     expect(response).toMatchObject({
       success: true,
@@ -96,14 +96,14 @@ describe('Mock Transport - /profile/survey endpoint', () => {
     await expect(
       mockTransport.put('/profile/survey', {
         job_role: longString,
-      })
+      }, { accessLevel: 'private-auth' })
     ).rejects.toThrow('job_role must be a string with max 100 characters')
   })
 
   test('PUT /profile/survey with valid duty', async () => {
     const response = await mockTransport.put('/profile/survey', {
       duty: 'Backend Development',
-    })
+    }, { accessLevel: 'private-auth' })
 
     expect(response).toMatchObject({
       success: true,
@@ -115,14 +115,14 @@ describe('Mock Transport - /profile/survey endpoint', () => {
     await expect(
       mockTransport.put('/profile/survey', {
         duty: longString,
-      })
+      }, { accessLevel: 'private-auth' })
     ).rejects.toThrow('duty must be a string with max 500 characters')
   })
 
   test('PUT /profile/survey with valid interests array', async () => {
     const response = await mockTransport.put('/profile/survey', {
       interests: ['AI', 'Backend', 'Frontend'],
-    })
+    }, { accessLevel: 'private-auth' })
 
     expect(response).toMatchObject({
       success: true,
@@ -134,7 +134,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
     await expect(
       mockTransport.put('/profile/survey', {
         interests: largeArray,
-      })
+      }, { accessLevel: 'private-auth' })
     ).rejects.toThrow('interests must be an array with max 20 items')
   })
 
@@ -145,7 +145,7 @@ describe('Mock Transport - /profile/survey endpoint', () => {
       job_role: 'SW',
       duty: 'Backend Development',
       interests: ['AI', 'Backend'],
-    })
+    }, { accessLevel: 'private-auth' })
 
     expect(response).toMatchObject({
       success: true,

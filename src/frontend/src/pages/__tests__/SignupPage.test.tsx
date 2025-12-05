@@ -10,6 +10,7 @@ import {
   getMockRequests,
   mockConfig,
   setMockError,
+  setMockAuthState,
 } from '../../lib/transport'
 
 const mockNavigate = vi.fn()
@@ -35,6 +36,8 @@ beforeEach(() => {
   mockConfig.simulateError = false
   clearMockRequests()
   clearMockErrors()
+  // Set mock auth state to authenticated (Private-Auth API requires SSO)
+  setMockAuthState(true, null)
 })
 
 afterEach(() => {
