@@ -4,6 +4,19 @@
 import { profileService } from '../../services/profileService'
 import type { ContinueContext } from './types'
 
+const buildContinuationUrl = (returnTo?: string): string => {
+  const params = new URLSearchParams({ intent: 'leveltest' })
+  if (returnTo) {
+    params.set('returnTo', returnTo)
+  }
+  return `/continue?${params.toString()}`
+}
+
+const withReturnTo = (path: string, continuationUrl: string): string => {
+  const params = new URLSearchParams({ returnTo: continuationUrl })
+  return `${path}?${params.toString()}`
+}
+
 /**
  * Handle leveltest intent
  *
@@ -19,6 +32,7 @@ import type { ContinueContext } from './types'
  */
 export async function handleLeveltest(ctx: ContinueContext): Promise<void> {
   console.log('[Continue] Handling leveltest intent')
+  const continuationUrl = buildContinuationUrl(ctx.returnTo)
 
   try {
     // Step 1: Check consent (Private-Auth API)
@@ -26,7 +40,7 @@ export async function handleLeveltest(ctx: ContinueContext): Promise<void> {
 
     if (!consentData.consented) {
       console.log('[Continue] User has not consented, navigating to /consent')
-      ctx.navigate('/consent', { replace: true })
+      ctx.navigate(withReturnTo('/consent', continuationUrl), { replace: true })
       return
     }
 
@@ -35,13 +49,13 @@ export async function handleLeveltest(ctx: ContinueContext): Promise<void> {
 
     if (!nicknameData.nickname) {
       console.log('[Continue] User has no nickname, navigating to /signup')
-      ctx.navigate('/signup', { replace: true })
+      ctx.navigate(withReturnTo('/signup', continuationUrl), { replace: true })
       return
     }
 
     // All checks passed - start level test
     console.log('[Continue] All checks passed, navigating to /test/start')
-    ctx.navigate('/test/start', { replace: true })
+    ctx.navigate(ctx.returnTo ?? '/test/start', { replace: true })
   } catch (err) {
     console.error('[Continue] Leveltest flow failed:', err)
     throw err

@@ -1,6 +1,6 @@
 // REQ: REQ-F-A2-Signup-3, REQ-F-A2-Signup-4, REQ-F-A2-Signup-5, REQ-F-A2-Signup-6
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageLayout } from '../components'
 import { useNicknameCheck } from '../hooks/useNicknameCheck'
 import { completeProfileSignup } from '../features/profile/profileSubmission'
@@ -76,6 +76,9 @@ const SignupPage: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const rawReturnTo = searchParams.get('returnTo')
+  const safeReturnTo = rawReturnTo && rawReturnTo.startsWith('/') ? rawReturnTo : null
 
   // Check SSO authentication before allowing signup
   useEffect(() => {
@@ -122,14 +125,14 @@ const SignupPage: React.FC = () => {
           interests,
         })
 
-        navigate('/home', { replace: true })
+        navigate(safeReturnTo ?? '/home', { replace: true })
       } catch (error) {
         const message =
           error instanceof Error ? error.message : '가입 완료에 실패했습니다.'
         setSubmitError(message)
         setIsSubmitting(false)
       }
-    }, [nickname, level, career, jobRole, duty, interests, isSubmitting, isSubmitDisabled, navigate])
+    }, [nickname, level, career, jobRole, duty, interests, isSubmitting, isSubmitDisabled, navigate, safeReturnTo])
 
   return (
     <PageLayout mainClassName="signup-page" containerClassName="signup-container">

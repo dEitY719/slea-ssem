@@ -11,5 +11,8 @@ export type ContinueIntent = 'service_login' | 'leveltest'
  */
 export interface ContinueContext {
   navigate: (path: string, options?: { replace?: boolean }) => void
+  /**
+   * Optional destination to resume original intent (e.g., /test/start)
+   */
   returnTo?: string
 }

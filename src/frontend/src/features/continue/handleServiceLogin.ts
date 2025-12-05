@@ -14,7 +14,7 @@ import type { ContinueContext } from './types'
  * 4. If 403 NEED_SIGNUP → transport redirects to /signup?returnTo=/continue?intent=service_login
  * 5. If success → navigate to /home
  *
- * @param ctx - Continue context with navigate function
+ * @param ctx - Continue context with navigate function + optional returnTo target
  * @throws Error on unexpected failures (401/403 handled by transport)
  */
 export async function handleServiceLogin(ctx: ContinueContext): Promise<void> {
@@ -29,7 +29,7 @@ export async function handleServiceLogin(ctx: ContinueContext): Promise<void> {
 
     // Success: user is authenticated and member
     console.log('[Continue] Service login successful, navigating to /home')
-    ctx.navigate('/home', { replace: true })
+    ctx.navigate(ctx.returnTo ?? '/home', { replace: true })
   } catch (err) {
     // Only unexpected errors reach here (401/403 handled by transport)
     console.error('[Continue] Service login failed:', err)

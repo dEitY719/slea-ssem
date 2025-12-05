@@ -1,6 +1,6 @@
 // REQ: REQ-F-A3-1, REQ-F-A3-2, REQ-F-A3-3, REQ-F-A3-4
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import { PageLayout } from '../components'
 import { profileService } from '../services/profileService'
@@ -43,6 +43,9 @@ const getSurveyProgress = (): SurveyProgress => {
 
 const ConsentPage: React.FC = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const rawReturnTo = searchParams.get('returnTo')
+  const safeReturnTo = rawReturnTo && rawReturnTo.startsWith('/') ? rawReturnTo : null
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { checkNickname } = useUserProfile()
@@ -54,6 +57,11 @@ const ConsentPage: React.FC = () => {
     try {
       // REQ: REQ-F-A3-5 - Save consent to DB
       await profileService.updateConsent(true)
+
+      if (safeReturnTo) {
+        navigate(safeReturnTo, { replace: true })
+        return
+      }
 
       // REQ: REQ-F-A3-3 - Proceed to next step based on user status
       // Check nickname and profile status to determine the right page
