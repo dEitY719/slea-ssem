@@ -1395,6 +1395,64 @@ Content-Type: application/json
 
 ---
 
+### REQ-B-A1-SignupCheck: 회원가입 자격 확인 API
+
+| REQ ID | 요구사항 | 우선순위 |
+|--------|---------|---------|
+| **REQ-B-A1-SignupCheck-1** | SSO 인증만 확인하는 회원가입 자격 확인 API를 제공해야 한다. (Private-Auth) | **M** |
+| **REQ-B-A1-SignupCheck-2** | SSO 인증이 유효하면 현재 인증 상태를 반환해야 한다. | **M** |
+| **REQ-B-A1-SignupCheck-3** | SSO 인증이 없거나 유효하지 않으면 401 + NEED_SSO를 반환해야 한다. | **M** |
+| **REQ-B-A1-SignupCheck-4** | 회원 여부(nickname 존재)는 검증하지 않아야 한다. | **M** |
+
+**API 엔드포인트**: `GET /api/auth/signup-check` (Private-Auth - SSO 인증 필수)
+
+**요청**:
+```
+GET /api/auth/signup-check
+Cookie: __Host-session={JWT}
+```
+
+**응답 (SSO 인증됨)**:
+```json
+200 OK
+{
+  "authenticated": true,
+  "nickname": null,
+  "user_id": "uuid-string"
+}
+```
+
+**응답 (SSO 인증 안 됨)**:
+```json
+401 Unauthorized
+{
+  "detail": "SSO authentication required",
+  "code": "NEED_SSO"
+}
+```
+
+**구현 상세**:
+- `auth_required` 미들웨어 사용 (SSO 인증만 검증)
+- JWT 쿠키 검증 후 사용자 정보 반환
+- nickname 필드는 null일 수 있음 (회원가입 전)
+- users 레코드 존재 여부는 확인하지 않음
+
+**사용 시나리오**:
+1. 프론트엔드 SignupPage가 마운트될 때 `checkSignupEligibility()` 호출
+2. SSO 인증이 안 되어 있으면 → 401 + NEED_SSO 반환
+3. Transport 레이어가 자동으로 `/sso?returnTo=/signup`으로 리다이렉트
+4. SSO 완료 후 `/signup`으로 돌아옴
+5. API 재호출 시 200 OK 반환, 회원가입 진행
+
+**수용 기준**:
+- "SSO 인증된 경우 200 OK + authenticated=true 반환"
+- "SSO 인증 안 된 경우 401 + code=NEED_SSO 반환"
+- "응답 시간 1초 이내"
+- "nickname 필드는 회원가입 전에는 null 반환 가능"
+- "회원 여부는 검증하지 않음 (Private-Auth 레벨)"
+
+---
+
 ## REQ-B-A2: 닉네임 관리 (Backend)
 
 ### REQ-B-A2-Availability: 닉네임 중복 확인
