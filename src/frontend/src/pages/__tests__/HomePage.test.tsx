@@ -1,13 +1,13 @@
-// REQ: REQ-F-A2-1, REQ-F-A1-Home
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+// REQ: REQ-F-A0-Landing-2, REQ-F-A1-Home
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import HomePage from '../HomePage'
-import * as authUtils from '../../utils/auth'
 import {
   mockConfig,
   setMockData,
-  setMockError,
+  setMockAuthState,
   clearMockErrors,
 } from '../../lib/transport'
 
@@ -21,10 +21,6 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-vi.mock('../../utils/auth', () => ({
-  isAuthenticated: vi.fn(async () => true),
-}))
-
 const renderHomePage = () =>
   render(
     <MemoryRouter>
@@ -32,11 +28,10 @@ const renderHomePage = () =>
     </MemoryRouter>
   )
 
-describe('HomePage', () => {
+describe('HomePage - REQ-F-A0-Landing-2, REQ-F-A1-Home', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNavigate.mockReset()
-    vi.spyOn(authUtils, 'isAuthenticated').mockResolvedValue(true)
     localStorage.setItem('slea_ssem_api_mock', 'true')
     localStorage.removeItem('slea_ssem_cached_nickname')
     localStorage.removeItem('lastSurveyId')
@@ -44,15 +39,13 @@ describe('HomePage', () => {
     mockConfig.delay = 0
     mockConfig.simulateError = false
     clearMockErrors()
-    setMockData('/api/profile/nickname', {
-      user_id: 'test@samsung.com',
+    // Set default mock auth state (unauthenticated)
+    setMockAuthState(false, null)
+    // Mock auth status API response (Public API)
+    setMockData('/api/auth/status', {
+      authenticated: false,
       nickname: null,
-      registered_at: null,
-      updated_at: null,
-    })
-    setMockData('/api/profile/consent', {
-      consented: false,
-      consent_at: null,
+      user_id: null,
     })
   })
 
@@ -63,92 +56,49 @@ describe('HomePage', () => {
     localStorage.removeItem('lastSurveyLevel')
   })
 
-  it('redirects to login when not authenticated', async () => {
-    vi.spyOn(authUtils, 'isAuthenticated').mockResolvedValue(false)
+  // REQ-F-A0-Landing-2: HomePage is accessible to all users (no auth required)
+  it('renders for unauthenticated users', () => {
     renderHomePage()
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/')
-    })
-  })
 
-  it('renders hero copy and CTA button', () => {
-    renderHomePage()
     expect(screen.getByText(/오늘 당신의 AI 역량은/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /레벨테스트 시작하기/i })).toBeInTheDocument()
   })
 
-  it('navigates to consent page when user has not consented yet', async () => {
-    renderHomePage()
-
-    fireEvent.click(screen.getByRole('button', { name: /레벨테스트 시작하기/i }))
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/consent')
-    })
-  })
-
-  it('navigates to nickname setup after consent when nickname is missing', async () => {
-    setMockData('/api/profile/consent', { consented: true, consent_at: '2025-11-20T00:00:00Z' })
-    renderHomePage()
-
-    fireEvent.click(screen.getByRole('button', { name: /레벨테스트 시작하기/i }))
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/nickname-setup')
-    })
-  })
-
-  it('navigates to career info when nickname exists and no survey progress', async () => {
-    setMockData('/api/profile/consent', { consented: true, consent_at: '2025-11-20T00:00:00Z' })
-    setMockData('/api/profile/nickname', {
-      user_id: 'test@samsung.com',
+  it('renders for authenticated users', () => {
+    setMockAuthState(true, 'testuser')
+    setMockData('/api/auth/status', {
+      authenticated: true,
       nickname: 'testuser',
-      registered_at: '2025-11-10T12:00:00Z',
-      updated_at: '2025-11-10T12:00:00Z',
-    })
-
-    renderHomePage()
-    fireEvent.click(screen.getByRole('button', { name: /레벨테스트 시작하기/i }))
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/career-info')
-    })
-  })
-
-  it('navigates to profile review when survey progress exists', async () => {
-    setMockData('/api/profile/consent', { consented: true, consent_at: '2025-11-20T00:00:00Z' })
-    setMockData('/api/profile/nickname', {
       user_id: 'test@samsung.com',
-      nickname: 'testuser',
-      registered_at: '2025-11-10T12:00:00Z',
-      updated_at: '2025-11-10T12:00:00Z',
     })
-    localStorage.setItem('lastSurveyId', 'saved_survey_789')
-    localStorage.setItem('lastSurveyLevel', '4')
 
     renderHomePage()
-    fireEvent.click(screen.getByRole('button', { name: /레벨테스트 시작하기/i }))
+
+    expect(screen.getByText(/오늘 당신의 AI 역량은/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /레벨테스트 시작하기/i })).toBeInTheDocument()
+  })
+
+  it('renders hero copy and CTA button', () => {
+    renderHomePage()
+
+    expect(screen.getByText(/오늘 당신의 AI 역량은/i)).toBeInTheDocument()
+    expect(screen.getByText(/슬아샘과 함께/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /레벨테스트 시작하기/i })).toBeInTheDocument()
+  })
+
+  // REQ-F-A1-Home: HomePage delegates to ContinuePage for leveltest flow
+  it('navigates to /continue?intent=leveltest when "레벨테스트 시작하기" is clicked', async () => {
+    const user = userEvent.setup()
+    renderHomePage()
+
+    const startButton = screen.getByRole('button', { name: /레벨테스트 시작하기/i })
+    await user.click(startButton)
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith(
-        '/profile-review',
-        expect.objectContaining({
-          state: { surveyId: 'saved_survey_789', level: 4 },
-        })
-      )
+      expect(mockNavigate).toHaveBeenCalledWith('/continue?intent=leveltest')
     })
   })
 
-  it('shows error message when consent check fails', async () => {
-    setMockError('/api/profile/consent', 'Network error')
-    renderHomePage()
-
-    fireEvent.click(screen.getByRole('button', { name: /레벨테스트 시작하기/i }))
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/프로필 정보를 불러오는데 실패했습니다/i)
-      ).toBeInTheDocument()
-    })
-  })
+  // Note: Tests for consent/nickname/survey navigation are now in ContinuePage.test.tsx
+  // HomePage only delegates to ContinuePage, it doesn't handle the flow directly
 })
