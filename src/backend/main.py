@@ -1,7 +1,5 @@
 """FastAPI application entry point."""
 
-import logging
-import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -9,27 +7,6 @@ from dotenv import load_dotenv
 # MUST load environment variables BEFORE importing anything that uses them
 env_file = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_file)
-
-# Configure Phase-1-Debug logging to file if PHASE1_LOG_PATH is set
-_phase1_log_path = os.getenv("PHASE1_LOG_PATH")
-if _phase1_log_path:
-    # Create file handler for debug logs (clean format without color codes)
-    _file_handler = logging.FileHandler(_phase1_log_path, encoding="utf-8")
-    _file_handler.setLevel(logging.DEBUG)
-    _formatter = logging.Formatter(
-        "%(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
-    _file_handler.setFormatter(_formatter)
-
-    # Add to root logger (captures all logs)
-    _root_logger = logging.getLogger()
-    _root_logger.addHandler(_file_handler)
-
-    # Also add to Agent logger specifically for Phase-1-Debug prefix logs
-    _agent_logger = logging.getLogger("src.agent.llm_agent")
-    _agent_logger.addHandler(_file_handler)
-    _agent_logger.setLevel(logging.DEBUG)
 
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
