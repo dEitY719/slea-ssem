@@ -579,6 +579,10 @@ class ItemGenAgent:
         """
         logger.info(f"📝 문항 생성 시작: survey_id={request.survey_id}, round_idx={request.round_idx}")
 
+        # 성능 측정 시작
+        import time
+        start_time = time.time()
+
         try:
             # [REQ-AGENT-0-1 Phase 1] 디버깅: 요청 식별 정보 및 모델 정보 로깅
             model_name = getattr(self.llm, "model", "unknown")
@@ -593,7 +597,7 @@ class ItemGenAgent:
             # Phase 1 디버그 프리픽스 (모든 Phase-1 로그에 포함)
             phase1_prefix = f"[Phase-1-Debug req={session_id[:8]}|survey={survey_id[:8]}|r{round_idx}]"
 
-            logger.debug(f"{phase1_prefix} Model: {model_name}")
+            logger.debug(f"{phase1_prefix} Model: {model_name} | LLM: {self.llm.__class__.__name__}")
 
             # 라운드 ID 생성 (REQ-A-RoundID)
             # survey_id를 session_id로 사용하여 라운드 ID 생성
@@ -649,9 +653,25 @@ Important:
 
             result = await self.executor.ainvoke({"messages": [HumanMessage(content=agent_input)]})
 
+            # 성능 측정 종료 및 토큰 정보 추출
+            elapsed_ms = int((time.time() - start_time) * 1000)
+
+            # LangGraph 결과에서 토큰 정보 추출
+            token_info = "N/A"
+            if "messages" in result and result["messages"]:
+                last_msg = result["messages"][-1]
+                if isinstance(last_msg, AIMessage) and hasattr(last_msg, "response_metadata"):
+                    metadata = last_msg.response_metadata or {}
+                    usage = metadata.get("usage_metadata", {})
+                    if usage:
+                        input_tokens = usage.get("input_tokens", 0)
+                        output_tokens = usage.get("output_tokens", 0)
+                        total_tokens = usage.get("total_tokens", input_tokens + output_tokens)
+                        token_info = f"input={input_tokens}, output={output_tokens}, total={total_tokens}"
+
             # [REQ-AGENT-0-1 Phase 1] 디버깅: Agent 실행 후 로깅
             messages = result.get("messages", [])
-            logger.debug(f"{phase1_prefix} Result messages count: {len(messages)}")
+            logger.debug(f"{phase1_prefix} Result messages count: {len(messages)} | elapsed={elapsed_ms}ms | tokens={token_info}")
 
             # intermediate_steps 분석
             intermediate_steps = result.get("intermediate_steps", [])
@@ -672,7 +692,7 @@ Important:
                     else:
                         logger.debug(f"{phase1_prefix} Message {msg_idx}: ReAct response format validation passed")
 
-            logger.info("✅ 에이전트 실행 완료")
+            logger.info(f"✅ 에이전트 실행 완료 ({elapsed_ms}ms)")
 
             # [REQ-AGENT-0-1 Phase 1] 디버깅: 파싱 전 로깅
             logger.debug(f"{phase1_prefix} Starting parse_agent_output_generate")
