@@ -2,7 +2,7 @@
 
 ################################################################################
 # REQ-AGENT-0-1 Phase 1: Production Error Debugging
-# 사내 마이그레이션 에러 원인 파악을 위한 디버그 로깅 테스트
+# 사내 마이그레이션 에러 원인 파악을 위한 디버그 로깅 테스트 실행기
 #
 # 사용법:
 #   ./scripts/run_phase1_test.sh <MODEL>
@@ -12,198 +12,139 @@
 #   ./scripts/run_phase1_test.sh deepseek-v3-0324
 #   ./scripts/run_phase1_test.sh gpt-oss-120b
 #
-# 참고: CLI와 로깅이 분리되어 있습니다.
-# - CLI 실행: ./tools/dev.sh cli (별도 터미널)
-# - 로깅 수집: tail -f ~/.local/share/slea-ssem/logs/*.log | grep '[Phase-1-Debug'
+# 동작:
+#   - LOG_LEVEL=DEBUG, LITELLM_MODEL=<MODEL>을 설정하고 CLI를 실행합니다.
+#   - 전체 CLI 세션을 raw 로그로 저장하고, 평문 로그(ANSI 제거)를 함께 생성합니다.
+#   - 평문 로그에서 [Phase-1-Debug] 라인을 요약합니다.
 ################################################################################
 
-set -e  # Exit on error
+set -euo pipefail
 
 # ============================================================================
-# 함수 정의
+# 함수
 # ============================================================================
 
-print_header() {
-    echo ""
-    echo "================================================================================"
-    echo "  REQ-AGENT-0-1 Phase 1: Production Error Debugging"
-    echo "================================================================================"
-    echo ""
-}
+print_step() { echo "📌 $1"; }
+print_success() { echo "✅ $1"; }
+print_warning() { echo "⚠️  $1"; }
+print_error() { echo "❌ $1"; }
 
-print_step() {
-    echo "📌 $1"
-}
-
-print_success() {
-    echo "✅ $1"
-}
-
-print_warning() {
-    echo "⚠️  $1"
-}
-
-print_error() {
-    echo "❌ $1"
+sanitize_log() {
+    local src="$1"
+    local dest="$2"
+    # ANSI/OSC/CR/BS 제거, script header/footer 제거
+    perl -ne '
+        next if /^Script started on/ || /^Script done on/;
+        s/\e\]0;.*?\a//g;          # OSC title
+        s/\e\[[0-9;?]*[A-Za-z]//g; # CSI (colors, cursor moves)
+        s/\r//g;                   # CR
+        s/[\x0f\x0e]//g;           # shift in/out
+        s/.\x08//g;                # backspace + prev char
+        print;
+    ' "$src" > "$dest"
 }
 
 # ============================================================================
-# 타임스탐프 미리 설정 (로그 파일명 생성용)
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-MODEL_SHORT=$(echo "$1" | tr '/' '_' | tr '-' '_')
-LOG_FILE="logs/phase1_debug/${MODEL_SHORT}_${TIMESTAMP}.log"
-
 # 입력 검증
 # ============================================================================
 
 if [ $# -eq 0 ]; then
-    print_header
-    print_error "모델 이름이 필요합니다"
-    echo ""
-    echo "사용법:"
-    echo "  ./scripts/run_phase1_test.sh <MODEL>"
-    echo ""
-    echo "예시:"
-    echo "  ./scripts/run_phase1_test.sh gemini-2.0-flash"
-    echo "  ./scripts/run_phase1_test.sh deepseek-v3-0324"
-    echo "  ./scripts/run_phase1_test.sh gpt-oss-120b"
-    echo ""
+    print_error "모델 이름이 필요합니다. 예: ./scripts/run_phase1_test.sh gpt-oss-120b"
     exit 1
 fi
 
 MODEL="$1"
 
 # ============================================================================
-# 권한 확인 및 수정
+# 로그 경로/타임스탬프
+# ============================================================================
+
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+MODEL_SAFE=$(echo "$MODEL" | tr '/' '_' | tr '-' '_')
+LOG_DIR="logs/phase1_debug"
+RAW_LOG="${LOG_DIR}/${MODEL_SAFE}_${TIMESTAMP}.raw.log"
+PLAIN_LOG="${LOG_DIR}/${MODEL_SAFE}_${TIMESTAMP}.log"
+
+mkdir -p "$LOG_DIR"
+
+# ============================================================================
+# 권한 확인
 # ============================================================================
 
 fix_permissions() {
-    local logs_dir="logs"
-    local phase1_dir="logs/phase1_debug"
-
-    # logs 디렉토리 확인
-    if [ ! -d "$logs_dir" ]; then
-        mkdir -p "$logs_dir"
-    fi
-
-    # phase1_debug 디렉토리 확인
-    if [ ! -d "$phase1_dir" ]; then
-        mkdir -p "$phase1_dir"
-    fi
-
-    # 권한 확인 (root 소유인지 체크)
-    if [ -d "$phase1_dir" ]; then
-        local dir_owner=$(stat -c %U "$phase1_dir" 2>/dev/null || stat -f %Su "$phase1_dir" 2>/dev/null)
-        local current_user=$(whoami)
-
-        if [ "$dir_owner" = "root" ] && [ "$current_user" != "root" ]; then
-            print_warning "logs/phase1_debug 디렉토리 권한 수정 필요 (root 소유)"
-            echo ""
-            echo "권한 수정 중... (sudo 필요할 수 있음)"
-
-            # 권한 수정 시도
-            if sudo rm -rf "$phase1_dir" 2>/dev/null && \
-               sudo mkdir -p "$phase1_dir" 2>/dev/null && \
-               sudo chown -R "$current_user:$current_user" "$logs_dir" 2>/dev/null; then
-                print_success "권한 수정 완료"
-                echo ""
-            else
-                # sudo 비밀번호 없이 실패한 경우
-                print_warning "sudo를 사용하여 권한 수정 중..."
-                echo ""
-                sudo bash -c "rm -rf '$phase1_dir' && mkdir -p '$phase1_dir' && chown -R $current_user:$current_user '$logs_dir'" || {
-                    print_error "권한 수정 실패. 다음 명령을 수동으로 실행해주세요:"
-                    echo "  sudo bash -c 'rm -rf logs/phase1_debug && mkdir -p logs/phase1_debug && chown -R $(whoami):$(whoami) logs/'"
-                    echo ""
-                    exit 1
-                }
-                print_success "권한 수정 완료"
-                echo ""
-            fi
+    local target_dir="$1"
+    if [ -d "$target_dir" ]; then
+        local owner
+        owner=$(stat -c %U "$target_dir" 2>/dev/null || stat -f %Su "$target_dir" 2>/dev/null || echo "")
+        local current_user
+        current_user=$(whoami)
+        if [ "$owner" = "root" ] && [ "$current_user" != "root" ]; then
+            print_warning "$target_dir 디렉터리 소유자가 root입니다. 권한을 수정합니다."
+            sudo chown -R "$current_user:$current_user" "$target_dir"
         fi
     fi
 }
 
-# 권한 수정 실행
-fix_permissions
+fix_permissions "$LOG_DIR"
 
 # ============================================================================
-# 실행 시작
+# 실행 정보 출력
 # ============================================================================
 
-print_header
-
+echo ""
+echo "================================================================================"
+echo "  REQ-AGENT-0-1 Phase 1: Production Error Debugging"
+echo "================================================================================"
+echo ""
 print_step "환경 설정"
-print_step "모델: $MODEL"
-
-# 로그 디렉토리 생성
-mkdir -p logs/phase1_debug
-
-# 환경 변수 설정
-export LOG_LEVEL=DEBUG
-export LITELLM_MODEL="$MODEL"
-
-print_success "환경 설정 완료"
-echo "  - LOG_LEVEL: $LOG_LEVEL"
-echo "  - LITELLM_MODEL: $MODEL"
-echo "  - 로그 파일: $LOG_FILE"
+print_success "LOG_LEVEL=DEBUG"
+print_success "LITELLM_MODEL=$MODEL"
+print_success "RAW 로그:   $RAW_LOG"
+print_success "평문 로그:  $PLAIN_LOG"
 echo ""
-
-# ============================================================================
-# 다른 터미널에서 CLI를 실행하도록 안내
-# ============================================================================
-
-print_step "준비 완료! 다른 터미널에서 CLI를 실행하세요"
-echo ""
-echo "[터미널 2] 새로운 터미널 창을 열어서 다음 명령어를 순서대로 입력하세요:"
-echo ""
-echo "  export LOG_LEVEL=DEBUG"
-echo "  export LITELLM_MODEL=$MODEL"
-echo "  ./tools/dev.sh cli"
-echo ""
-echo "  그 후 CLI 프롬프트에서:"
+echo "CLI가 시작되면 아래 순서로 입력하세요:"
 echo "  > auth login <username>"
 echo "  > questions generate --domain AI --round 1"
 echo "  > exit"
 echo ""
-echo "───────────────────────────────────────────────────────────────────────────────"
-echo ""
-
-read -p "✓ CLI 실행 완료 후 Enter를 누르세요... "
-
-echo ""
 
 # ============================================================================
-# 로그 수집 및 결과 표시
+# 환경 변수 설정
 # ============================================================================
 
-print_step "로그 수집 중..."
+export LOG_LEVEL=DEBUG
+export LITELLM_MODEL="$MODEL"
 
-# CLI 로그 파일에서 [Phase-1-Debug]를 grep하여 저장
-CLI_LOG_FILE="$HOME/.local/share/slea-ssem/logs/cli.log"
-grep '\[Phase-1-Debug' "$CLI_LOG_FILE" 2>/dev/null > "$LOG_FILE" || true
+# ============================================================================
+# CLI 실행 및 로그 수집
+# ============================================================================
 
-if [ -f "$LOG_FILE" ] && [ -s "$LOG_FILE" ]; then
-    echo ""
-    print_success "테스트 완료! 🎉"
-    echo ""
-    echo "📊 수집된 [Phase-1-Debug] 로그:"
-    echo ""
-    cat "$LOG_FILE"
-    echo ""
-    echo "  총 라인: $(wc -l < "$LOG_FILE")"
-    echo "  저장 위치: $LOG_FILE"
+if command -v script >/dev/null 2>&1; then
+    print_step "CLI 실행 중... (종료하려면 'exit')"
+    script -q -c "./tools/dev.sh cli" "$RAW_LOG"
 else
-    echo ""
-    print_error "로그가 수집되지 않았습니다"
-    echo ""
-    echo "확인할 사항:"
-    echo "  1. LOG_LEVEL=DEBUG가 설정되었나? → 위의 '✅ 환경 설정 완료' 확인"
-    echo "  2. CLI에서 questions generate을 실행했나?"
-    echo "  3. ~/.local/share/slea-ssem/logs/cli.log 파일이 생성되었나?"
-    echo ""
-    echo "수동 확인:"
-    echo "  grep '\\[Phase-1-Debug' ~/.local/share/slea-ssem/logs/cli.log"
+    print_warning "'script' 명령이 없어 tee로 대체합니다. 일부 ANSI 코드가 남을 수 있습니다."
+    ./tools/dev.sh cli 2>&1 | tee "$RAW_LOG"
 fi
 
+print_step "로그 정제 중..."
+sanitize_log "$RAW_LOG" "$PLAIN_LOG"
+print_success "정제 완료: $PLAIN_LOG"
+
+# ============================================================================
+# Phase-1-Debug 요약
+# ============================================================================
+
+if grep -q "\[Phase-1-Debug" "$PLAIN_LOG"; then
+    echo ""
+    print_success "[Phase-1-Debug] 로그가 수집되었습니다. 상위 10줄:"
+    echo ""
+    grep "\[Phase-1-Debug" "$PLAIN_LOG" | head -n 10
+else
+    echo ""
+    print_warning "[Phase-1-Debug] 패턴이 로그에 없습니다. LOG_LEVEL=DEBUG 설정 및 코드 경로를 확인하세요."
+fi
+
+echo ""
+print_success "완료"
 echo ""

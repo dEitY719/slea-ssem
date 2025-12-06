@@ -25,6 +25,9 @@ from src.cli.config.loader import load_config
 from src.cli.config.models import Command, CommandConfig
 from src.cli.context import CLIContext
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Configure logging with LOG_LEVEL environment variable support
 # Create logs directory
 log_dir = os.path.expanduser("~/.local/share/slea-ssem/logs")
@@ -58,6 +61,9 @@ root_logger.addHandler(file_handler)
 root_logger.addHandler(stderr_handler)
 
 logger = logging.getLogger(__name__)
+
+# Debug: Print logging config
+print(f"CLI Logging configured: Level={log_level_str}, File={log_file}", file=sys.stderr)
 
 # Suppress asyncio debug logs
 logging.getLogger("asyncio").setLevel(logging.WARNING)
@@ -292,9 +298,6 @@ class CLI:
 
 def main() -> None:
     """Start the interactive CLI."""
-    # Load environment variables from .env file
-    load_dotenv()
-
     try:
         cli = CLI()
         cli.run()
