@@ -1,5 +1,7 @@
 """FastAPI application entry point."""
 
+import logging
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -7,6 +9,12 @@ from dotenv import load_dotenv
 # MUST load environment variables BEFORE importing anything that uses them
 env_file = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_file)
+
+# Disable LangGraph's Rich console output to keep logs clean
+os.environ["LANGGRAPH_DISABLE_RICH"] = "1"
+# Suppress LangGraph verbose output
+logging.getLogger("langgraph").setLevel(logging.WARNING)
+logging.getLogger("langchain").setLevel(logging.WARNING)
 
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
