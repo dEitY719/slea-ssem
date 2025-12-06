@@ -49,8 +49,8 @@ from src.backend.models.user_profile import UserProfileSurvey
 load_dotenv()
 
 
-@pytest.fixture(scope="function", autouse=False)
-def patch_database_for_tools(db_engine: Engine) -> Generator[None, None, None]:
+@pytest.fixture(scope="function", autouse=True)
+def patch_database_for_tools(db_engine: Engine, request) -> Generator[None, None, None]:
     """
     Patch src.backend.database.SessionLocal to use test database.
 
@@ -59,15 +59,20 @@ def patch_database_for_tools(db_engine: Engine) -> Generator[None, None, None]:
 
     Args:
         db_engine: Test database engine fixture
+        request: pytest request object for marker checking
 
     Yields:
         None
 
     Note:
-        Set autouse=False to prevent DB connection for pure unit tests.
-        Tests that need DB patching should explicitly request this fixture.
+        Set autouse=True to ensure all DB-dependent tests use test database.
+        Tests marked with @pytest.mark.no_db_required will skip this fixture.
 
     """
+    # Skip this fixture for tests marked with no_db_required
+    if "no_db_required" in request.keywords:
+        yield
+        return
     # Create a test SessionLocal bound to test database
     test_session_local = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
 
