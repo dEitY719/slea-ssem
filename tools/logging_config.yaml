@@ -36,6 +36,19 @@ loggers:
       - default
     propagate: false
 
+  src.agent.llm_agent:
+    handlers:
+      - default
+    level: DEBUG
+    propagate: false
+
+  src.backend.services:
+    handlers:
+      - default
+    level: DEBUG
+    propagate: false
+
 root:
   handlers:
     - default
+  level: INFO
