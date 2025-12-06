@@ -155,7 +155,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 
 | REQ ID | Feature | Phase | Status | Notes |
 |--------|---------|-------|--------|-------|
-| **REQ-AGENT-0-0** | **위험 관리 전략** | 0 | ⏳ Backlog | P0 CRITICAL - Feature flag로 Gemini만 적용 |
+| **REQ-AGENT-0-0** | **위험 관리 전략** | 4 | ✅ Done | P0 CRITICAL - Commit: bd59953 (conftest 수정), 전체 18 tests pass |
 | **REQ-AGENT-0-1** | **with_structured_output 도입** | 0 | ⏳ Backlog | P0 - 수동 파싱 제거 |
 | **REQ-AGENT-0-2** | **Two-Step Gather-Then-Generate** | 0 | ⏳ Backlog | P0 - ErrorHandler 통합 |
 | REQ-AGENT-0-3 | Pydantic 응답 모델 강화 | 0 | ⏳ Backlog | P1 - 도구 응답 구조화 |

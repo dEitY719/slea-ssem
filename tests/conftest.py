@@ -49,7 +49,7 @@ from src.backend.models.user_profile import UserProfileSurvey
 load_dotenv()
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="function", autouse=False)
 def patch_database_for_tools(db_engine: Engine) -> Generator[None, None, None]:
     """
     Patch src.backend.database.SessionLocal to use test database.
@@ -62,6 +62,10 @@ def patch_database_for_tools(db_engine: Engine) -> Generator[None, None, None]:
 
     Yields:
         None
+
+    Note:
+        Set autouse=False to prevent DB connection for pure unit tests.
+        Tests that need DB patching should explicitly request this fixture.
 
     """
     # Create a test SessionLocal bound to test database
