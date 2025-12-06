@@ -21,6 +21,7 @@ REQ: REQ-A-ItemGen
 import json
 import logging
 import re
+import traceback
 import uuid
 from datetime import UTC, datetime
 
@@ -579,6 +580,12 @@ class ItemGenAgent:
         logger.info(f"📝 문항 생성 시작: survey_id={request.survey_id}, round_idx={request.round_idx}")
 
         try:
+            # [REQ-AGENT-0-1 Phase 1] 디버깅: 모델 정보 로깅
+            model_name = getattr(self.llm, "model", "unknown")
+            if model_name.startswith("models/"):
+                model_name = model_name.replace("models/", "")
+            logger.debug(f"[Phase-1-Debug] Model: {model_name}")
+
             # 라운드 ID 생성 (REQ-A-RoundID)
             # survey_id를 session_id로 사용하여 라운드 ID 생성
             round_id = _round_id_gen.generate(session_id=request.survey_id, round_number=request.round_idx)
@@ -627,29 +634,71 @@ Important:
             #    - 가능한 경우: 같은 질문의 validate/save 단계를 병렬화
             # 2. Tool 비동기화: 모든 Tool을 async 함수로 변경 (현재는 동기)
             # 3. 캐싱: 자주 호출되는 Tool (get_difficulty_keywords)에 캐싱 적용
+
+            # [REQ-AGENT-0-1 Phase 1] 디버깅: Agent 실행 전 로깅
+            logger.debug(f"[Phase-1-Debug] Agent input length: {len(agent_input)}")
+
             result = await self.executor.ainvoke({"messages": [HumanMessage(content=agent_input)]})
 
+            # [REQ-AGENT-0-1 Phase 1] 디버깅: Agent 실행 후 로깅
+            messages = result.get("messages", [])
+            logger.debug(f"[Phase-1-Debug] Result messages count: {len(messages)}")
+
+            # intermediate_steps 분석
+            intermediate_steps = result.get("intermediate_steps", [])
+            logger.debug(f"[Phase-1-Debug] Intermediate steps count: {len(intermediate_steps)}")
+            for i, (action, observation) in enumerate(intermediate_steps):
+                action_str = str(action)[:100] if action else "None"
+                obs_str = str(observation)[:100] if observation else "None"
+                logger.debug(f"[Phase-1-Debug]   Step {i}: action={action_str}... observation={obs_str}...")
+
             # ReAct 응답 완성도 검증 (디버깅 목적)
-            for message in result.get("messages", []):
+            for msg_idx, message in enumerate(messages):
                 if isinstance(message, AIMessage):
                     content = getattr(message, "content", "")
                     is_complete, reason = self._is_complete_react_response(content)
                     if not is_complete:
-                        logger.warning(f"⚠️  Incomplete ReAct response detected: {reason}")
-                        logger.debug(f"Response preview (first 500 chars): {content[:500]}...")
+                        logger.warning(f"⚠️  Incomplete ReAct response detected at msg {msg_idx}: {reason}")
+                        logger.debug(f"[Phase-1-Debug] Response preview (first 500 chars): {content[:500]}...")
                     else:
-                        logger.debug("✓ ReAct response format validation passed")
+                        logger.debug(f"[Phase-1-Debug] Message {msg_idx}: ReAct response format validation passed")
 
             logger.info("✅ 에이전트 실행 완료")
 
-            # 결과 파싱
-            response = self._parse_agent_output_generate(result, round_id)
-            logger.info(f"✅ 문항 생성 성공: {len(response.items)}개 생성")
+            # [REQ-AGENT-0-1 Phase 1] 디버깅: 파싱 전 로깅
+            logger.debug(f"[Phase-1-Debug] Starting parse_agent_output_generate")
+            logger.debug(f"[Phase-1-Debug] Result keys: {list(result.keys())}")
 
-            return response
+            # 결과 파싱
+            try:
+                response = self._parse_agent_output_generate(result, round_id)
+
+                # [REQ-AGENT-0-1 Phase 1] 디버깅: 파싱 성공 로깅
+                logger.debug(f"[Phase-1-Debug] Parsing succeeded: {len(response.items)} questions")
+                logger.info(f"✅ 문항 생성 성공: {len(response.items)}개 생성")
+
+                return response
+
+            except Exception as parse_error:
+                # [REQ-AGENT-0-1 Phase 1] 디버깅: 파싱 실패 상세 로깅
+                logger.error(f"[Phase-1-Debug] Parsing failed: {parse_error.__class__.__name__}")
+                logger.error(f"[Phase-1-Debug] Error message: {str(parse_error)[:500]}")
+
+                # 파싱 중에 사용된 리소스들 로깅
+                if "messages" in result:
+                    messages = result.get("messages", [])
+                    for msg_idx, msg in enumerate(messages):
+                        if isinstance(msg, AIMessage):
+                            content = getattr(msg, "content", "")
+                            logger.debug(f"[Phase-1-Debug] AIMessage {msg_idx} length: {len(content)}")
+                            logger.debug(f"[Phase-1-Debug] AIMessage {msg_idx} preview (first 300): {content[:300]}")
+
+                # Re-raise to be caught by outer exception handler
+                raise
 
         except Exception as e:
-            logger.error(f"❌ 문항 생성 실패: {e}")
+            logger.error(f"❌ 문항 생성 실패: {e.__class__.__name__}: {str(e)[:500]}")
+            logger.error(f"[Phase-1-Debug] Full exception: {traceback.format_exc()}")
             return GenerateQuestionsResponse(
                 round_id=f"round_error_{uuid.uuid4().hex[:8]}",
                 items=[],

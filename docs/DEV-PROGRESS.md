@@ -156,7 +156,7 @@ Overall progress tracking for MVP 1.0 development across all developers.
 | REQ ID | Feature | Phase | Status | Notes |
 |--------|---------|-------|--------|-------|
 | **REQ-AGENT-0-0** | **위험 관리 전략** | 4 | ✅ Done | P0 CRITICAL - Commit: bd59953 (conftest 수정), 전체 18 tests pass |
-| **REQ-AGENT-0-1** | **with_structured_output 도입** | 4 | ✅ Done | P0 - 15 new tests (100%), should_use_structured_output guard 추가, Pydantic validation 강화, Progress: docs/progress/REQ-AGENT-0-1.md |
+| **REQ-AGENT-0-1** | **with_structured_output 도입** | 2 | 🔄 In Review | P0 - Guard added but not fully integrated. Peer feedback + strategic reconsideration needed (see enhance_robust_agent_plan.md). New approach: Debug production errors first, then model-specific optimization. Progress: docs/progress/REQ-AGENT-0-1.md |
 | **REQ-AGENT-0-2** | **Two-Step Gather-Then-Generate** | 0 | ⏳ Backlog | P0 - ErrorHandler 통합 |
 | REQ-AGENT-0-3 | Pydantic 응답 모델 강화 | 0 | ⏳ Backlog | P1 - 도구 응답 구조화 |
 

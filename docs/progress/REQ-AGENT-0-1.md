@@ -1,8 +1,8 @@
 # REQ-AGENT-0-1: with_structured_output 도입
 
-**Status**: ✅ COMPLETED
-**Completion Date**: 2025-12-06
-**Duration**: Phase 1-4 (Specification → Test Design → Implementation → Summary)
+**Status**: 🔄 IN PROGRESS (RECONSIDERING APPROACH)
+**Last Update**: 2025-12-06
+**Note**: REQ-AGENT-0-1이 with_structured_output 전체 구현을 목표로 시작했으나, 동료 피드백과 사내 마이그레이션 실패 분석을 통해 근본적 접근 재검토 필요. `enhance_robust_agent_plan.md` 참조.
 
 ---
 
