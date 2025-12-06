@@ -47,12 +47,15 @@ case "$cmd" in
 
         # Optional file logging (Phase1 debug)
         LOG_DIR="logs/phase1_debug"
+        PHASE1_LOG_PATH=""
         if [ "${LOG_FILE,,}" = "true" ]; then
           mkdir -p "$LOG_DIR"
           TS=$(date +%Y%m%d_%H%M%S)
           MODEL_SAFE=$(echo "${LITELLM_MODEL:-backend}" | tr '/-' '__')
-          LOG_PATH="${LOG_DIR}/${MODEL_SAFE}_${TS}.log"
-          echo "   Writing backend log to ${LOG_PATH}"
+          PHASE1_LOG_PATH="${LOG_DIR}/${MODEL_SAFE}_${TS}.log"
+          echo "   Writing logs to ${PHASE1_LOG_PATH}"
+          # Clear file to start fresh
+          > "$PHASE1_LOG_PATH"
         fi
 
         if $IS_DJANGO; then
@@ -65,11 +68,28 @@ case "$cmd" in
           fi
           if [ -n "$UVICORN_ENTRY" ]; then
             APP_ENV=${APP_ENV:-dev} DATASET=${DATASET:-"$DEFAULT_DATASET"}
-            UVICORN_CMD=($PY_RUN uvicorn "$UVICORN_ENTRY" --reload --host 127.0.0.1 --port "$PORT" --log-level "${LOG_LEVEL,,}")
+
+            # Get absolute path to logging config
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            LOG_CONFIG="${SCRIPT_DIR}/logging_config.yaml"
+
+            # Build Uvicorn command with logging config for clean output
+            UVICORN_CMD=(
+              $PY_RUN uvicorn
+              "$UVICORN_ENTRY"
+              --reload
+              --host 127.0.0.1
+              --port "$PORT"
+              --log-level "${LOG_LEVEL,,}"
+              --log-config "$LOG_CONFIG"
+            )
 
             if [ "${LOG_FILE,,}" = "true" ]; then
+              # Export log path for app to use (Phase-1-Debug logging)
+              export PHASE1_LOG_PATH
+              # Capture clean logs (color codes removed by logging config)
               # shellcheck disable=SC2068
-              "${UVICORN_CMD[@]}" 2>&1 | tee "$LOG_PATH"
+              "${UVICORN_CMD[@]}" 2>&1 | tee "$PHASE1_LOG_PATH"
             else
               # shellcheck disable=SC2068
               "${UVICORN_CMD[@]}"
