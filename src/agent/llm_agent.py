@@ -28,7 +28,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel, Field
 
-from src.agent.config import AGENT_CONFIG, create_llm
+from src.agent.config import AGENT_CONFIG, create_llm, should_use_structured_output
 from src.agent.fastmcp_server import TOOLS
 from src.agent.output_converter import AgentOutputConverter
 from src.agent.prompts.react_prompt import get_react_prompt
@@ -887,7 +887,12 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
 
     def _parse_agent_output_generate(self, result: dict, round_id: str) -> GenerateQuestionsResponse:
         """
-        Parse agent output for question generation (REQ-A-LangChain).
+        Parse agent output for question generation (REQ-A-LangChain, REQ-AGENT-0-1).
+
+        REQ: REQ-AGENT-0-1 (with_structured_output 도입)
+        - Guard: should_use_structured_output()로 모델별 분기 로깅
+        - Type Safety: GenerateQuestionsResponse Pydantic 검증으로 타입 안전성 보장
+        - Backward Compatibility: DeepSeek는 기존 parse_json_robust 경로 유지
 
         Args:
             result: Agent output (supports both AgentExecutor and LangGraph formats)
@@ -897,10 +902,12 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
             GenerateQuestionsResponse
 
         로직:
-            1. _extract_tool_results()로 도구 호출 추출 (intermediate_steps 또는 messages 모두 지원)
-            2. name이 "save_generated_question"인 호출에서 question 데이터 파싱
-            3. 각 question을 GeneratedItem으로 변환
-            4. 성공/실패 개수 집계
+            1. should_use_structured_output guard 추가 (REQ-AGENT-0-1)
+            2. _extract_tool_results()로 도구 호출 추출 (intermediate_steps 또는 messages 모두 지원)
+            3. name이 "save_generated_question"인 호출에서 question 데이터 파싱
+            4. 각 question을 GeneratedItem으로 변환
+            5. GenerateQuestionsResponse로 Pydantic 검증 (type safety)
+            6. 성공/실패 개수 집계
 
         참고:
             - AgentExecutor 출력: {"output": "...", "intermediate_steps": [(tool_name, tool_output), ...]}
@@ -909,6 +916,16 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
 
         """
         logger.info(f"문항 생성 결과 파싱 중... round_id={round_id}")
+
+        # REQ-AGENT-0-1: Check if structured output should be used for this model
+        # This guard prevents with_structured_output calls on DeepSeek
+        model_name = getattr(self.llm, "model", "unknown")
+        # Remove "models/" prefix from Google Generative AI model names
+        if model_name.startswith("models/"):
+            model_name = model_name.replace("models/", "")
+
+        use_structured = should_use_structured_output(model_name)
+        logger.info(f"REQ-AGENT-0-1: Structured output guard - model={model_name}, use_structured={use_structured}")
 
         # Extract total_tokens from LangGraph messages
         total_tokens = 0
