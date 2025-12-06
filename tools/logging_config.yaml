@@ -7,8 +7,7 @@ formatters:
     datefmt: "%Y-%m-%d %H:%M:%S"
 
   access:
-    format: "%(asctime)s - %(client_addr)s - \"%(request_line)s\" %(status_code)s"
-    datefmt: "%Y-%m-%d %H:%M:%S"
+    format: "%(message)s"
 
 handlers:
   default:
