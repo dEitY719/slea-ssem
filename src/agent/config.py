@@ -10,11 +10,53 @@ Design Patterns:
 - Single Responsibility: Each provider handles its own configuration
 """
 
+import logging
 from abc import ABC, abstractmethod
 from os import getenv
+from typing import Any
 
+from langchain_core.messages import AIMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Helper: LiteLLM Message Wrapper (OpenAI 호환성)
+# ============================================================================
+
+
+class LiteLLMCompatibleOpenAI(ChatOpenAI):
+    """
+    ChatOpenAI wrapper that ensures OpenAI API compatibility with LiteLLM.
+
+    OpenAI API requires 'content' field in assistant messages, even when
+    tool_calls are present. This wrapper ensures content field is never null.
+
+    REQ: REQ-A-ItemGen (LiteLLM message format fix for gpt-oss-120b)
+    """
+
+    def _process_message_for_api(self, message: AIMessage) -> dict[str, Any]:
+        """
+        Ensure content field is always present for OpenAI API compatibility.
+
+        Args:
+            message: LangChain AIMessage
+
+        Returns:
+            Processed message dict for OpenAI API
+        """
+        msg_dict = {
+            "role": "assistant",
+            "content": getattr(message, "content", "") or "",  # Ensure content is never None
+        }
+
+        # Add tool_calls if present
+        if hasattr(message, "tool_calls") and message.tool_calls:
+            msg_dict["tool_calls"] = message.tool_calls
+
+        return msg_dict
 
 
 class LLMProvider(ABC):
@@ -109,13 +151,16 @@ class LiteLLMProvider(LLMProvider):
         api_key = getenv("LITELLM_API_KEY", "sk-dummy-key")
         model = getenv("LITELLM_MODEL", "gpt-4")
 
-        return ChatOpenAI(
+        return LiteLLMCompatibleOpenAI(
             model=model,
             api_key=api_key,
             base_url=base_url,
             temperature=0.3,  # 결정적 도구 호출 (0.7 → 0.3으로 감소: ReAct 형식 일관성 향상)
             max_tokens=8192,  # LiteLLM 프록시 호환성 (보수적 설정)
             timeout=30,  # API 타임아웃 (초)
+            default_headers={
+                "Accept": "application/json",
+            },
         )
 
 
@@ -202,3 +247,99 @@ TOOL_CONFIG = {
     "save_generated_question": 5,  # 10초 → 5초 (DB 저장)
     "score_and_explain": 8,  # 15초 → 8초 (LLM 호출 최적화)
 }
+
+# REQ-AGENT-0-0: Structured Output 위험 관리 설정
+STRUCTURED_OUTPUT_CONFIG: dict[str, Any] = {
+    "enabled": getenv("ENABLE_STRUCTURED_OUTPUT", "False").lower() == "true",
+    "rollout_percentage": float(getenv("STRUCTURED_OUTPUT_ROLLOUT", "100.0")),
+    "max_failures_before_disable": int(getenv("MAX_STRUCTURED_FAILURES", "3")),
+    "success_rate_threshold": 0.95,  # 95%
+    "latency_threshold_seconds": 5.0,
+    "parser_error_rate_threshold": 0.01,  # 1%
+}
+
+
+def should_use_structured_output(model_name: str, failure_count: int = 0) -> bool:
+    """
+    Determine if structured output should be used for given model.
+
+    REQ: REQ-AGENT-0-0 (Risk Management Strategy)
+
+    This function implements a feature flag system to control structured output
+    usage across different LLM models (Gemini vs DeepSeek). It includes:
+    - Global enable/disable via environment variable
+    - Model-based routing (Gemini supports it, DeepSeek doesn't)
+    - Circuit breaker pattern (auto-disable after repeated failures)
+
+    Args:
+        model_name: LLM model name (e.g., "gemini-2.0-flash", "deepseek-chat").
+                   Case-insensitive matching.
+        failure_count: Current consecutive failure count for rollback logic.
+                      Used to implement circuit breaker pattern.
+
+    Returns:
+        bool: True if structured output should be used, False otherwise.
+
+    Decision Logic:
+        1. If globally disabled (ENABLE_STRUCTURED_OUTPUT=false) → False
+        2. If failure_count >= max_failures_before_disable → False (circuit breaker)
+        3. If "gemini" in model_name (case-insensitive) → True
+        4. If "deepseek" in model_name → False (uses TextReActAgent)
+        5. Otherwise (unknown model) → False (conservative default)
+
+    Side Effects:
+        - Logs decision with model name and reason (INFO level)
+        - Logs alert if circuit breaker triggers (WARNING level)
+
+    Example:
+        >>> should_use_structured_output("gemini-2.0-flash", failure_count=0)
+        True
+
+        >>> should_use_structured_output("deepseek-chat", failure_count=0)
+        False
+
+        >>> should_use_structured_output("gemini-2.0-flash", failure_count=3)
+        False  # Circuit breaker triggered
+
+    Environment Variables:
+        ENABLE_STRUCTURED_OUTPUT: "true" to enable globally (default: "false")
+        MAX_STRUCTURED_FAILURES: Max failures before auto-disable (default: "3")
+
+    """
+    # Step 1: Check global enable flag
+    if not STRUCTURED_OUTPUT_CONFIG["enabled"]:
+        logger.info(
+            f"Structured output disabled globally for model={model_name} "
+            f"(ENABLE_STRUCTURED_OUTPUT=false)"
+        )
+        return False
+
+    # Step 2: Check failure count (circuit breaker)
+    max_failures = STRUCTURED_OUTPUT_CONFIG["max_failures_before_disable"]
+    if failure_count >= max_failures:
+        logger.warning(
+            f"Circuit breaker triggered: Auto-disabling structured output for model={model_name} "
+            f"(failure_count={failure_count} >= max={max_failures})"
+        )
+        return False
+
+    # Step 3: Check model compatibility
+    model_lower = model_name.lower()
+
+    if "gemini" in model_lower:
+        logger.info(f"Structured output enabled for Gemini model={model_name}")
+        return True
+
+    if "deepseek" in model_lower:
+        logger.info(
+            f"Structured output disabled for DeepSeek model={model_name} "
+            f"(uses TextReActAgent path)"
+        )
+        return False
+
+    # Step 4: Unknown model - conservative default
+    logger.info(
+        f"Structured output disabled for unknown model={model_name} "
+        f"(conservative default)"
+    )
+    return False

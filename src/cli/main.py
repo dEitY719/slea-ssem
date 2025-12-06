@@ -8,6 +8,8 @@ and interactive prompt loop.
 import atexit
 import importlib
 import logging
+import logging.handlers
+import os
 import shlex
 import sys
 from collections.abc import Callable
@@ -23,10 +25,45 @@ from src.cli.config.loader import load_config
 from src.cli.config.models import Command, CommandConfig
 from src.cli.context import CLIContext
 
-# Configure logging (INFO level for detailed output during debugging)
-# Set to DEBUG for very detailed, WARNING for errors only, INFO for important events
-logging.basicConfig(level=logging.INFO, stream=sys.stderr, format="%(levelname)s: %(message)s")
+# Load environment variables from .env file
+load_dotenv()
+
+# Configure logging with LOG_LEVEL environment variable support
+# Create logs directory
+log_dir = os.path.expanduser("~/.local/share/slea-ssem/logs")
+os.makedirs(log_dir, exist_ok=True)
+
+# Get log level from environment variable (default: INFO)
+log_level_str = os.environ.get("LOG_LEVEL", "INFO").upper()
+try:
+    log_level = getattr(logging, log_level_str)
+except AttributeError:
+    log_level = logging.INFO
+
+# Setup logging with both file and stderr handlers
+log_file = os.path.join(log_dir, "cli.log")
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+# File handler
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(log_level)
+file_handler.setFormatter(formatter)
+
+# Stderr handler
+stderr_handler = logging.StreamHandler(sys.stderr)
+stderr_handler.setLevel(logging.INFO)
+stderr_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+
+# Configure root logger
+root_logger = logging.getLogger()
+root_logger.setLevel(log_level)
+root_logger.addHandler(file_handler)
+root_logger.addHandler(stderr_handler)
+
 logger = logging.getLogger(__name__)
+
+# Debug: Print logging config
+print(f"CLI Logging configured: Level={log_level_str}, File={log_file}", file=sys.stderr)
 
 # Suppress asyncio debug logs
 logging.getLogger("asyncio").setLevel(logging.WARNING)
@@ -261,9 +298,6 @@ class CLI:
 
 def main() -> None:
     """Start the interactive CLI."""
-    # Load environment variables from .env file
-    load_dotenv()
-
     try:
         cli = CLI()
         cli.run()

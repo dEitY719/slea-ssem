@@ -21,6 +21,7 @@ REQ: REQ-A-ItemGen
 import json
 import logging
 import re
+import traceback
 import uuid
 from datetime import UTC, datetime
 
@@ -28,7 +29,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel, Field
 
-from src.agent.config import AGENT_CONFIG, create_llm
+from src.agent.config import AGENT_CONFIG, create_llm, should_use_structured_output
 from src.agent.fastmcp_server import TOOLS
 from src.agent.output_converter import AgentOutputConverter
 from src.agent.prompts.react_prompt import get_react_prompt
@@ -578,7 +579,26 @@ class ItemGenAgent:
         """
         logger.info(f"📝 문항 생성 시작: survey_id={request.survey_id}, round_idx={request.round_idx}")
 
+        # 성능 측정 시작
+        import time
+        start_time = time.time()
+
         try:
+            # [REQ-AGENT-0-1 Phase 1] 디버깅: 요청 식별 정보 및 모델 정보 로깅
+            model_name = getattr(self.llm, "model", "unknown")
+            if model_name.startswith("models/"):
+                model_name = model_name.replace("models/", "")
+
+            # 요청 상관키 추출 (여러 요청 시 추적용)
+            session_id = request.session_id
+            survey_id = request.survey_id
+            round_idx = request.round_idx
+
+            # Phase 1 디버그 프리픽스 (모든 Phase-1 로그에 포함)
+            phase1_prefix = f"[Phase-1-Debug req={session_id[:8]}|survey={survey_id[:8]}|r{round_idx}]"
+
+            logger.debug(f"{phase1_prefix} Model: {model_name} | LLM: {self.llm.__class__.__name__}")
+
             # 라운드 ID 생성 (REQ-A-RoundID)
             # survey_id를 session_id로 사용하여 라운드 ID 생성
             round_id = _round_id_gen.generate(session_id=request.survey_id, round_number=request.round_idx)
@@ -627,29 +647,102 @@ Important:
             #    - 가능한 경우: 같은 질문의 validate/save 단계를 병렬화
             # 2. Tool 비동기화: 모든 Tool을 async 함수로 변경 (현재는 동기)
             # 3. 캐싱: 자주 호출되는 Tool (get_difficulty_keywords)에 캐싱 적용
+
+            # [REQ-AGENT-0-1 Phase 1] 디버깅: Agent 실행 전 로깅
+            logger.debug(f"{phase1_prefix} Agent input length: {len(agent_input)}")
+
             result = await self.executor.ainvoke({"messages": [HumanMessage(content=agent_input)]})
 
+            # 성능 측정 종료 및 토큰 정보 추출
+            elapsed_ms = int((time.time() - start_time) * 1000)
+
+            # LangGraph 결과에서 토큰 정보 추출 (두 가지 경로 시도)
+            token_info = "N/A"
+            if "messages" in result and result["messages"]:
+                last_msg = result["messages"][-1]
+                if isinstance(last_msg, AIMessage):
+                    # 경로 1: usage_metadata 직접 접근
+                    if hasattr(last_msg, "usage_metadata") and last_msg.usage_metadata:
+                        input_tokens = last_msg.usage_metadata.get("input_tokens", 0)
+                        output_tokens = last_msg.usage_metadata.get("output_tokens", 0)
+                        total_tokens = last_msg.usage_metadata.get("total_tokens", input_tokens + output_tokens)
+                        token_info = f"input={input_tokens}, output={output_tokens}, total={total_tokens}"
+                    # 경로 2: response_metadata 내부 token_usage
+                    elif hasattr(last_msg, "response_metadata") and last_msg.response_metadata:
+                        metadata = last_msg.response_metadata or {}
+                        usage = metadata.get("usage_metadata", {})
+                        token_usage = metadata.get("token_usage", {})
+
+                        if usage:
+                            input_tokens = usage.get("input_tokens", 0)
+                            output_tokens = usage.get("output_tokens", 0)
+                            total_tokens = usage.get("total_tokens", input_tokens + output_tokens)
+                            token_info = f"input={input_tokens}, output={output_tokens}, total={total_tokens}"
+                        elif token_usage:
+                            input_tokens = token_usage.get("prompt_tokens", 0)
+                            output_tokens = token_usage.get("completion_tokens", 0)
+                            total_tokens = token_usage.get("total_tokens", input_tokens + output_tokens)
+                            token_info = f"input={input_tokens}, output={output_tokens}, total={total_tokens}"
+
+            # [REQ-AGENT-0-1 Phase 1] 디버깅: Agent 실행 후 로깅
+            messages = result.get("messages", [])
+            logger.debug(f"{phase1_prefix} Result messages count: {len(messages)} | elapsed={elapsed_ms}ms | tokens={token_info}")
+
+            # intermediate_steps 분석
+            intermediate_steps = result.get("intermediate_steps", [])
+            logger.debug(f"{phase1_prefix} Intermediate steps count: {len(intermediate_steps)}")
+            for i, (action, observation) in enumerate(intermediate_steps):
+                action_str = str(action)[:100] if action else "None"
+                obs_str = str(observation)[:100] if observation else "None"
+                logger.debug(f"{phase1_prefix}   Step {i}: action={action_str}... observation={obs_str}...")
+
             # ReAct 응답 완성도 검증 (디버깅 목적)
-            for message in result.get("messages", []):
+            for msg_idx, message in enumerate(messages):
                 if isinstance(message, AIMessage):
                     content = getattr(message, "content", "")
                     is_complete, reason = self._is_complete_react_response(content)
                     if not is_complete:
-                        logger.warning(f"⚠️  Incomplete ReAct response detected: {reason}")
-                        logger.debug(f"Response preview (first 500 chars): {content[:500]}...")
+                        logger.warning(f"⚠️  Incomplete ReAct response detected at msg {msg_idx}: {reason}")
+                        logger.debug(f"{phase1_prefix} Response preview (first 500 chars): {content[:500]}...")
                     else:
-                        logger.debug("✓ ReAct response format validation passed")
+                        logger.debug(f"{phase1_prefix} Message {msg_idx}: ReAct response format validation passed")
 
-            logger.info("✅ 에이전트 실행 완료")
+            logger.info(f"✅ 에이전트 실행 완료 ({elapsed_ms}ms)")
+
+            # [REQ-AGENT-0-1 Phase 1] 디버깅: 파싱 전 로깅
+            logger.debug(f"{phase1_prefix} Starting parse_agent_output_generate")
+            logger.debug(f"{phase1_prefix} Result keys: {list(result.keys())}")
 
             # 결과 파싱
-            response = self._parse_agent_output_generate(result, round_id)
-            logger.info(f"✅ 문항 생성 성공: {len(response.items)}개 생성")
+            try:
+                response = self._parse_agent_output_generate(result, round_id)
 
-            return response
+                # [REQ-AGENT-0-1 Phase 1] 디버깅: 파싱 성공 로깅
+                logger.debug(f"{phase1_prefix} Parsing succeeded: {len(response.items)} questions")
+                logger.info(f"✅ 문항 생성 성공: {len(response.items)}개 생성")
+
+                return response
+
+            except Exception as parse_error:
+                # [REQ-AGENT-0-1 Phase 1] 디버깅: 파싱 실패 상세 로깅
+                logger.error(f"{phase1_prefix} Parsing failed: {parse_error.__class__.__name__}")
+                logger.error(f"{phase1_prefix} Error message: {str(parse_error)[:500]}")
+
+                # 파싱 중에 사용된 리소스들 로깅
+                if "messages" in result:
+                    messages = result.get("messages", [])
+                    for msg_idx, msg in enumerate(messages):
+                        if isinstance(msg, AIMessage):
+                            content = getattr(msg, "content", "")
+                            logger.debug(f"{phase1_prefix} AIMessage {msg_idx} length: {len(content)}")
+                            logger.debug(f"{phase1_prefix} AIMessage {msg_idx} preview (first 300): {content[:300]}")
+
+                # Re-raise to be caught by outer exception handler
+                raise
 
         except Exception as e:
-            logger.error(f"❌ 문항 생성 실패: {e}")
+            logger.error(f"❌ 문항 생성 실패: {e.__class__.__name__}: {str(e)[:500]}")
+            logger.error(f"{phase1_prefix} Full exception: {traceback.format_exc()}")
             return GenerateQuestionsResponse(
                 round_id=f"round_error_{uuid.uuid4().hex[:8]}",
                 items=[],
@@ -887,7 +980,12 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
 
     def _parse_agent_output_generate(self, result: dict, round_id: str) -> GenerateQuestionsResponse:
         """
-        Parse agent output for question generation (REQ-A-LangChain).
+        Parse agent output for question generation (REQ-A-LangChain, REQ-AGENT-0-1).
+
+        REQ: REQ-AGENT-0-1 (with_structured_output 도입)
+        - Guard: should_use_structured_output()로 모델별 분기 로깅
+        - Type Safety: GenerateQuestionsResponse Pydantic 검증으로 타입 안전성 보장
+        - Backward Compatibility: DeepSeek는 기존 parse_json_robust 경로 유지
 
         Args:
             result: Agent output (supports both AgentExecutor and LangGraph formats)
@@ -897,10 +995,12 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
             GenerateQuestionsResponse
 
         로직:
-            1. _extract_tool_results()로 도구 호출 추출 (intermediate_steps 또는 messages 모두 지원)
-            2. name이 "save_generated_question"인 호출에서 question 데이터 파싱
-            3. 각 question을 GeneratedItem으로 변환
-            4. 성공/실패 개수 집계
+            1. should_use_structured_output guard 추가 (REQ-AGENT-0-1)
+            2. _extract_tool_results()로 도구 호출 추출 (intermediate_steps 또는 messages 모두 지원)
+            3. name이 "save_generated_question"인 호출에서 question 데이터 파싱
+            4. 각 question을 GeneratedItem으로 변환
+            5. GenerateQuestionsResponse로 Pydantic 검증 (type safety)
+            6. 성공/실패 개수 집계
 
         참고:
             - AgentExecutor 출력: {"output": "...", "intermediate_steps": [(tool_name, tool_output), ...]}
@@ -909,6 +1009,16 @@ Tool 6 will return: is_correct (boolean), score (0-100), explanation, keyword_ma
 
         """
         logger.info(f"문항 생성 결과 파싱 중... round_id={round_id}")
+
+        # REQ-AGENT-0-1: Check if structured output should be used for this model
+        # This guard prevents with_structured_output calls on DeepSeek
+        model_name = getattr(self.llm, "model", "unknown")
+        # Remove "models/" prefix from Google Generative AI model names
+        if model_name.startswith("models/"):
+            model_name = model_name.replace("models/", "")
+
+        use_structured = should_use_structured_output(model_name)
+        logger.info(f"REQ-AGENT-0-1: Structured output guard - model={model_name}, use_structured={use_structured}")
 
         # Extract total_tokens from LangGraph messages
         total_tokens = 0

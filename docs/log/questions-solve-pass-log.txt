@@ -1,0 +1,90 @@
+# backend log
+2025-12-06 11:16:37 - INFO - 172.19.0.1:56088 - "GET /questions/session/latest HTTP/1.1" 200
+2025-12-06 11:16:37 - INFO - 172.19.0.1:56088 - "GET /questions/session/3d4b483d-4990-4c2c-8c9e-822d99a63a4b/questions HTTP/1.1" 200
+2025-12-06 11:16:44 - INFO - 172.19.0.1:56742 - "POST /questions/autosave HTTP/1.1" 200
+2025-12-06 11:16:47 - INFO - 172.19.0.1:56742 - "POST /questions/autosave HTTP/1.1" 200
+2025-12-06 11:16:54 - INFO - 172.19.0.1:57042 - "POST /questions/autosave HTTP/1.1" 200
+2025-12-06 11:16:56 - INFO - 172.19.0.1:57042 - "POST /questions/autosave HTTP/1.1" 200
+2025-12-06 11:17:05 - INFO - 172.19.0.1:54664 - "POST /questions/autosave HTTP/1.1" 200
+2025-12-06 11:17:16 - INFO - 172.19.0.1:50782 - "GET /questions/session/latest HTTP/1.1" 200
+2025-12-06 11:17:16 - INFO - 172.19.0.1:50782 - "POST /questions/score?session_id=3d4b483d-4990-4c2c-8c9e-822d99a63a4b&auto_complete=true HTTP/1.1" 200
+
+
+# CLI log
+> questions solve
+INFO: HTTP Request: GET http://localhost:8000/questions/session/latest "HTTP/1.1 200 OK"
+Using latest session: 3d4b483d-4990-4c2c-8c9e-822d99a63a4b(round 1, in_progress)
+INFO: HTTP Request: GET http://localhost:8000/questions/session/3d4b483d-4990-4c2c-8c9e-822d99a63a4b/questions "HTTP/1.1 200 OK"
+✓ Loaded 5 questions
+
+Question 1/5 (AI, Difficulty: 3/10)
+
+Which of the following is a type of machine learning?
+
+  A Supervised learning
+  B Quantum learning
+  C Parallel learning
+  D Abstract learning
+
+Your answer: A
+INFO: HTTP Request: POST http://localhost:8000/questions/autosave "HTTP/1.1 200 OK"
+✓ Answer saved
+
+Question 2/5 (AI, Difficulty: 3/10)
+
+Neural networks are inspired by the structure of the human brain. True or False?
+
+  T True
+  F False
+
+Your answer: T
+INFO: HTTP Request: POST http://localhost:8000/questions/autosave "HTTP/1.1 200 OK"
+✓ Answer saved
+
+Question 3/5 (AI, Difficulty: 3/10)
+
+What is the main goal of unsupervised learning?
+
+(Type your answer)
+
+Your answer: data label
+INFO: HTTP Request: POST http://localhost:8000/questions/autosave "HTTP/1.1 200 OK"
+✓ Answer saved
+
+Question 4/5 (AI, Difficulty: 3/10)
+
+Which of the following tasks is best suited for reinforcement learning?
+
+  A Image classification
+  B Predicting stock prices
+  C Playing a game
+  D Customer segmentation
+
+Your answer: B
+INFO: HTTP Request: POST http://localhost:8000/questions/autosave "HTTP/1.1 200 OK"
+✓ Answer saved
+
+Question 5/5 (AI, Difficulty: 3/10)
+
+Explain the difference between classification and regression in machine learning.
+
+(Type your answer)
+
+Your answer: NA
+INFO: HTTP Request: POST http://localhost:8000/questions/autosave "HTTP/1.1 200 OK"
+✓ Answer saved
+
+✓ Solver complete
+INFO: Completed solving session 3d4b483d-4990-4c2c-8c9e-822d99a63a4b
+>
+>
+> questions score
+INFO: HTTP Request: GET http://localhost:8000/questions/session/latest "HTTP/1.1 200 OK"
+Calculating round score...
+INFO: HTTP Request: POST http://localhost:8000/questions/score?session_id=3d4b483d-4990-4c2c-8c9e-822d99a63a4b&auto_complete=true "HTTP/1.1 200 OK"
+✓ Round score calculated
+  Total: 43.33/100
+  Correct: 2/5
+✓ Session automatically completed
+INFO: Round score calculated and session auto-completed.
+>

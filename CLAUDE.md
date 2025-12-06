@@ -593,6 +593,110 @@ show_session_questions()   → GET /questions/session/{session_id}/questions
 
 ---
 
+## 🤖 Agent 강건성 개선 워크플로우 (Agent Robustness Enhancement)
+
+### 개요
+
+**목표**: DeepSeek 프로덕션 환경 호환성 확보
+**전략**: 개발 환경(Gemini)에서 완벽 검증 → 프로덕션(DeepSeek) 배포
+
+### 문서 구조
+
+```
+docs/
+├── enhance_robust_agent_A.md      # 전체 개선 계획 (v1.2.2, 1822줄)
+├── AGENT-REQUIREMENTS.md          # REQ-ID별 요구사항 정의
+└── DEV-PROGRESS.md                # 진행 상황 추적 (Agent 섹션)
+```
+
+### REQ-ID 포맷
+
+`REQ-AGENT-[Phase]-[Number]`
+
+- Phase: 0 (Structured Output), 1 (Resilient Executor), 2 (Output Parser), 3 (Provider), 4 (Testing)
+- Number: Phase 내 순번 (0, 1, 2, ...)
+
+**예시**:
+- `REQ-AGENT-0-0`: 위험 관리 전략
+- `REQ-AGENT-1-2`: TextReActAgent (DeepSeek 프로덕션용)
+- `REQ-AGENT-2-1`: ActionSanitizer (XML → JSON 전처리)
+- `REQ-AGENT-4-2`: E2E 테스트 시나리오
+
+### 개발 워크플로우
+
+#### 1. REQ 선택
+
+```bash
+# docs/AGENT-REQUIREMENTS.md에서 REQ 확인
+# 또는 docs/DEV-PROGRESS.md의 "Agent 강건성 개선" 섹션 참조
+```
+
+#### 2. 개발 시작
+
+```
+User: "REQ-AGENT-1-2 기능 구현해"
+↓
+Phase 1: Spec 검토
+  - docs/AGENT-REQUIREMENTS.md에서 요구사항 확인
+  - docs/enhance_robust_agent_A.md에서 상세 설계 확인
+  - Acceptance Criteria 검토
+  🛑 PAUSE: 승인 받기
+
+Phase 2: Test Design
+  - tests/agent/test_*.py 생성
+  - Mock fixtures 준비 (DeepSeek XML 시뮬레이션)
+  - 4-5 test cases 설계
+  🛑 PAUSE: 테스트 승인 받기
+
+Phase 3: Implementation
+  - 코드 작성 (SOLID 원칙)
+  - pytest tests/agent/test_*.py
+  - tox -e style
+
+Phase 4: Summary & Commit
+  - docs/progress/REQ-AGENT-X-Y.md 생성
+  - docs/DEV-PROGRESS.md 업데이트 (Phase 0 → 4)
+  - Git commit with 🤖 marker
+```
+
+### 우선순위 가이드
+
+| 우선순위 | REQ-ID | 작업 |
+|---------|--------|------|
+| **P0 CRITICAL** | REQ-AGENT-0-0 | 위험 관리 전략 (먼저 시작) |
+| **P0** | REQ-AGENT-1-0 | ResilientAgentExecutor |
+| **P0** | REQ-AGENT-1-1 | ModelCapability YAML |
+| **P0 CRITICAL** | REQ-AGENT-1-2 | TextReActAgent (DeepSeek 핵심) |
+| **P0** | REQ-AGENT-2-1 | ActionSanitizer (XML 처리) |
+| **P0 CRITICAL** | REQ-AGENT-4-2 | E2E 테스트 (검증 필수) |
+
+### 핵심 개념
+
+```
+⚠️ 중요:
+- DeepSeek은 "fallback"이 아님 - 프로덕션의 유일한 모델
+- Gemini는 개발 편의성을 위한 도구
+- 모든 개선은 DeepSeek 프로덕션 호환성이 목표
+```
+
+**개발 환경 (사외 - Gemini)**:
+- 빠른 반복 개발
+- DeepSeek 경로 시뮬레이션 (Mock XML)
+- 완벽한 검증 후 배포
+
+**프로덕션 환경 (사내 - DeepSeek)**:
+- TextReActAgent가 유일한 경로
+- LiteLLM을 통한 DeepSeek 실행
+- 구조화된 로깅으로 모니터링
+
+### 참조 문서
+
+- **전체 계획**: `docs/enhance_robust_agent_A.md`
+- **요구사항**: `docs/AGENT-REQUIREMENTS.md`
+- **진행 추적**: `docs/DEV-PROGRESS.md` (Agent 강건성 개선 섹션)
+
+---
+
 ## 📚 Documentation References (Already Exist)
 **Do NOT regenerate these** - they are already complete:
 - `docs/TOOL_DEFINITIONS_SUMMARY.md` - Complete tool signatures & details

@@ -89,6 +89,9 @@ exclude = ["asset*", "config*", "tests*"] # 패키지로 인식하고 싶지 않
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "no_db_required: marks tests that don't require database connection (skip patch_database_for_tools fixture)",
+]
 filterwarnings = [
     "ignore::DeprecationWarning:langgraph.*",
     "ignore:AgentStatePydantic has been moved:DeprecationWarning",

@@ -3,14 +3,23 @@ set -euo pipefail
 
 # slea-ssem development tool
 # Auto-filled by generator (editable)
-PY_RUN="uv run"
-PY_TEST="uv run pytest -q"
+
+# Prefer uv if available; fallback to python
+if command -v uv >/dev/null 2>&1; then
+  PY_RUN="uv run"
+  PY_TEST="uv run pytest -q"
+else
+  PY_RUN="python"
+  PY_TEST="python -m pytest -q"
+fi
 UVICORN_ENTRY="src.backend.main:app"
 USE_ALEMBIC=false
 IS_DJANGO=false
 MANAGE_PY="manage.py"
 DEFAULT_DATASET="./data"
 DEFAULT_PORT=8000
+DEFAULT_LOG_LEVEL=${LOG_LEVEL:-INFO}
+DEFAULT_LOG_FILE=${LOG_FILE:-false}
 PORT=${PORT:-$DEFAULT_PORT}
 
 cmd="${1:-help}"
@@ -18,9 +27,35 @@ cmd="${1:-help}"
 case "$cmd" in
   up)
     target="${2:-b}" # Default to backend
+    # Parse optional KEY=VALUE overrides (e.g., LOG_LEVEL=DEBUG LOG_FILE=true)
+    if [ "$#" -ge 3 ]; then
+      shift 2
+      for kv in "$@"; do
+        if [[ "$kv" == *=* ]]; then
+          export "${kv?}"
+        fi
+      done
+    fi
+    LOG_LEVEL=${LOG_LEVEL:-$DEFAULT_LOG_LEVEL}
+    LOG_FILE=${LOG_FILE:-$DEFAULT_LOG_FILE}
+
     case "$target" in
       b|backend)
         echo "🔧 Starting backend dev server on port $PORT..."
+        echo "   LOG_LEVEL=${LOG_LEVEL}"
+        echo "   LOG_FILE=${LOG_FILE}"
+
+        # Optional file logging
+        LOG_DIR="logs/phase1_debug"
+        LOG_PATH=""
+        if [ "${LOG_FILE,,}" = "true" ]; then
+          mkdir -p "$LOG_DIR"
+          TS=$(date +%Y%m%d_%H%M%S)
+          MODEL_SAFE=$(echo "${LITELLM_MODEL:-backend}" | tr '/-' '__')
+          LOG_PATH="${LOG_DIR}/${MODEL_SAFE}_${TS}.log"
+          echo "   Writing logs to ${LOG_PATH}"
+        fi
+
         if $IS_DJANGO; then
           export DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-"config.settings.dev"}
           $PY_RUN python "$MANAGE_PY" migrate
@@ -30,8 +65,31 @@ case "$cmd" in
             $PY_RUN alembic upgrade head
           fi
           if [ -n "$UVICORN_ENTRY" ]; then
-            APP_ENV=${APP_ENV:-dev} DATASET=${DATASET:-"$DEFAULT_DATASET"} \
-            $PY_RUN uvicorn "$UVICORN_ENTRY" --reload --host 127.0.0.1 --port $PORT
+            APP_ENV=${APP_ENV:-dev} DATASET=${DATASET:-"$DEFAULT_DATASET"}
+
+            # Get absolute path to logging config
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            LOG_CONFIG="${SCRIPT_DIR}/logging_config.yaml"
+
+            # Build Uvicorn command with logging config for clean output
+            UVICORN_CMD=(
+              $PY_RUN uvicorn
+              "$UVICORN_ENTRY"
+              --reload
+              --host 127.0.0.1
+              --port "$PORT"
+              --log-level "${LOG_LEVEL,,}"
+              --log-config "$LOG_CONFIG"
+            )
+
+            if [ "${LOG_FILE,,}" = "true" ]; then
+              # Capture clean logs (color codes removed by logging_config.yaml)
+              # shellcheck disable=SC2068
+              "${UVICORN_CMD[@]}" 2>&1 | tee "$LOG_PATH"
+            else
+              # shellcheck disable=SC2068
+              "${UVICORN_CMD[@]}"
+            fi
           else
             echo "❌ No dev server configured. Edit tools/dev.sh to add your start command."
             exit 1
@@ -133,6 +191,9 @@ Environment Variables:
                Example: DATASET=/path ./tools/dev.sh up
   APP_ENV      Environment (default: dev)
                Options: dev|staging|prod
+  LOG_LEVEL    Uvicorn log level (default: INFO)
+               Example: LOG_LEVEL=DEBUG ./tools/dev.sh up b
+  LOG_FILE     true|false (default: false). When true, backend log is written to logs/phase1_debug/<model>_<timestamp>.log
 
 Examples:
   ./tools/dev.sh up                 # Start backend on http://localhost:8000
