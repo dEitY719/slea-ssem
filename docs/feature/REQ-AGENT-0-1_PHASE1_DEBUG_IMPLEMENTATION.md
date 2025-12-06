@@ -178,32 +178,102 @@ else:
 
 ## 🎯 로그 수집 방법 (사내 환경에서)
 
-### 로깅 설정 확인
-```python
-# src/agent/llm_agent.py의 logger 설정
-logger = logging.getLogger(__name__)  # DEBUG 레벨 이상 출력
-```
+### 🚨 중요: LOG_LEVEL 설정 필수
 
-### 로그 출력 위치
-- **표준 출력**: 콘솔에 직접 출력
-- **파일**: 기존 로깅 설정에 따라 로그 파일에 기록
+**문제**: 기본 로거 레벨이 INFO/WARNING이면 DEBUG 로그가 출력되지 않습니다.
+**해결**: 사내 테스트 시 반드시 LOG_LEVEL=DEBUG를 설정해야 합니다.
+
+### 로그 디렉토리 준비
+
+```bash
+# 로그 디렉토리 생성 (사내에서 실행)
+mkdir -p logs/phase1_debug
+```
 
 ### 사내 테스트 방법 (권장)
 
-```bash
-# 1. DeepSeek 환경에서 테스트 (사내)
-LITELLM_MODEL=deepseek-v3-0324 \
-python src/cli/main.py \
-  > deepseek_debug.log 2>&1
+#### 1️⃣ DeepSeek 테스트 (필수 - 문제 모델)
 
-# 프롬프트에서:
+```bash
+# 터미널 1: CLI 실행 (LOG_LEVEL=DEBUG 필수)
+export LOG_LEVEL=DEBUG
+export LITELLM_MODEL=deepseek-v3-0324
+python src/cli/main.py > logs/phase1_debug/deepseek_$(date +%Y%m%d_%H%M%S).log 2>&1
+
+# 터미널 2: CLI 프롬프트에서 명령 입력
 > auth login <username>
 > questions generate --domain AI --round 1
+> exit
+```
 
-# 2. GPT-OSS 환경에서 테스트 (선택사항)
-LITELLM_MODEL=gpt-oss-120b \
-python src/cli/main.py \
-  > gpt_oss_debug.log 2>&1
+**출력 파일**: `logs/phase1_debug/deepseek_20251206_120000.log`
+
+#### 2️⃣ Gemini 테스트 (선택사항 - 참조 모델)
+
+```bash
+export LOG_LEVEL=DEBUG
+export LITELLM_MODEL=gemini-2.0-flash
+python src/cli/main.py > logs/phase1_debug/gemini_$(date +%Y%m%d_%H%M%S).log 2>&1
+
+# CLI에서:
+> auth login <username>
+> questions generate --domain AI --round 1
+> exit
+```
+
+#### 3️⃣ GPT-OSS-120b 테스트 (선택사항 - 비교 모델)
+
+```bash
+export LOG_LEVEL=DEBUG
+export LITELLM_MODEL=gpt-oss-120b
+python src/cli/main.py > logs/phase1_debug/gpt_oss_$(date +%Y%m%d_%H%M%S).log 2>&1
+
+# CLI에서:
+> auth login <username>
+> questions generate --domain AI --round 1
+> exit
+```
+
+### 로그 파일명 패턴
+
+```
+logs/phase1_debug/
+├── deepseek_20251206_120000.log      # DeepSeek 테스트 1차
+├── deepseek_20251206_140000.log      # DeepSeek 테스트 2차
+├── gemini_20251206_120530.log        # Gemini 참조 (선택사항)
+└── gpt_oss_20251206_141000.log       # GPT-OSS 비교 (선택사항)
+```
+
+### 요청 식별 정보가 포함된 로그
+
+최신 구현에서는 모든 Phase-1-Debug 로그에 다음 정보가 포함됩니다:
+- `req=<session_id 처음 8글자>`: 요청 식별
+- `survey=<survey_id 처음 8글자>`: 설문 식별
+- `r<round_idx>`: 라운드 번호
+
+**로그 예시**:
+```
+[Phase-1-Debug req=sess-001|survey=surv-001|r1] Model: deepseek-v3-0324
+[Phase-1-Debug req=sess-001|survey=surv-001|r1] Agent input length: 1234
+[Phase-1-Debug req=sess-001|survey=surv-001|r1] Intermediate steps count: 5
+```
+
+이를 통해 여러 요청이 동시에 실행될 때도 각 요청의 로그를 쉽게 추적할 수 있습니다.
+
+### 로그 검색 팁
+
+```bash
+# 특정 모델 로그만 추출
+grep "Model: deepseek-v3-0324" logs/phase1_debug/deepseek_*.log
+
+# 특정 요청만 추출
+grep "req=sess-001" logs/phase1_debug/*.log
+
+# 에러만 추출
+grep "Parsing failed" logs/phase1_debug/deepseek_*.log
+
+# Phase-1 디버그 로그만 추출
+grep "\[Phase-1-Debug" logs/phase1_debug/deepseek_*.log | head -50
 ```
 
 ### 로그 분석 가이드
