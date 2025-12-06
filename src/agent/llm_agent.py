@@ -656,18 +656,33 @@ Important:
             # 성능 측정 종료 및 토큰 정보 추출
             elapsed_ms = int((time.time() - start_time) * 1000)
 
-            # LangGraph 결과에서 토큰 정보 추출
+            # LangGraph 결과에서 토큰 정보 추출 (두 가지 경로 시도)
             token_info = "N/A"
             if "messages" in result and result["messages"]:
                 last_msg = result["messages"][-1]
-                if isinstance(last_msg, AIMessage) and hasattr(last_msg, "response_metadata"):
-                    metadata = last_msg.response_metadata or {}
-                    usage = metadata.get("usage_metadata", {})
-                    if usage:
-                        input_tokens = usage.get("input_tokens", 0)
-                        output_tokens = usage.get("output_tokens", 0)
-                        total_tokens = usage.get("total_tokens", input_tokens + output_tokens)
+                if isinstance(last_msg, AIMessage):
+                    # 경로 1: usage_metadata 직접 접근
+                    if hasattr(last_msg, "usage_metadata") and last_msg.usage_metadata:
+                        input_tokens = last_msg.usage_metadata.get("input_tokens", 0)
+                        output_tokens = last_msg.usage_metadata.get("output_tokens", 0)
+                        total_tokens = last_msg.usage_metadata.get("total_tokens", input_tokens + output_tokens)
                         token_info = f"input={input_tokens}, output={output_tokens}, total={total_tokens}"
+                    # 경로 2: response_metadata 내부 token_usage
+                    elif hasattr(last_msg, "response_metadata") and last_msg.response_metadata:
+                        metadata = last_msg.response_metadata or {}
+                        usage = metadata.get("usage_metadata", {})
+                        token_usage = metadata.get("token_usage", {})
+
+                        if usage:
+                            input_tokens = usage.get("input_tokens", 0)
+                            output_tokens = usage.get("output_tokens", 0)
+                            total_tokens = usage.get("total_tokens", input_tokens + output_tokens)
+                            token_info = f"input={input_tokens}, output={output_tokens}, total={total_tokens}"
+                        elif token_usage:
+                            input_tokens = token_usage.get("prompt_tokens", 0)
+                            output_tokens = token_usage.get("completion_tokens", 0)
+                            total_tokens = token_usage.get("total_tokens", input_tokens + output_tokens)
+                            token_info = f"input={input_tokens}, output={output_tokens}, total={total_tokens}"
 
             # [REQ-AGENT-0-1 Phase 1] 디버깅: Agent 실행 후 로깅
             messages = result.get("messages", [])
